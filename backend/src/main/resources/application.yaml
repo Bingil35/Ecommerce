@@ -1,3 +1,25 @@
 spring:
   application:
     name: backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ecommerce_db
+    username: postgres
+    password: Binh035205@
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format-sql: true
+    open-in-view: false
+
+jwt:
+  secret: ${JWT_SECRET:KalaEcommerceJwtSecretKeyForDevelopmentOnly123456789}
+  expiration: 86400000
+
+server:
+  port: 8080
