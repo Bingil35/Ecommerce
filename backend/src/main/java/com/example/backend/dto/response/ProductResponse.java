@@ -16,6 +16,9 @@ public class ProductResponse {
     private BigDecimal price;
     private Integer stockQuantity;
     private String status;
+    private UUID brandId;
+    private BigDecimal ratingAverage;
+    private Integer ratingCount;
 
     public ProductResponse() {
     }
@@ -39,6 +42,9 @@ public class ProductResponse {
 
         this.status =
                 product.getStatus().name();
+        this.brandId = product.getBrandId();
+        this.ratingAverage = product.getRatingAverage();
+        this.ratingCount = product.getRatingCount();
     }
 
     public UUID getId() {
@@ -75,5 +81,17 @@ public class ProductResponse {
 
     public String getStatus() {
         return status;
+    }
+
+    public UUID getBrandId() {
+        return brandId;
+    }
+
+    public BigDecimal getRatingAverage() {
+        return ratingAverage;
+    }
+
+    public Integer getRatingCount() {
+        return ratingCount;
     }
 }
