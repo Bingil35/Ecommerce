@@ -79,6 +79,23 @@ public class Product {
     private ProductStatus status = ProductStatus.ACTIVE;
 
     @Column(
+            name = "brand_id"
+    )
+    private UUID brandId;
+
+    @Column(
+            name = "rating_average",
+            precision = 2,
+            scale = 1
+    )
+    private BigDecimal ratingAverage = BigDecimal.ZERO;
+
+    @Column(
+            name = "rating_count"
+    )
+    private Integer ratingCount = 0;
+
+    @Column(
             name = "created_at",
             nullable = false,
             updatable = false
@@ -121,6 +138,30 @@ public class Product {
 
     public void setShopId(UUID shopId) {
         this.shopId = shopId;
+    }
+
+    public UUID getBrandId() {
+        return brandId;
+    }
+
+    public void setBrandId(UUID brandId) {
+        this.brandId = brandId;
+    }
+
+    public BigDecimal getRatingAverage() {
+        return ratingAverage;
+    }
+
+    public void setRatingAverage(BigDecimal ratingAverage) {
+        this.ratingAverage = ratingAverage;
+    }
+
+    public Integer getRatingCount() {
+        return ratingCount;
+    }
+
+    public void setRatingCount(Integer ratingCount) {
+        this.ratingCount = ratingCount;
     }
 
     public Category getCategory() {
