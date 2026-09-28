@@ -3,7 +3,6 @@ package com.example.backend.service;
 import com.example.backend.entity.Product;
 import com.example.backend.repository.ProductRepository;
 import com.example.backend.repository.ProductSpecifications;
-import com.example.backend.repository.SearchKeyword;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,7 +34,7 @@ public class ProductSearchService {
             int size,
             String sort
     ) {
-        List<String> tokens = SearchKeyword.tokenize(keyword);
+        List<String> tokens = ProductSpecifications.tokenize(keyword);
 
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
