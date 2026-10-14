@@ -59,17 +59,11 @@ public class ProductService {
         product.setCategory(category);
         product.setName(request.getName().trim());
         product.setSlug(slug);
-        product.setDescription(
-                request.getDescription()
-        );
-        product.setPrice(request.getPrice());
-        product.setStockQuantity(
-                request.getStockQuantity()
-        );
-
-        product.setStatus(
-                determineStatus(request.getStockQuantity())
-        );
+        product.setDescription(request.getDescription());
+        product.setBrandId(request.getBrandId());
+        product.setThumbnailUrl(request.getThumbnailUrl());
+        product.setFeatured(request.getFeatured());
+        product.setStatus(ProductStatus.ACTIVE);
 
         return productRepository.save(product);
     }
@@ -116,6 +110,29 @@ public class ProductService {
                         shopId,
                         status
                 );
+    }
+
+    // =========================
+    // PUBLIC CATALOG (ACTIVE ONLY)
+    // =========================
+    public List<Product> getActiveProducts() {
+        return productRepository.findByStatusOrderByCreatedAtDesc(ProductStatus.ACTIVE);
+    }
+
+    public List<Product> getActiveProductsByShop(UUID shopId) {
+        return productRepository.findByShopIdAndStatusOrderByCreatedAtDesc(shopId, ProductStatus.ACTIVE);
+    }
+
+    public List<Product> getActiveProductsByCategory(UUID categoryId) {
+        return productRepository.findByCategoryIdAndStatusOrderByCreatedAtDesc(categoryId, ProductStatus.ACTIVE);
+    }
+
+    public Product getActiveProductById(UUID id) {
+        Product product = getProductById(id);
+        if (product.getStatus() != ProductStatus.ACTIVE) {
+            throw new ResourceNotFoundException("Không tìm thấy sản phẩm.");
+        }
+        return product;
     }
 
     // =========================
@@ -180,35 +197,10 @@ public class ProductService {
             }
         }
 
-        if (request.getDescription() != null) {
-            product.setDescription(
-                    request.getDescription()
-            );
-        }
-
-        if (request.getPrice() != null) {
-            product.setPrice(
-                    request.getPrice()
-            );
-        }
-
-        if (request.getStockQuantity() != null) {
-
-            int newStock = request.getStockQuantity();
-
-            product.setStockQuantity(newStock);
-
-            /*
-             * Không tự động ACTIVE lại sản phẩm
-             * đang INACTIVE.
-             */
-            if (product.getStatus() != ProductStatus.INACTIVE) {
-
-                product.setStatus(
-                        determineStatus(newStock)
-                );
-            }
-        }
+        if (request.getDescription() != null) product.setDescription(request.getDescription());
+        if (request.getBrandId() != null) product.setBrandId(request.getBrandId());
+        if (request.getThumbnailUrl() != null) product.setThumbnailUrl(request.getThumbnailUrl());
+        if (request.getFeatured() != null) product.setFeatured(request.getFeatured());
 
         /*
          * Shop Owner có thể chủ động thay đổi status.
@@ -218,36 +210,7 @@ public class ProductService {
             ProductStatus requestedStatus =
                     request.getStatus();
 
-            /*
-             * Không cho phép ACTIVE khi stock = 0.
-             */
-            if (requestedStatus == ProductStatus.ACTIVE
-                    && product.getStockQuantity() != null
-                    && product.getStockQuantity() == 0) {
-
-                product.setStatus(
-                        ProductStatus.OUT_OF_STOCK
-                );
-
-            } else {
-
-                product.setStatus(
-                        requestedStatus
-                );
-            }
-        }
-
-        /*
-         * Đảm bảo trạng thái cuối cùng hợp lệ
-         * với stock.
-         */
-        if (product.getStatus() == ProductStatus.ACTIVE
-                && product.getStockQuantity() != null
-                && product.getStockQuantity() == 0) {
-
-            product.setStatus(
-                    ProductStatus.OUT_OF_STOCK
-            );
+            product.setStatus(requestedStatus);
         }
 
         return productRepository.save(product);
@@ -307,29 +270,6 @@ public class ProductService {
             );
         }
 
-        if (request.getPrice() == null) {
-            throw new IllegalArgumentException(
-                    "Product price is required"
-            );
-        }
-
-        if (request.getPrice().signum() < 0) {
-            throw new IllegalArgumentException(
-                    "Product price cannot be negative"
-            );
-        }
-
-        if (request.getStockQuantity() == null) {
-            throw new IllegalArgumentException(
-                    "Stock quantity is required"
-            );
-        }
-
-        if (request.getStockQuantity() < 0) {
-            throw new IllegalArgumentException(
-                    "Stock quantity cannot be negative"
-            );
-        }
     }
 
     private void validateUpdateRequest(
@@ -350,37 +290,11 @@ public class ProductService {
             );
         }
 
-        if (request.getPrice() != null
-                && request.getPrice().signum() < 0) {
-
-            throw new IllegalArgumentException(
-                    "Product price cannot be negative"
-            );
-        }
-
-        if (request.getStockQuantity() != null
-                && request.getStockQuantity() < 0) {
-
-            throw new IllegalArgumentException(
-                    "Stock quantity cannot be negative"
-            );
-        }
     }
 
     // =========================
     // STATUS
     // =========================
-
-    private ProductStatus determineStatus(
-            Integer stockQuantity
-    ) {
-
-        if (stockQuantity == null || stockQuantity == 0) {
-            return ProductStatus.OUT_OF_STOCK;
-        }
-
-        return ProductStatus.ACTIVE;
-    }
 
     // =========================
     // SLUG
@@ -398,10 +312,7 @@ public class ProductService {
         int counter = 2;
 
         while (
-                productRepository.existsByShopIdAndSlug(
-                        shopId,
-                        slug
-                )
+                productRepository.existsBySlug(slug)
         ) {
 
             slug = baseSlug + "-" + counter;
@@ -424,12 +335,7 @@ public class ProductService {
         int counter = 2;
 
         while (
-                productRepository
-                        .existsByShopIdAndSlugAndIdNot(
-                                shopId,
-                                slug,
-                                productId
-                        )
+                productRepository.existsBySlugAndIdNot(slug, productId)
         ) {
 
             slug = baseSlug + "-" + counter;

@@ -9,6 +9,9 @@ public class CreateProductVariantRequest {
     private UUID productId;
     private String sku;
     private BigDecimal price;
+    private BigDecimal comparePrice;
+    private BigDecimal costPrice;
+    private UUID primaryMediaId;
     private Integer stockQuantity;
     private String imageUrl;
     private List<UUID> optionValueIds;
@@ -39,6 +42,13 @@ public class CreateProductVariantRequest {
     public void setPrice(BigDecimal price) {
         this.price = price;
     }
+
+    public BigDecimal getComparePrice(){return comparePrice;}
+    public void setComparePrice(BigDecimal v){comparePrice=v;}
+    public BigDecimal getCostPrice(){return costPrice;}
+    public void setCostPrice(BigDecimal v){costPrice=v;}
+    public UUID getPrimaryMediaId(){return primaryMediaId;}
+    public void setPrimaryMediaId(UUID v){primaryMediaId=v;}
 
     public Integer getStockQuantity() {
         return stockQuantity;

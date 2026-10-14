@@ -1,152 +1,22 @@
 package com.example.backend.entity;
-
-import jakarta.persistence.*;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-@Entity
-@Table(
-        name = "product_variants"
-)
+import jakarta.persistence.*; import org.hibernate.annotations.JdbcTypeCode; import org.hibernate.type.SqlTypes; import java.math.BigDecimal; import java.time.OffsetDateTime; import java.util.UUID;
+@Entity @Table(name="product_variants")
 public class ProductVariant {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-            name = "product_id",
-            nullable = false,
-            foreignKey = @ForeignKey(
-                    name = "fk_product_variants_product"
-            )
-    )
-    private Product product;
-
-    @Column(
-            name = "sku",
-            nullable = false,
-            length = 100
-    )
-    private String sku;
-
-    @Column(
-            name = "price",
-            nullable = false,
-            precision = 18,
-            scale = 2
-    )
-    private BigDecimal price;
-
-    @Column(
-            name = "stock_quantity",
-            nullable = false
-    )
-    private Integer stockQuantity = 0;
-
-    @Column(
-            name = "image_url"
-    )
-    private String imageUrl;
-
-    @Enumerated(EnumType.STRING)
-    @Column(
-            name = "status",
-            nullable = false,
-            length = 20
-    )
-    private ProductVariantStatus status =
-            ProductVariantStatus.ACTIVE;
-
-    @Column(
-            name = "created_at",
-            nullable = false,
-            updatable = false
-    )
-    private LocalDateTime createdAt;
-
-    @Column(
-            name = "updated_at",
-            nullable = false
-    )
-    private LocalDateTime updatedAt;
-
-    public ProductVariant() {
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public Product getProduct() {
-        return product;
-    }
-
-    public String getSku() {
-        return sku;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public Integer getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public ProductVariantStatus getStatus() {
-        return status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
-    public void setSku(String sku) {
-        this.sku = sku;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public void setStockQuantity(Integer stockQuantity) {
-        this.stockQuantity = stockQuantity;
-    }
-
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
-
-    public void setStatus(ProductVariantStatus status) {
-        this.status = status;
-    }
+    @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
+    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="product_id") private Product product;
+    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="primary_media_id") private ProductMedia primaryMedia;
+    @Column(name="sku",length=255) private String sku;
+    @Column(name="price",precision=18,scale=2) private BigDecimal price;
+    @Column(name="compare_price",precision=18,scale=2) private BigDecimal comparePrice;
+    @Column(name="cost_price",precision=18,scale=2) private BigDecimal costPrice;
+    @Enumerated(EnumType.STRING) @JdbcTypeCode(SqlTypes.NAMED_ENUM) @Column(name="status",columnDefinition="product_status_enum") private ProductStatus status=ProductStatus.ACTIVE;
+    @Column(name="created_at",nullable=false,updatable=false) private OffsetDateTime createdAt;
+    @Column(name="updated_at",nullable=false) private OffsetDateTime updatedAt;
+    @Transient private Integer legacyStockQuantity;
+    public ProductVariant(){} @PrePersist protected void onCreate(){OffsetDateTime n=OffsetDateTime.now();createdAt=n;updatedAt=n;} @PreUpdate protected void onUpdate(){updatedAt=OffsetDateTime.now();}
+    public UUID getId(){return id;} public Product getProduct(){return product;} public ProductMedia getPrimaryMedia(){return primaryMedia;} public String getSku(){return sku;} public BigDecimal getPrice(){return price;} public BigDecimal getComparePrice(){return comparePrice;} public BigDecimal getCostPrice(){return costPrice;} public ProductStatus getStatus(){return status;} public OffsetDateTime getCreatedAt(){return createdAt;} public OffsetDateTime getUpdatedAt(){return updatedAt;}
+    public void setProduct(Product v){product=v;} public void setPrimaryMedia(ProductMedia v){primaryMedia=v;} public void setSku(String v){sku=v;} public void setPrice(BigDecimal v){price=v;} public void setComparePrice(BigDecimal v){comparePrice=v;} public void setCostPrice(BigDecimal v){costPrice=v;} public void setStatus(ProductStatus v){status=v;}
+    // Temporary API compatibility: stock is persisted in Inventories, not product_variants.
+    public Integer getStockQuantity(){return legacyStockQuantity;} public void setStockQuantity(Integer v){legacyStockQuantity=v;}
+    public String getImageUrl(){return primaryMedia==null?null:primaryMedia.getUrl();} public void setImageUrl(String v) { /* use primary_media_id and ProductMedia instead */ }
 }

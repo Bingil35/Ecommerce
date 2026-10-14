@@ -9,16 +9,16 @@ import java.util.UUID;
 public interface ProductOptionValueRepository
         extends JpaRepository<ProductOptionValue, UUID> {
 
-    List<ProductOptionValue> findByOptionIdOrderByValueAsc(
+    List<ProductOptionValue> findByProductOptionIdOrderBySortOrderAsc(
             UUID optionId
     );
 
-    boolean existsByOptionIdAndValue(
+    boolean existsByProductOptionIdAndValue(
             UUID optionId,
             String value
     );
 
-    boolean existsByOptionIdAndValueAndIdNot(
+    boolean existsByProductOptionIdAndValueAndIdNot(
             UUID optionId,
             String value,
             UUID id

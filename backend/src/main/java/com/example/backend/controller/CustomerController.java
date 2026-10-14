@@ -28,7 +28,9 @@ public class CustomerController {
 
         User user = userService.getUserByEmail(email);
 
-        UserResponse response = new UserResponse(user);
+        UserResponse response = new UserResponse(
+                user, userService.getRoleNamesByUserId(user.getId())
+        );
 
         return ApiResponse.success(
                 "Lấy thông tin tài khoản thành công.",

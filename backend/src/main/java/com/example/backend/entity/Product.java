@@ -1,189 +1,72 @@
 package com.example.backend.entity;
 
 import jakarta.persistence.*;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "products",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uq_products_shop_slug",
-                        columnNames = {"shop_id", "slug"}
-                )
-        }
-)
+@Table(name = "products")
 public class Product {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(
-            name = "shop_id",
-            nullable = false
-    )
+    @Column(name = "shop_id")
     private UUID shopId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-            name = "category_id",
-            nullable = false,
-            foreignKey = @ForeignKey(
-                    name = "fk_products_category"
-            )
-    )
+    @JoinColumn(name = "category_id")
     private Category category;
 
-    @Column(
-            name = "name",
-            nullable = false,
-            length = 255
-    )
+    @Column(name = "brand_id")
+    private UUID brandId;
+
+    @Column(name = "thumbnail_url", columnDefinition = "text")
+    private String thumbnailUrl;
+
+    @Column(name = "name", length = 255)
     private String name;
 
-    @Column(
-            name = "slug",
-            nullable = false,
-            length = 255
-    )
+    @Column(name = "slug", nullable = false, unique = true, length = 255)
     private String slug;
 
-    @Column(
-            name = "description",
-            columnDefinition = "TEXT"
-    )
+    @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(
-            name = "price",
-            precision = 18,
-            scale = 2
-    )
-    private BigDecimal price;
-
-    @Column(
-            name = "stock_quantity"
-    )
-    private Integer stockQuantity;
-
     @Enumerated(EnumType.STRING)
-    @Column(
-            name = "status",
-            nullable = false,
-            length = 20
-    )
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", columnDefinition = "product_status_enum")
     private ProductStatus status = ProductStatus.ACTIVE;
 
-    @Column(
-            name = "created_at",
-            nullable = false,
-            updatable = false
-    )
-    private LocalDateTime createdAt;
+    @Column(name = "is_featured")
+    private Boolean featured;
 
-    @Column(
-            name = "updated_at",
-            nullable = false
-    )
-    private LocalDateTime updatedAt;
+    @Column(name = "rating_average", precision = 2, scale = 1)
+    private java.math.BigDecimal ratingAverage;
 
-    public Product() {
-    }
+    @Column(name = "rating_count")
+    private Integer ratingCount = 0;
 
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public UUID getShopId() {
-        return shopId;
-    }
-
-    public void setShopId(UUID shopId) {
-        this.shopId = shopId;
-    }
-
-    public Category getCategory() {
-        return category;
-    }
-
-    public void setCategory(Category category) {
-        this.category = category;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getSlug() {
-        return slug;
-    }
-
-    public void setSlug(String slug) {
-        this.slug = slug;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public Integer getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public void setStockQuantity(Integer stockQuantity) {
-        this.stockQuantity = stockQuantity;
-    }
-
-    public ProductStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ProductStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+    public Product() {}
+    @PrePersist protected void onCreate() { OffsetDateTime now=OffsetDateTime.now(); createdAt=now; updatedAt=now; if(status==null) status=ProductStatus.ACTIVE; if(ratingCount==null) ratingCount=0; }
+    @PreUpdate protected void onUpdate() { updatedAt=OffsetDateTime.now(); }
+    public UUID getId(){return id;} public void setId(UUID id){this.id=id;}
+    public UUID getShopId(){return shopId;} public void setShopId(UUID v){shopId=v;}
+    public Category getCategory(){return category;} public void setCategory(Category v){category=v;}
+    public UUID getBrandId(){return brandId;} public void setBrandId(UUID v){brandId=v;}
+    public String getThumbnailUrl(){return thumbnailUrl;} public void setThumbnailUrl(String v){thumbnailUrl=v;}
+    public String getName(){return name;} public void setName(String v){name=v;}
+    public String getSlug(){return slug;} public void setSlug(String v){slug=v;}
+    public String getDescription(){return description;} public void setDescription(String v){description=v;}
+    public ProductStatus getStatus(){return status;} public void setStatus(ProductStatus v){status=v;}
+    public Boolean getFeatured(){return featured;} public void setFeatured(Boolean v){featured=v;}
+    public java.math.BigDecimal getRatingAverage(){return ratingAverage;} public void setRatingAverage(java.math.BigDecimal v){ratingAverage=v;}
+    public Integer getRatingCount(){return ratingCount;} public void setRatingCount(Integer v){ratingCount=v;}
+    public OffsetDateTime getCreatedAt(){return createdAt;} public OffsetDateTime getUpdatedAt(){return updatedAt;}
 }

@@ -13,6 +13,8 @@ public class ProductVariantResponse {
     private UUID productId;
     private String sku;
     private BigDecimal price;
+    private BigDecimal comparePrice;
+    private BigDecimal costPrice;
     private Integer stockQuantity;
     private String imageUrl;
     private String status;
@@ -30,8 +32,9 @@ public class ProductVariantResponse {
                 variant.getProduct().getId();
         this.sku = variant.getSku();
         this.price = variant.getPrice();
-        this.stockQuantity =
-                variant.getStockQuantity();
+        this.comparePrice = variant.getComparePrice();
+        this.costPrice = variant.getCostPrice();
+        this.stockQuantity = variant.getStockQuantity();
         this.imageUrl = variant.getImageUrl();
         this.status =
                 variant.getStatus().name();
@@ -59,6 +62,9 @@ public class ProductVariantResponse {
     public BigDecimal getPrice() {
         return price;
     }
+
+    public BigDecimal getComparePrice(){return comparePrice;}
+    public BigDecimal getCostPrice(){return costPrice;}
 
     public Integer getStockQuantity() {
         return stockQuantity;
