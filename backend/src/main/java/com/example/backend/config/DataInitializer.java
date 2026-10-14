@@ -13,44 +13,19 @@ public class DataInitializer {
     @Bean
     CommandLineRunner initRoles(RoleRepository roleRepository) {
         return args -> {
-
-            createRoleIfNotExists(
-                    roleRepository,
-                    "CUSTOMER",
-                    "Customer",
-                    "Khách hàng"
-            );
-
-            createRoleIfNotExists(
-                    roleRepository,
-                    "SHOP_OWNER",
-                    "Shop Owner",
-                    "Chủ cửa hàng"
-            );
-
-            createRoleIfNotExists(
-                    roleRepository,
-                    "ADMIN",
-                    "Admin",
-                    "Quản trị viên"
-            );
+            createRoleIfNotExists(roleRepository, RoleConstants.CUSTOMER, "Khách hàng");
+            createRoleIfNotExists(roleRepository, RoleConstants.SHOP_OWNER, "Chủ cửa hàng");
+            createRoleIfNotExists(roleRepository, RoleConstants.ADMIN, "Quản trị viên");
         };
     }
 
     private void createRoleIfNotExists(
             RoleRepository roleRepository,
-            String code,
-            String name,
+            String roleName,
             String description
     ) {
-        if (!roleRepository.existsByCode(code)) {
-            roleRepository.save(
-                    new Role(
-                            code,
-                            name,
-                            description
-                    )
-            );
+        if (!roleRepository.existsByName(roleName)) {
+            roleRepository.save(new Role(roleName, description));
         }
     }
 }

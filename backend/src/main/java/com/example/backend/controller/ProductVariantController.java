@@ -15,21 +15,26 @@ import com.example.backend.entity.ProductOptionValue;
 import com.example.backend.entity.ProductVariant;
 import com.example.backend.entity.ProductVariantStatus;
 import com.example.backend.service.ProductVariantService;
+import com.example.backend.service.ProductOwnershipService;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/shop")
+@RequestMapping("/api/shop-owner")
 public class ProductVariantController {
 
     private final ProductVariantService productVariantService;
+    private final ProductOwnershipService ownership;
 
     public ProductVariantController(
-            ProductVariantService productVariantService
+            ProductVariantService productVariantService,
+            ProductOwnershipService ownership
     ) {
         this.productVariantService = productVariantService;
+        this.ownership = ownership;
     }
 
     // =====================================================
@@ -39,8 +44,9 @@ public class ProductVariantController {
     @PostMapping("/products/{productId}/options")
     public ApiResponse<ProductOptionResponse> createOption(
             @PathVariable UUID productId,
-            @RequestBody CreateProductOptionRequest request
+            @RequestBody CreateProductOptionRequest request, Authentication authentication
     ) {
+        ownership.assertProduct(productId, authentication.getName());
         ProductOption option =
                 productVariantService.createOption(
                         productId,
@@ -55,8 +61,9 @@ public class ProductVariantController {
 
     @GetMapping("/products/{productId}/options")
     public ApiResponse<List<ProductOptionResponse>> getOptions(
-            @PathVariable UUID productId
+            @PathVariable UUID productId, Authentication authentication
     ) {
+        ownership.assertProduct(productId, authentication.getName());
         List<ProductOptionResponse> response =
                 productVariantService
                         .getOptions(productId)
@@ -72,8 +79,9 @@ public class ProductVariantController {
 
     @GetMapping("/options/{optionId}")
     public ApiResponse<ProductOptionResponse> getOption(
-            @PathVariable UUID optionId
+            @PathVariable UUID optionId, Authentication authentication
     ) {
+        ownership.assertOption(optionId, authentication.getName());
         ProductOption option =
                 productVariantService.getOptionById(
                         optionId
@@ -88,8 +96,9 @@ public class ProductVariantController {
     @PutMapping("/options/{optionId}")
     public ApiResponse<ProductOptionResponse> updateOption(
             @PathVariable UUID optionId,
-            @RequestBody UpdateProductOptionRequest request
+            @RequestBody UpdateProductOptionRequest request, Authentication authentication
     ) {
+        ownership.assertOption(optionId, authentication.getName());
         ProductOption option =
                 productVariantService.updateOption(
                         optionId,
@@ -104,8 +113,9 @@ public class ProductVariantController {
 
     @DeleteMapping("/options/{optionId}")
     public ApiResponse<Void> deleteOption(
-            @PathVariable UUID optionId
+            @PathVariable UUID optionId, Authentication authentication
     ) {
+        ownership.assertOption(optionId, authentication.getName());
         productVariantService.deleteOption(optionId);
 
         return ApiResponse.success(
@@ -121,8 +131,9 @@ public class ProductVariantController {
     @PostMapping("/options/{optionId}/values")
     public ApiResponse<ProductOptionValueResponse> createOptionValue(
             @PathVariable UUID optionId,
-            @RequestBody CreateProductOptionValueRequest request
+            @RequestBody CreateProductOptionValueRequest request, Authentication authentication
     ) {
+        ownership.assertOption(optionId, authentication.getName());
         ProductOptionValue optionValue =
                 productVariantService.createOptionValue(
                         optionId,
@@ -137,8 +148,9 @@ public class ProductVariantController {
 
     @GetMapping("/options/{optionId}/values")
     public ApiResponse<List<ProductOptionValueResponse>> getOptionValues(
-            @PathVariable UUID optionId
+            @PathVariable UUID optionId, Authentication authentication
     ) {
+        ownership.assertOption(optionId, authentication.getName());
         List<ProductOptionValueResponse> response =
                 productVariantService
                         .getOptionValues(optionId)
@@ -154,8 +166,9 @@ public class ProductVariantController {
 
     @GetMapping("/option-values/{valueId}")
     public ApiResponse<ProductOptionValueResponse> getOptionValue(
-            @PathVariable UUID valueId
+            @PathVariable UUID valueId, Authentication authentication
     ) {
+        ownership.assertOptionValue(valueId, authentication.getName());
         ProductOptionValue optionValue =
                 productVariantService.getOptionValueById(
                         valueId
@@ -170,8 +183,9 @@ public class ProductVariantController {
     @PutMapping("/option-values/{valueId}")
     public ApiResponse<ProductOptionValueResponse> updateOptionValue(
             @PathVariable UUID valueId,
-            @RequestBody UpdateProductOptionValueRequest request
+            @RequestBody UpdateProductOptionValueRequest request, Authentication authentication
     ) {
+        ownership.assertOptionValue(valueId, authentication.getName());
         ProductOptionValue optionValue =
                 productVariantService.updateOptionValue(
                         valueId,
@@ -186,8 +200,9 @@ public class ProductVariantController {
 
     @DeleteMapping("/option-values/{valueId}")
     public ApiResponse<Void> deleteOptionValue(
-            @PathVariable UUID valueId
+            @PathVariable UUID valueId, Authentication authentication
     ) {
+        ownership.assertOptionValue(valueId, authentication.getName());
         productVariantService.deleteOptionValue(valueId);
 
         return ApiResponse.success(
@@ -203,8 +218,9 @@ public class ProductVariantController {
     @PostMapping("/products/{productId}/variants")
     public ApiResponse<ProductVariantResponse> createVariant(
             @PathVariable UUID productId,
-            @RequestBody CreateProductVariantRequest request
+            @RequestBody CreateProductVariantRequest request, Authentication authentication
     ) {
+        ownership.assertProduct(productId, authentication.getName());
         request.setProductId(productId);
 
         ProductVariant variant =
@@ -229,8 +245,9 @@ public class ProductVariantController {
 
     @GetMapping("/products/{productId}/variants")
     public ApiResponse<List<ProductVariantResponse>> getVariants(
-            @PathVariable UUID productId
+            @PathVariable UUID productId, Authentication authentication
     ) {
+        ownership.assertProduct(productId, authentication.getName());
         List<ProductVariantResponse> response =
                 productVariantService
                         .getVariants(productId)
@@ -255,8 +272,9 @@ public class ProductVariantController {
     @GetMapping("/products/{productId}/variants/status")
     public ApiResponse<List<ProductVariantResponse>> getVariantsByStatus(
             @PathVariable UUID productId,
-            @RequestParam ProductVariantStatus status
+            @RequestParam ProductVariantStatus status, Authentication authentication
     ) {
+        ownership.assertProduct(productId, authentication.getName());
         List<ProductVariantResponse> response =
                 productVariantService
                         .getVariantsByStatus(
@@ -283,8 +301,9 @@ public class ProductVariantController {
 
     @GetMapping("/variants/{variantId}")
     public ApiResponse<ProductVariantResponse> getVariant(
-            @PathVariable UUID variantId
+            @PathVariable UUID variantId, Authentication authentication
     ) {
+        ownership.assertVariant(variantId, authentication.getName());
         ProductVariant variant =
                 productVariantService.getVariantById(
                         variantId
@@ -305,8 +324,9 @@ public class ProductVariantController {
     @PutMapping("/variants/{variantId}")
     public ApiResponse<ProductVariantResponse> updateVariant(
             @PathVariable UUID variantId,
-            @RequestBody UpdateProductVariantRequest request
+            @RequestBody UpdateProductVariantRequest request, Authentication authentication
     ) {
+        ownership.assertVariant(variantId, authentication.getName());
         ProductVariant variant =
                 productVariantService.updateVariant(
                         variantId,
@@ -327,8 +347,9 @@ public class ProductVariantController {
 
     @DeleteMapping("/variants/{variantId}")
     public ApiResponse<Void> deleteVariant(
-            @PathVariable UUID variantId
+            @PathVariable UUID variantId, Authentication authentication
     ) {
+        ownership.assertVariant(variantId, authentication.getName());
         productVariantService.deleteVariant(variantId);
 
         return ApiResponse.success(

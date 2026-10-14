@@ -76,7 +76,9 @@ public class AuthController {
                 request.getPassword()
         );
 
-        UserResponse response = new UserResponse(user);
+        UserResponse response = new UserResponse(
+                user, userService.getRoleNamesByUserId(user.getId())
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

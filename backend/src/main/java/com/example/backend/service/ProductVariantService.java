@@ -10,12 +10,17 @@ import com.example.backend.entity.Product;
 import com.example.backend.entity.ProductOption;
 import com.example.backend.entity.ProductOptionValue;
 import com.example.backend.entity.ProductVariant;
+import com.example.backend.entity.ProductMedia;
 import com.example.backend.entity.ProductVariantStatus;
+import com.example.backend.entity.ProductStatus;
+import com.example.backend.entity.Inventory;
+import com.example.backend.repository.InventoryRepository;
 import com.example.backend.entity.VariantOptionValue;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.repository.ProductOptionRepository;
 import com.example.backend.repository.ProductOptionValueRepository;
 import com.example.backend.repository.ProductRepository;
+import com.example.backend.repository.ProductMediaRepository;
 import com.example.backend.repository.ProductVariantRepository;
 import com.example.backend.repository.VariantOptionValueRepository;
 
@@ -36,13 +41,17 @@ public class ProductVariantService {
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
     private final VariantOptionValueRepository variantOptionValueRepository;
+    private final InventoryRepository inventoryRepository;
+    private final ProductMediaRepository productMediaRepository;
 
     public ProductVariantService(
             ProductRepository productRepository,
             ProductVariantRepository productVariantRepository,
             ProductOptionRepository productOptionRepository,
             ProductOptionValueRepository productOptionValueRepository,
-            VariantOptionValueRepository variantOptionValueRepository
+            VariantOptionValueRepository variantOptionValueRepository,
+            InventoryRepository inventoryRepository,
+            ProductMediaRepository productMediaRepository
     ) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
@@ -50,6 +59,8 @@ public class ProductVariantService {
         this.productOptionValueRepository = productOptionValueRepository;
         this.variantOptionValueRepository =
                 variantOptionValueRepository;
+        this.inventoryRepository = inventoryRepository;
+        this.productMediaRepository = productMediaRepository;
     }
 
     // =====================================================
@@ -178,7 +189,7 @@ public class ProductVariantService {
                 request.getValue().trim();
 
         if (productOptionValueRepository
-                .existsByOptionIdAndValue(
+                .existsByProductOptionIdAndValue(
                         optionId,
                         value
                 )) {
@@ -206,7 +217,7 @@ public class ProductVariantService {
         getOptionById(optionId);
 
         return productOptionValueRepository
-                .findByOptionIdOrderByValueAsc(optionId);
+                .findByProductOptionIdOrderBySortOrderAsc(optionId);
     }
 
     public ProductOptionValue getOptionValueById(
@@ -237,10 +248,10 @@ public class ProductVariantService {
                 request.getValue().trim();
 
         UUID optionId =
-                optionValue.getOption().getId();
+                optionValue.getProductOption().getId();
 
         if (productOptionValueRepository
-                .existsByOptionIdAndValueAndIdNot(
+                .existsByProductOptionIdAndValueAndIdNot(
                         optionId,
                         value,
                         optionValueId
@@ -316,21 +327,27 @@ public class ProductVariantService {
         variant.setProduct(product);
         variant.setSku(sku);
         variant.setPrice(request.getPrice());
-        variant.setStockQuantity(
-                request.getStockQuantity()
-        );
-        variant.setImageUrl(
-                request.getImageUrl()
-        );
-
-        variant.setStatus(
-                determineVariantStatus(
-                        request.getStockQuantity()
-                )
-        );
+        variant.setComparePrice(request.getComparePrice());
+        variant.setCostPrice(request.getCostPrice());
+        if (request.getPrimaryMediaId() != null) {
+            ProductMedia primaryMedia = productMediaRepository.findById(request.getPrimaryMediaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Primary media not found"));
+            if (!primaryMedia.getProduct().getId().equals(product.getId())) {
+                throw new IllegalArgumentException("Primary media must belong to the same product");
+            }
+            variant.setPrimaryMedia(primaryMedia);
+        }
+        variant.setStatus(ProductStatus.ACTIVE);
 
         ProductVariant savedVariant =
                 productVariantRepository.save(variant);
+        Inventory inventory = new Inventory();
+        inventory.setVariant(savedVariant);
+        inventory.setQuantity(request.getStockQuantity());
+        inventory.setReservedQuantity(0);
+        inventory.setSoldQuantity(0);
+        inventoryRepository.save(inventory);
+        savedVariant.setStockQuantity(inventory.getQuantity());
 
         saveVariantOptionValues(
                 savedVariant,
@@ -346,10 +363,11 @@ public class ProductVariantService {
 
         getProduct(productId);
 
-        return productVariantRepository
-                .findByProductIdOrderByCreatedAtAsc(
-                        productId
-                );
+        List<ProductVariant> variants = productVariantRepository
+                .findByProductIdOrderByCreatedAtAsc(productId);
+        variants.forEach(v -> inventoryRepository.findFirstByVariantId(v.getId())
+                .ifPresent(i -> v.setStockQuantity(i.getQuantity())));
+        return variants;
     }
 
     public List<ProductVariant> getVariantsByStatus(
@@ -365,24 +383,22 @@ public class ProductVariantService {
             );
         }
 
-        return productVariantRepository
-                .findByProductIdAndStatusOrderByCreatedAtAsc(
-                        productId,
-                        status
-                );
+        List<ProductVariant> variants = productVariantRepository
+                .findByProductIdAndStatusOrderByCreatedAtAsc(productId, ProductStatus.valueOf(status.name()));
+        variants.forEach(v -> inventoryRepository.findFirstByVariantId(v.getId())
+                .ifPresent(i -> v.setStockQuantity(i.getQuantity())));
+        return variants;
     }
 
     public ProductVariant getVariantById(
             UUID variantId
     ) {
 
-        return productVariantRepository
-                .findById(variantId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Product variant not found"
-                        )
-                );
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product variant not found"));
+        inventoryRepository.findFirstByVariantId(variantId)
+                .ifPresent(i -> variant.setStockQuantity(i.getQuantity()));
+        return variant;
     }
 
     public List<VariantOptionValue> getVariantOptionValues(
@@ -429,47 +445,29 @@ public class ProductVariantService {
             variant.setSku(sku);
         }
 
-        if (request.getPrice() != null) {
-            variant.setPrice(
-                    request.getPrice()
-            );
+        if (request.getPrice() != null) variant.setPrice(request.getPrice());
+        if (request.getComparePrice() != null) variant.setComparePrice(request.getComparePrice());
+        if (request.getCostPrice() != null) variant.setCostPrice(request.getCostPrice());
+        if (request.getPrimaryMediaId() != null) {
+            ProductMedia primaryMedia = productMediaRepository.findById(request.getPrimaryMediaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Primary media not found"));
+            if (!primaryMedia.getProduct().getId().equals(product.getId())) {
+                throw new IllegalArgumentException("Primary media must belong to the same product");
+            }
+            variant.setPrimaryMedia(primaryMedia);
         }
 
         if (request.getStockQuantity() != null) {
 
-            variant.setStockQuantity(
-                    request.getStockQuantity()
-            );
-
-            /*
-             * Stock = 0 → OUT_OF_STOCK tương ứng
-             * với Product Variant.
-             *
-             * Nếu variant đang INACTIVE thì không
-             * tự động ACTIVE lại.
-             */
-            if (variant.getStatus()
-                    != ProductVariantStatus.INACTIVE) {
-
-                variant.setStatus(
-                        determineVariantStatus(
-                                request.getStockQuantity()
-                        )
-                );
-            }
-        }
-
-        if (request.getImageUrl() != null) {
-            variant.setImageUrl(
-                    request.getImageUrl()
-            );
+            Inventory inventory = inventoryRepository.findFirstByVariantId(variantId)
+                    .orElseGet(() -> { Inventory created = new Inventory(); created.setVariant(variant); created.setReservedQuantity(0); created.setSoldQuantity(0); return created; });
+            inventory.setQuantity(request.getStockQuantity());
+            inventoryRepository.save(inventory);
+            variant.setStockQuantity(inventory.getQuantity());
         }
 
         if (request.getStatus() != null) {
-
-            variant.setStatus(
-                    request.getStatus()
-            );
+            variant.setStatus(ProductStatus.valueOf(request.getStatus().name()));
         }
 
         if (request.getOptionValueIds() != null) {
@@ -511,9 +509,8 @@ public class ProductVariantService {
         /*
          * Xóa các liên kết variant-option trước.
          */
-        variantOptionValueRepository
-                .deleteByVariantId(variantId);
-
+        variantOptionValueRepository.deleteByVariantId(variantId);
+        inventoryRepository.deleteByVariantId(variantId);
         productVariantRepository.delete(variant);
     }
 
@@ -588,8 +585,9 @@ public class ProductVariantService {
             );
         }
 
-        if (request.getPrice() != null
-                && request.getPrice().signum() < 0) {
+        if ((request.getPrice() != null && request.getPrice().signum() < 0)
+                || (request.getComparePrice() != null && request.getComparePrice().signum() < 0)
+                || (request.getCostPrice() != null && request.getCostPrice().signum() < 0)) {
 
             throw new IllegalArgumentException(
                     "Variant price cannot be negative"
@@ -675,7 +673,7 @@ public class ProductVariantService {
              * của chính Product đang tạo Variant.
              */
             if (!optionValue
-                    .getOption()
+                    .getProductOption()
                     .getProduct()
                     .getId()
                     .equals(product.getId())) {
@@ -703,7 +701,7 @@ public class ProductVariantService {
 
             UUID optionId =
                     optionValue
-                            .getOption()
+                            .getProductOption()
                             .getId();
 
             /*
@@ -735,29 +733,11 @@ public class ProductVariantService {
             List<ProductOptionValue> optionValues
     ) {
 
-        for (ProductOptionValue optionValue :
-                optionValues) {
-
-            VariantOptionValue relation =
-                    new VariantOptionValue();
-
+        for (ProductOptionValue optionValue : optionValues) {
+            VariantOptionValue relation = new VariantOptionValue();
             relation.setVariant(variant);
             relation.setOptionValue(optionValue);
-
-            /*
-             * Composite ID cần được thiết lập
-             * sau khi Variant đã có ID.
-             */
-            relation.setId(
-                    new com.example.backend.entity.VariantOptionValueId(
-                            variant.getId(),
-                            optionValue.getId()
-                    )
-            );
-
-            variantOptionValueRepository.save(
-                    relation
-            );
+            variantOptionValueRepository.save(relation);
         }
     }
 
@@ -780,8 +760,6 @@ public class ProductVariantService {
     private ProductVariantStatus determineVariantStatus(
             Integer stockQuantity
     ) {
-        return stockQuantity == 0
-                ? ProductVariantStatus.OUT_OF_STOCK
-                : ProductVariantStatus.ACTIVE;
+        return ProductVariantStatus.ACTIVE;
     }
 }

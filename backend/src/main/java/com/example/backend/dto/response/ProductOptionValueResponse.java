@@ -18,7 +18,7 @@ public class ProductOptionValueResponse {
     ) {
         this.id = optionValue.getId();
         this.optionId =
-                optionValue.getOption().getId();
+                optionValue.getProductOption().getId();
         this.value = optionValue.getValue();
     }
 

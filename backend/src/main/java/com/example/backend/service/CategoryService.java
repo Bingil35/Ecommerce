@@ -4,6 +4,7 @@ import com.example.backend.dto.request.CreateCategoryRequest;
 import com.example.backend.dto.request.UpdateCategoryRequest;
 import com.example.backend.dto.response.CategoryResponse;
 import com.example.backend.entity.Category;
+import com.example.backend.entity.CategoryStatus;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.repository.CategoryRepository;
 
@@ -22,19 +23,22 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    public CategoryService(
-            CategoryRepository categoryRepository
-    ) {
+    private static final Pattern COMBINING_MARKS =
+            Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+
+    public CategoryService(CategoryRepository categoryRepository) {
         this.categoryRepository = categoryRepository;
     }
 
     /**
-     * Create category
+     * Create category.
      */
     @Transactional
-    public CategoryResponse createCategory(
-            CreateCategoryRequest request
-    ) {
+    public CategoryResponse createCategory(CreateCategoryRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Category request cannot be null.");
+        }
+
         String name = normalizeName(request.getName());
 
         if (name.isBlank()) {
@@ -43,61 +47,59 @@ public class CategoryService {
             );
         }
 
-        Category parent = getParentCategory(
-                request.getParentId()
-        );
-
+        Category parent = getParentCategory(request.getParentId());
         String slug = generateUniqueSlug(name, null);
 
         Category category = new Category();
-
         category.setName(name);
         category.setSlug(slug);
-        category.setImageUrl(
-                normalizeImageUrl(request.getImageUrl())
-        );
+        category.setImageUrl(normalizeImageUrl(request.getImageUrl()));
         category.setParent(parent);
 
-        Category savedCategory =
-                categoryRepository.save(category);
+        Category savedCategory = categoryRepository.save(category);
 
         return new CategoryResponse(savedCategory);
     }
 
     /**
-     * Get all categories
+     * Get all categories for administration.
      */
     @Transactional(readOnly = true)
     public List<CategoryResponse> getAllCategories() {
-
-        return categoryRepository.findAll()
+        return categoryRepository
+                .findAll(
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Order.asc("sortOrder"),
+                                org.springframework.data.domain.Sort.Order.asc("name")
+                        )
+                )
                 .stream()
                 .map(CategoryResponse::new)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Get category by ID
+     * Get category by ID.
      */
     @Transactional(readOnly = true)
-    public CategoryResponse getCategoryById(
-            UUID id
-    ) {
+    public CategoryResponse getCategoryById(UUID id) {
         Category category = findCategoryById(id);
-
         return new CategoryResponse(category);
     }
 
     /**
-     * Update category
+     * Update category.
      */
     @Transactional
     public CategoryResponse updateCategory(
             UUID id,
             UpdateCategoryRequest request
     ) {
-        Category category = findCategoryById(id);
+        if (request == null) {
+            throw new IllegalArgumentException("Category request cannot be null.");
+        }
 
+        Category category = findCategoryById(id);
         String name = normalizeName(request.getName());
 
         if (name.isBlank()) {
@@ -106,50 +108,31 @@ public class CategoryService {
             );
         }
 
-        Category parent = getParentCategory(
-                request.getParentId()
-        );
-
+        Category parent = getParentCategory(request.getParentId());
         validateParent(category, parent);
 
-        /*
-         * Slug is generated from category name.
-         * Only regenerate when the name changes.
-         */
+        // Regenerate slug only when the category name changes.
         if (!category.getName().equals(name)) {
-
-            String slug = generateUniqueSlug(
-                    name,
-                    category.getId()
-            );
-
+            String slug = generateUniqueSlug(name, category.getId());
             category.setSlug(slug);
         }
 
         category.setName(name);
         category.setParent(parent);
-        category.setImageUrl(
-                normalizeImageUrl(request.getImageUrl())
-        );
+        category.setImageUrl(normalizeImageUrl(request.getImageUrl()));
 
-        Category updatedCategory =
-                categoryRepository.save(category);
+        Category updatedCategory = categoryRepository.save(category);
 
         return new CategoryResponse(updatedCategory);
     }
 
     /**
-     * Delete category
+     * Delete category.
      */
     @Transactional
     public void deleteCategory(UUID id) {
-
         Category category = findCategoryById(id);
 
-        /*
-         * Do not allow deleting a category
-         * that still has child categories.
-         */
         if (categoryRepository.existsByParentId(id)) {
             throw new IllegalArgumentException(
                     "Cannot delete category because it has child categories."
@@ -159,13 +142,7 @@ public class CategoryService {
         try {
             categoryRepository.delete(category);
             categoryRepository.flush();
-
         } catch (DataIntegrityViolationException exception) {
-
-            /*
-             * The database FK prevents deleting a category
-             * that is still referenced by products.
-             */
             throw new IllegalArgumentException(
                     "Cannot delete category because it is being used by products."
             );
@@ -173,30 +150,21 @@ public class CategoryService {
     }
 
     /**
-     * Find category or throw 404
+     * Find category or throw 404.
      */
     private Category findCategoryById(UUID id) {
-
         return categoryRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Category not found."
-                        )
+                        new ResourceNotFoundException("Category not found.")
                 );
     }
 
     /**
      * Get parent category.
-     *
-     * null parentId means root category.
+     * A null or blank parentId means a root category.
      */
-    private Category getParentCategory(
-            String parentId
-    ) {
-
-        if (parentId == null ||
-                parentId.isBlank()) {
-
+    private Category getParentCategory(String parentId) {
+        if (parentId == null || parentId.isBlank()) {
             return null;
         }
 
@@ -204,9 +172,7 @@ public class CategoryService {
 
         try {
             parentUuid = UUID.fromString(parentId);
-
         } catch (IllegalArgumentException exception) {
-
             throw new IllegalArgumentException(
                     "Invalid parent category ID."
             );
@@ -216,17 +182,9 @@ public class CategoryService {
     }
 
     /**
-     * Validate parent relationship.
-     *
-     * Prevent:
-     * 1. Category being its own parent.
-     * 2. Circular parent-child relationships.
+     * Prevent self-parenting and circular category hierarchies.
      */
-    private void validateParent(
-            Category category,
-            Category newParent
-    ) {
-
+    private void validateParent(Category category, Category newParent) {
         if (newParent == null) {
             return;
         }
@@ -240,7 +198,6 @@ public class CategoryService {
         Category current = newParent;
 
         while (current != null) {
-
             if (current.getId().equals(category.getId())) {
                 throw new IllegalArgumentException(
                         "Cannot create a circular category hierarchy."
@@ -252,41 +209,26 @@ public class CategoryService {
     }
 
     /**
-     * Generate unique slug.
-     *
-     * Example:
-     *
-     * Điện thoại
-     * -> dien-thoai
-     *
-     * If already exists:
-     *
-     * dien-thoai
-     * dien-thoai-2
-     * dien-thoai-3
+     * Generate a unique slug.
      */
     private String generateUniqueSlug(
             String name,
             UUID currentCategoryId
     ) {
-
         String baseSlug = createSlug(name);
-
         String slug = baseSlug;
         int counter = 2;
 
         while (true) {
-
             boolean exists;
 
             if (currentCategoryId == null) {
                 exists = categoryRepository.existsBySlug(slug);
             } else {
-                exists =
-                        categoryRepository.existsBySlugAndIdNot(
-                                slug,
-                                currentCategoryId
-                        );
+                exists = categoryRepository.existsBySlugAndIdNot(
+                        slug,
+                        currentCategoryId
+                );
             }
 
             if (!exists) {
@@ -299,23 +241,25 @@ public class CategoryService {
     }
 
     /**
-     * Convert category name to slug.
+     * Convert category name to a URL-friendly slug.
      */
     private String createSlug(String value) {
-
         String normalized = Normalizer.normalize(
                 value,
                 Normalizer.Form.NFD
         );
 
-        String withoutAccents = normalized
-                .replaceAll(
-                        "\\p{InCombiningDiacriticalMarks}+",
-                        ""
-                );
+        String withoutAccents = COMBINING_MARKS
+                .matcher(normalized)
+                .replaceAll("");
+
+        // Handle Vietnamese đ/Đ, which is not decomposed by NFD.
+        withoutAccents = withoutAccents
+                .replace("đ", "d")
+                .replace("Đ", "D");
 
         String slug = withoutAccents
-                .toLowerCase()
+                .toLowerCase(java.util.Locale.ROOT)
                 .trim()
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("^-+", "")
@@ -331,26 +275,33 @@ public class CategoryService {
     }
 
     /**
-     * Clean category name.
+     * Get active categories for public display.
+     */
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> getActiveCategories() {
+        return categoryRepository
+                .findByStatusOrderBySortOrderAscNameAsc(CategoryStatus.ACTIVE)
+                .stream()
+                .map(CategoryResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Normalize category name.
      */
     private String normalizeName(String name) {
-
         if (name == null) {
             return "";
         }
 
-        return name.trim()
-                .replaceAll("\\s+", " ");
+        return name.trim().replaceAll("\\s+", " ");
     }
 
     /**
      * Empty image URL becomes null.
      */
     private String normalizeImageUrl(String imageUrl) {
-
-        if (imageUrl == null ||
-                imageUrl.isBlank()) {
-
+        if (imageUrl == null || imageUrl.isBlank()) {
             return null;
         }
 

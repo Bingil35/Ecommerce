@@ -1,7 +1,7 @@
 package com.example.backend.repository;
 
 import com.example.backend.entity.ProductVariant;
-import com.example.backend.entity.ProductVariantStatus;
+import com.example.backend.entity.ProductStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -16,8 +16,10 @@ public interface ProductVariantRepository
 
     List<ProductVariant> findByProductIdAndStatusOrderByCreatedAtAsc(
             UUID productId,
-            ProductVariantStatus status
+            ProductStatus status
     );
+
+    List<ProductVariant> findByPrimaryMediaId(UUID primaryMediaId);
 
     boolean existsByProductIdAndSku(
             UUID productId,
