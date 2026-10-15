@@ -15,24 +15,26 @@ import {
 } from 'lucide-react';
 
 import CategoryCard from './CategoryCard';
-import { categoryData } from './categoryData';
+import { categoryApi, type CategoryDto } from '../../../../services/catalog/productApi';
+import type { CategoryItem } from './categoryData';
 
 const VISIBLE_CATEGORY_COUNT = 7;
 
 const CategorySection = () => {
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
 
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const visibleCategories = categoryData.slice(
-    0,
-    VISIBLE_CATEGORY_COUNT,
-  );
+  useEffect(() => {
+    categoryApi.list().then((items: CategoryDto[]) => setCategories(items.filter((c) => !c.status || c.status === 'ACTIVE').map((c) => ({ id: c.id, name: c.name, slug: c.slug, image: c.imageUrl || 'https://placehold.co/160x160/EEF3FF/5367C9?text=Category' })))).catch(() => setLoadError(true)).finally(() => setLoading(false));
+  }, []);
 
-  const hiddenCategories = categoryData.slice(
-    VISIBLE_CATEGORY_COUNT,
-  );
+  const visibleCategories = categories.slice(0, VISIBLE_CATEGORY_COUNT);
+  const hiddenCategories = categories.slice(VISIBLE_CATEGORY_COUNT);
 
   /*
    * Theo dõi chiều cao thật của grid.
@@ -95,6 +97,9 @@ const CategorySection = () => {
         </p>
       </div>
 
+      {loading && <p className="py-6 text-sm text-[#8A93A6]">Đang tải danh mục...</p>}
+      {!loading && loadError && <p className="py-4 text-sm text-rose-500">Không thể tải danh mục. Vui lòng thử lại sau.</p>}
+      {!loading && !loadError && categories.length === 0 && <p className="py-4 text-sm text-[#8A93A6]">Chưa có danh mục đang hoạt động.</p>}
       {/* Animated content wrapper */}
       <motion.div
         animate={{
