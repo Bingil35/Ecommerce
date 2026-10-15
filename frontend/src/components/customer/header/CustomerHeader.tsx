@@ -18,11 +18,13 @@ import {
 
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 
 import logo from '../../../assets/logo.png';
 
 const CustomerHeader = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
   const { scrollY } = useScroll();
 
   const [isHidden, setIsHidden] = useState(false);
@@ -156,6 +158,7 @@ const CustomerHeader = () => {
             <button
                 type="button"
                 aria-label="Giỏ hàng"
+                onClick={() => isAuthenticated ? window.alert('API giỏ hàng chưa được triển khai trong SCRUM 64–66.') : navigate('/login', { state: { from: location.pathname, notice: 'Đăng nhập để sử dụng giỏ hàng.' } })}
                 className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full
                 text-[#4B5563]
                 transition-colors
@@ -188,6 +191,7 @@ const CustomerHeader = () => {
             <button
               type="button"
               aria-label="Yêu thích"
+              onClick={() => isAuthenticated ? window.alert('API danh sách yêu thích chưa được triển khai trong SCRUM 64–66.') : navigate('/login', { state: { from: location.pathname, notice: 'Đăng nhập để xem danh sách yêu thích.' } })}
               className="
                 flex
                 h-9
@@ -210,230 +214,66 @@ const CustomerHeader = () => {
               />
             </button>
 
-            {/* Account */}
-            <div className="relative">
-            <button
+            {/* Account / Guest login */}
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label="Tài khoản"
+                  aria-expanded={isAccountOpen}
+                  onClick={() => setIsAccountOpen((previous) => !previous)}
+                  className="flex h-9 items-center gap-2 rounded-full px-2.5 text-[#4B5563] transition-colors duration-200 hover:bg-white hover:text-[#171B7A] sm:h-10"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EEF3FF] text-[#5B6FF5]">
+                    <User size={17} strokeWidth={1.8} />
+                  </span>
+                  <span className="hidden max-w-[120px] truncate text-sm font-medium text-[#374151] lg:block">
+                    {user?.fullName || 'Tài khoản'}
+                  </span>
+                  <ChevronDown size={15} strokeWidth={1.8} className={`hidden text-gray-400 transition-transform duration-200 lg:block ${isAccountOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isAccountOpen && (
+                  <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[260px] overflow-hidden rounded-2xl border border-[#E5EAF4] bg-white/95 shadow-[0_12px_40px_rgba(61,82,120,0.12)] backdrop-blur-xl">
+                    <div className="border-b border-[#EEF1F6] px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EEF3FF] text-[#5B6FF5]">
+                          <UserRound size={19} strokeWidth={1.8} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[#252A3A]">{user?.fullName || 'Tài khoản Kala'}</p>
+                          <p className="truncate text-xs text-gray-500">{user?.email || 'Chưa có email'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-1.5">
+                      <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
+                        <UserRound size={17} strokeWidth={1.8} /><span>Tài khoản</span>
+                      </button>
+                      <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/orders'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
+                        <Package size={17} strokeWidth={1.8} /><span>Đơn mua</span>
+                      </button>
+                      <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
+                        <Settings size={17} strokeWidth={1.8} /><span>Cài đặt</span>
+                      </button>
+                    </div>
+                    <div className="border-t border-[#EEF1F6] p-1.5">
+                      <button type="button" onClick={() => { setIsAccountOpen(false); logout(); navigate('/', { replace: true }); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#6B7280] transition-colors hover:bg-[#FFF5F5] hover:text-[#DC5A5A]">
+                        <LogOut size={17} strokeWidth={1.8} /><span>Đăng xuất</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
                 type="button"
-                aria-label="Tài khoản"
-                aria-expanded={isAccountOpen}
-                onClick={() => setIsAccountOpen((previous) => !previous)}
-                className="
-                flex
-                h-9
-                sm:h-10
-                items-center
-                gap-2
-                rounded-full
-                px-2.5
-                text-[#4B5563]
-                transition-colors
-                duration-200
-                hover:bg-white
-                hover:text-[#171B7A]
-                "
-            >
-                <span
-                className="
-                    flex
-                    h-8
-                    w-8
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-[#EEF3FF]
-                    text-[#5B6FF5]
-                "
-                >
-                <User
-                    size={17}
-                    strokeWidth={1.8}
-                />
-                </span>
-
-                <span className="hidden text-sm font-medium text-[#374151] lg:block">
-                Tài khoản
-                </span>
-
-                <ChevronDown
-                size={15}
-                strokeWidth={1.8}
-                className={`
-                    hidden
-                    text-gray-400
-                    transition-transform
-                    duration-200
-                    lg:block
-                    ${isAccountOpen ? 'rotate-180' : ''}
-                `}
-                />
-            </button>
-
-            {/* Account Dropdown */}
-            {isAccountOpen && (
-                <div
-                className="
-                    absolute
-                    right-0
-                    top-[calc(100%+10px)]
-                    w-[230px]
-                    overflow-hidden
-                    rounded-2xl
-                    border
-                    border-[#E5EAF4]
-                    bg-white/95
-                    shadow-[0_12px_40px_rgba(61,82,120,0.12)]
-                    backdrop-blur-xl
-                "
-                >
-                {/* User information */}
-                <div className="border-b border-[#EEF1F6] px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                    <div
-                        className="
-                        flex
-                        h-10
-                        w-10
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-full
-                        bg-[#EEF3FF]
-                        text-[#5B6FF5]
-                        "
-                    >
-                        <UserRound
-                        size={19}
-                        strokeWidth={1.8}
-                        />
-                    </div>
-
-                    <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[#252A3A]">
-                        Nguyễn Văn A
-                        </p>
-
-                        <p className="truncate text-xs text-gray-400">
-                        example@email.com
-                        </p>
-                    </div>
-                    </div>
-                </div>
-
-                {/* Menu */}
-                <div className="p-1.5">
-
-                    <button
-                    type="button"
-                    className="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        rounded-xl
-                        px-3
-                        py-2.5
-                        text-left
-                        text-sm
-                        text-[#4B5563]
-                        transition-colors
-                        hover:bg-[#F5F7FC]
-                        hover:text-[#171B7A]
-                    "
-                    >
-                    <UserRound
-                        size={17}
-                        strokeWidth={1.8}
-                    />
-
-                    <span>Tài khoản</span>
-                    </button>
-
-                    <button
-                    type="button"
-                    className="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        rounded-xl
-                        px-3
-                        py-2.5
-                        text-left
-                        text-sm
-                        text-[#4B5563]
-                        transition-colors
-                        hover:bg-[#F5F7FC]
-                        hover:text-[#171B7A]
-                    "
-                    >
-                    <Package
-                        size={17}
-                        strokeWidth={1.8}
-                    />
-
-                    <span>Đơn mua</span>
-                    </button>
-
-                    <button
-                    type="button"
-                    className="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        rounded-xl
-                        px-3
-                        py-2.5
-                        text-left
-                        text-sm
-                        text-[#4B5563]
-                        transition-colors
-                        hover:bg-[#F5F7FC]
-                        hover:text-[#171B7A]
-                    "
-                    >
-                    <Settings
-                        size={17}
-                        strokeWidth={1.8}
-                    />
-
-                    <span>Cài đặt</span>
-                    </button>
-
-                </div>
-
-                {/* Logout */}
-                <div className="border-t border-[#EEF1F6] p-1.5">
-                    <button
-                    type="button"
-                    className="
-                        flex
-                        w-full
-                        items-center
-                        gap-3
-                        rounded-xl
-                        px-3
-                        py-2.5
-                        text-left
-                        text-sm
-                        text-[#6B7280]
-                        transition-colors
-                        hover:bg-[#FFF5F5]
-                        hover:text-[#DC5A5A]
-                    "
-                    >
-                    <LogOut
-                        size={17}
-                        strokeWidth={1.8}
-                    />
-
-                    <span>Đăng xuất</span>
-                    </button>
-                </div>
-                </div>
+                onClick={() => navigate('/login')}
+                className="ml-1 rounded-full bg-[#5367C9] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4659B8] sm:px-4"
+              >
+                Đăng nhập
+              </button>
             )}
-            </div>
-
           </div>
         </div>
       </div>
