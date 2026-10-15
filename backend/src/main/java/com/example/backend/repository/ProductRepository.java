@@ -13,16 +13,8 @@ public interface ProductRepository
         extends JpaRepository<Product, UUID>,
                 JpaSpecificationExecutor<Product> {
 
-    boolean existsByShopIdAndSlug(
-            UUID shopId,
-            String slug
-    );
-
-    boolean existsByShopIdAndSlugAndIdNot(
-            UUID shopId,
-            String slug,
-            UUID id
-    );
+    boolean existsBySlug(String slug);
+    boolean existsBySlugAndIdNot(String slug, UUID id);
 
     List<Product> findByShopIdOrderByCreatedAtDesc(
             UUID shopId
@@ -33,7 +25,7 @@ public interface ProductRepository
             ProductStatus status
     );
 
-    List<Product> findByCategoryIdOrderByCreatedAtDesc(
-            UUID categoryId
-    );
+    List<Product> findByCategoryIdOrderByCreatedAtDesc(UUID categoryId);
+    List<Product> findByStatusOrderByCreatedAtDesc(ProductStatus status);
+    List<Product> findByCategoryIdAndStatusOrderByCreatedAtDesc(UUID categoryId, ProductStatus status);
 }

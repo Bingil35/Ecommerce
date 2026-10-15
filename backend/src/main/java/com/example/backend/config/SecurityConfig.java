@@ -2,8 +2,8 @@ package com.example.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -84,17 +84,21 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**")
                         .permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/products/**"
-                        )
+                        // Public read-only catalog endpoints
+                        .requestMatchers("/api/categories/**")
                         .permitAll()
-
-                        .requestMatchers("/api/customer/**")
-                        .hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/api/products/**")
+                        .permitAll()
 
                         .requestMatchers("/api/shop-owner/**")
                         .hasRole("SHOP_OWNER")
+
+                        // Legacy product-management URLs remain shop-owner only
+                        .requestMatchers("/api/shop/**")
+                        .hasRole("SHOP_OWNER")
+
+                        .requestMatchers("/api/customer/**")
+                        .hasRole("CUSTOMER")
 
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")

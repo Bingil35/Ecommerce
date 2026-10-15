@@ -1,7 +1,10 @@
 package com.example.backend.entity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,185 +16,92 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(
-    name = "users",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            name = "unique_users_email",
-            columnNames = "email"
-        ),
-        @UniqueConstraint(
-            name = "unique_users_phone",
-            columnNames = "phone"
-        )
-    }
-)
+@Table(name = "users")
 public class User {
-    @Id 
+
+    @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(
-        name = "full_name",
-        nullable = false,
-        length = 100
-    )
+    @Column(name = "full_name", length = 255)
     private String fullName;
 
-    @Column(
-        name = "email",
-        nullable = false,
-        length = 255
-    )
+    @Column(name = "email", length = 255)
     private String email;
 
-    @Column(
-        name = "phone",
-        nullable = false,
-        length = 20
-    )
+    @Column(name = "phone", length = 20)
     private String phone;
 
-    @Column(
-        name = "password_hash",
-        nullable = false,
-        length = 255
-    )
+    @Column(name = "password_hash", columnDefinition = "text")
     private String passwordHash;
 
-    @Column(
-        name="avatar_url",
-        length=255
-    )
+    @Column(name = "avatar_url", columnDefinition = "text")
     private String avatarUrl;
 
-    @Column(
-        name = "role_default",
-        nullable = false,
-        length = 30
-    )
-    private String roleDefault;
-
-        @Enumerated(EnumType.STRING)
-    @Column(
-            name = "status",
-            nullable = false,
-            length = 20
-    )
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", columnDefinition = "user_status_enum")
     private UserStatus status = UserStatus.ACTIVE;
 
-    @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
+    @Column(name = "last_login_at", nullable = false)
+    private OffsetDateTime lastLoginAt;
 
-    @Column(
-            name = "created_at",
-            nullable = false,
-            updatable = false
-    )
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
 
-    @Column(
-            name = "updated_at",
-            nullable = false
-    )
-    private LocalDateTime updatedAt;
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-
+        OffsetDateTime now = OffsetDateTime.now();
+        if (status == null) {
+            status = UserStatus.ACTIVE;
+        }
+        if (lastLoginAt == null) {
+            // Baseline declares last_login_at NOT NULL DEFAULT NOW().
+            // Until the first successful login, creation time is the initial value.
+            lastLoginAt = now;
+        }
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     public User() {
     }
 
-    public UUID getId() {
-        return id;
-    }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 
-    public String getFullName() {
-        return fullName;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
-    public String getEmail() {
-        return email;
-    }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
-    public String getPhone() {
-        return phone;
-    }
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
 
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
+    public OffsetDateTime getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(OffsetDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
 
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public String getAvatarUrl() {
-        return avatarUrl;
-    }
-
-    public void setAvatarUrl(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-    }
-
-    public String getRoleDefault() {
-        return roleDefault;
-    }
-
-    public void setRoleDefault(String roleDefault) {
-        this.roleDefault = roleDefault;
-    }
-
-    public UserStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(UserStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getLastLoginAt() {
-        return lastLoginAt;
-    }
-
-    public void setLastLoginAt(LocalDateTime lastLoginAt) {
-        this.lastLoginAt = lastLoginAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }
