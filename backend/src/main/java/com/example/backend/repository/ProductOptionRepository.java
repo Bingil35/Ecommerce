@@ -13,6 +13,8 @@ public interface ProductOptionRepository
             UUID productId
     );
 
+    List<ProductOption> findByProductIdOrderBySortOrderAsc(UUID productId);
+
     boolean existsByProductIdAndName(
             UUID productId,
             String name
