@@ -5,7 +5,6 @@ import java.util.UUID;
 import com.example.backend.config.RoleConstants;
 import com.example.backend.entity.User;
 import com.example.backend.entity.UserStatus;
-import com.example.backend.entity.UserRole;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.repository.UserRoleRepository;
 import java.util.List;
@@ -74,11 +73,13 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     private String[] getValidatedRoles(UUID userId) {
+        // Query role names directly instead of traversing UserRole.role lazy proxies.
+        // The previous entity-based query could return detached Role proxies and throw
+        // LazyInitializationException when getName() was called outside the session.
         List<String> roles = userRoleRepository
-                .findAllByUser_IdOrderByRole_NameAsc(userId)
+                .findRoleNamesByUserId(userId)
                 .stream()
-                .map(UserRole::getRole)
-                .map(role -> normalizeRole(role.getName()))
+                .map(this::normalizeRole)
                 .distinct()
                 .collect(Collectors.toList());
 
