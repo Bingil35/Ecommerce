@@ -29,6 +29,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
+    /**
+     * Authentication endpoints must be callable even if the browser still has an
+     * expired or stale access token attached by an HTTP interceptor.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path != null && path.startsWith("/api/auth/");
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,

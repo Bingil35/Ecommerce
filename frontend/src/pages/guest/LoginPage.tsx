@@ -3,21 +3,16 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react';
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/api/axiosClient';
 import logo from '../../assets/logo.png';
 import heroImage from '../../assets/hero_log.png';
 import { useAuth } from '../../context/AuthContext';
 import type { LoginResponse } from '../../services/auth/authTypes';
 
-import {
-  AppleIcon,
-  EyeIcon,
-  GoogleIcon,
-  LockIcon,
-  MailIcon,
-} from '../../components/icons';
+import { AppleIcon, GoogleIcon } from '../../components/icons';
 
 interface LoginForm {
   identifier: string;
@@ -26,6 +21,7 @@ interface LoginForm {
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const [form, setForm] = useState<LoginForm>({
     identifier: '',
@@ -84,6 +80,7 @@ export default function LoginPage() {
         loginData.user,
         rememberMe
       );
+      navigate('/', { replace: true });
     } catch (error: any) {
       const message =
         error.response?.data?.message ||
@@ -224,7 +221,7 @@ export default function LoginPage() {
 
                 <div className="relative">
                   <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#52638F]">
-                    <MailIcon className="h-[22px] w-[22px]" />
+                    <Mail className="h-[22px] w-[22px]" strokeWidth={1.8} />
                   </span>
 
                   <input
@@ -255,7 +252,7 @@ export default function LoginPage() {
 
                 <div className="relative">
                   <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#52638F]">
-                    <LockIcon className="h-[22px] w-[22px]" />
+                    <LockKeyhole className="h-[22px] w-[22px]" strokeWidth={1.8} />
                   </span>
 
                   <input
@@ -291,10 +288,11 @@ export default function LoginPage() {
                     }
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8A98B8] transition hover:text-[#4F7CFF]"
                   >
-                    <EyeIcon
-                      className="h-[22px] w-[22px]"
-                      visible={showPassword}
-                    />
+                    {showPassword ? (
+                      <EyeOff className="h-[22px] w-[22px]" strokeWidth={1.8} />
+                    ) : (
+                      <Eye className="h-[22px] w-[22px]" strokeWidth={1.8} />
+                    )}
                   </button>
                 </div>
               </div>
