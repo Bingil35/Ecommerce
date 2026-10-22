@@ -43,6 +43,7 @@ public class ProductVariantService {
     private final VariantOptionValueRepository variantOptionValueRepository;
     private final InventoryRepository inventoryRepository;
     private final ProductMediaRepository productMediaRepository;
+    private final CartService cartService;
 
     public ProductVariantService(
             ProductRepository productRepository,
@@ -51,7 +52,8 @@ public class ProductVariantService {
             ProductOptionValueRepository productOptionValueRepository,
             VariantOptionValueRepository variantOptionValueRepository,
             InventoryRepository inventoryRepository,
-            ProductMediaRepository productMediaRepository
+            ProductMediaRepository productMediaRepository,
+            CartService cartService
     ) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
@@ -61,6 +63,7 @@ public class ProductVariantService {
                 variantOptionValueRepository;
         this.inventoryRepository = inventoryRepository;
         this.productMediaRepository = productMediaRepository;
+        this.cartService = cartService;
     }
 
     // =====================================================
@@ -510,6 +513,11 @@ public class ProductVariantService {
          * Xóa các liên kết variant-option trước.
          */
         variantOptionValueRepository.deleteByVariantId(variantId);
+        /*
+         * Xóa các dòng giỏ hàng tham chiếu variant này, nếu không sẽ vi phạm khóa ngoại.
+         * Giỏ hàng không phải dữ liệu đơn hàng, nên việc xóa này là an toàn.
+         */
+        cartService.removeVariantFromAllCarts(variantId);
         inventoryRepository.deleteByVariantId(variantId);
         productVariantRepository.delete(variant);
     }

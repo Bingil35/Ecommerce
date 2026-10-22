@@ -9,13 +9,15 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const discount = product.comparePrice
-    ? Math.round((1 - product.price / product.comparePrice) * 100)
-    : 0;
+  const discount =
+    product.price != null && product.comparePrice
+      ? Math.round((1 - product.price / product.comparePrice) * 100)
+      : 0;
 
   return (
     <Link
-      to={`/product/${product.slug}`}
+      // Trang chi tiết tra sản phẩm theo id (UUID), không phải slug
+      to={`/product/${product.id}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-[#E1E7F2] bg-white transition hover:border-[#5B8DEF] hover:shadow-[0_12px_30px_rgba(79,124,255,0.12)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#5B8DEF]/20"
     >
       <div className="relative flex aspect-square items-center justify-center bg-[#EEF4FF]">
@@ -49,13 +51,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           {product.name}
         </h3>
 
-        <p className="mt-1 text-xs text-[#667085]">
-          {product.brand} · {product.shopName}
-        </p>
-
         <div className="mt-3 flex flex-wrap items-baseline gap-x-2">
           <span className="text-base font-bold text-[#29266F]">
-            Từ {formatPrice(product.price)}
+            {product.price != null ? `Từ ${formatPrice(product.price)}` : 'Liên hệ'}
           </span>
 
           {product.comparePrice && (
@@ -69,7 +67,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span>
             ★ {product.rating.toFixed(1)} ({product.reviewCount})
           </span>
-          <span>Đã bán {product.sold.toLocaleString('vi-VN')}</span>
         </div>
       </div>
     </Link>

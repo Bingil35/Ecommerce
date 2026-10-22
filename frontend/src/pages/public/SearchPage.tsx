@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Search } from 'lucide-react';
 
 import ProductCard, { formatPrice } from '../../components/ProductCard';
-import { SearchIcon } from '../../components/icons';
 import type { Category } from '../../services/product/productTypes';
 import {
   buildParams,
   findCategory,
-  getBrands,
   getCategories,
-  getTags,
   parseFilters,
   searchProducts,
   type SearchFilters,
@@ -21,17 +19,13 @@ const SORT_OPTIONS: { id: SortKey; label: string }[] = [
   { id: 'relevance', label: 'Liên quan nhất' },
   { id: 'price-asc', label: 'Giá thấp đến cao' },
   { id: 'price-desc', label: 'Giá cao đến thấp' },
-  { id: 'best-selling', label: 'Bán chạy nhất' },
   { id: 'top-rated', label: 'Đánh giá cao nhất' },
 ];
 
 const RATING_OPTIONS = [4, 3, 2];
 
-const toggle = (list: string[], value: string) =>
-  list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
-
 const cardClass =
-  'rounded-[28px] bg-white shadow-[0_20px_60px_rgba(31,41,55,0.08)]';
+  'rounded-2xl bg-white border border-[#E5EBF6]';
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
@@ -46,8 +40,6 @@ export default function SearchPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
 
   // Đồng bộ các ô nhập khi URL đổi (bấm Back, xóa bộ lọc...).
   useEffect(() => {
@@ -56,16 +48,12 @@ export default function SearchPage() {
     setMaxInput(String(filters.maxPrice ?? ''));
   }, [filters.q, filters.minPrice, filters.maxPrice]);
 
-  // Tải danh mục, thương hiệu, thẻ một lần khi mở trang.
+  // Tải danh mục một lần khi mở trang.
   useEffect(() => {
-    Promise.all([getCategories(), getBrands(), getTags()])
-      .then(([categoryList, brandList, tagList]) => {
-        setCategories(categoryList);
-        setBrands(brandList);
-        setTags(tagList);
-      })
+    getCategories()
+      .then(setCategories)
       .catch(() => {
-        // Không tải được bộ lọc thì trang vẫn tìm kiếm được.
+        // Không tải được danh mục thì trang vẫn tìm kiếm được.
       });
   }, []);
 
@@ -141,22 +129,6 @@ export default function SearchPage() {
     });
   }
 
-  filters.brands.forEach((brand) =>
-    activeChips.push({
-      key: `brand-${brand}`,
-      label: brand,
-      remove: () => update({ brands: toggle(filters.brands, brand) }),
-    }),
-  );
-
-  filters.tags.forEach((tag) =>
-    activeChips.push({
-      key: `tag-${tag}`,
-      label: `#${tag}`,
-      remove: () => update({ tags: toggle(filters.tags, tag) }),
-    }),
-  );
-
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     const from = filters.minPrice !== undefined ? formatPrice(filters.minPrice) : '0đ';
     const to = filters.maxPrice !== undefined ? formatPrice(filters.maxPrice) : 'trở lên';
@@ -208,14 +180,13 @@ export default function SearchPage() {
               </label>
 
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#52638F]">
-                <SearchIcon className="h-[22px] w-[22px]" />
+                <Search className="h-[22px] w-[22px]" />
               </span>
-
               <input
                 id="keyword"
                 type="text"
                 value={keyword}
-                placeholder="Tên sản phẩm, thương hiệu, cửa hàng, thẻ"
+                placeholder="Nhập tên sản phẩm cần tìm"
                 autoComplete="off"
                 onChange={(event) => setKeyword(event.target.value)}
                 className="h-[56px] w-full rounded-xl border border-[#D7E0F2] bg-white pl-14 pr-4 text-[15px] text-[#172033] outline-none transition placeholder:text-[#9AA8C6] focus:border-[#5B8DEF] focus:ring-4 focus:ring-[#5B8DEF]/10"
@@ -269,34 +240,6 @@ export default function SearchPage() {
                     />
                   ))}
                 </ul>
-              </fieldset>
-            )}
-
-            {/* Thương hiệu (chọn nhiều) */}
-            {brands.length > 0 && (
-              <fieldset className="border-t border-[#E1E7F2] pt-6">
-                <legend className="text-sm font-medium text-[#52638F]">
-                  Thương hiệu
-                </legend>
-
-                <div className="mt-3 space-y-3">
-                  {brands.map((brand) => (
-                    <label
-                      key={brand}
-                      className="flex cursor-pointer items-center gap-2.5 text-sm text-[#667085]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.brands.includes(brand)}
-                        onChange={() =>
-                          update({ brands: toggle(filters.brands, brand) })
-                        }
-                        className="h-5 w-5 cursor-pointer accent-[#4F7CFF]"
-                      />
-                      {brand}
-                    </label>
-                  ))}
-                </div>
               </fieldset>
             )}
 
@@ -362,35 +305,6 @@ export default function SearchPage() {
                 ))}
               </div>
             </fieldset>
-
-            {/* Thẻ (chọn nhiều) */}
-            {tags.length > 0 && (
-              <fieldset className="border-t border-[#E1E7F2] pt-6">
-                <legend className="text-sm font-medium text-[#52638F]">Thẻ</legend>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {tags.map((tag) => {
-                    const active = filters.tags.includes(tag);
-
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => update({ tags: toggle(filters.tags, tag) })}
-                        className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                          active
-                            ? 'border-[#4F7CFF] bg-[#4F7CFF] font-semibold text-white'
-                            : 'border-[#D7E0F2] bg-white text-[#52638F] hover:bg-[#F8FAFE]'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
-                </div>
-              </fieldset>
-            )}
 
             {/* Trạng thái */}
             <label className="flex cursor-pointer items-center gap-2.5 border-t border-[#E1E7F2] pt-6 text-sm text-[#667085]">
@@ -508,7 +422,7 @@ export default function SearchPage() {
               <>
                 <div className={`${cardClass} mt-5 px-6 py-14 text-center`}>
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EEF4FF] text-[#4F7CFF]">
-                    <SearchIcon className="h-8 w-8" />
+                    <Search className="h-8 w-8" />
                   </div>
 
                   <h3 className="mt-5 text-lg font-semibold text-[#29266F]">
