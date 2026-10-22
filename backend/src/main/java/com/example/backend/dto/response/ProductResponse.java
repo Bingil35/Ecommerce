@@ -17,11 +17,9 @@ public class ProductResponse {
     private Integer stockQuantity;
     private String status;
     private UUID brandId;
-
     private String thumbnailUrl;
     private Boolean featured;
-    private BigDecimal ratingAverage;
-
+    private java.math.BigDecimal ratingAverage;
     private Integer ratingCount;
 
     public ProductResponse() {
@@ -47,7 +45,6 @@ public class ProductResponse {
         this.brandId = product.getBrandId();
         this.thumbnailUrl = product.getThumbnailUrl();
         this.featured = product.getFeatured();
-
         this.ratingAverage = product.getRatingAverage();
         this.ratingCount = product.getRatingCount();
     }
@@ -88,6 +85,6 @@ public class ProductResponse {
     public UUID getBrandId(){return brandId;}
     public String getThumbnailUrl(){return thumbnailUrl;}
     public Boolean getFeatured(){return featured;}
-    public BigDecimal getRatingAverage(){return ratingAverage;}
+    public java.math.BigDecimal getRatingAverage(){return ratingAverage;}
     public Integer getRatingCount(){return ratingCount;}
 }
