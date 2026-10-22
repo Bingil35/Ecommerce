@@ -4,19 +4,12 @@ import {
   type ReactNode,
 } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from 'lucide-react';
 import axios from 'axios';
 
 import axiosClient from '../../services/api/axiosClient';
 
-import {
-  AppleIcon,
-  EyeIcon,
-  GoogleIcon,
-  LockIcon,
-  MailIcon,
-  PhoneIcon,
-  UserIcon,
-} from '../../components/icons';
+import { AppleIcon, GoogleIcon } from '../../components/icons';
 
 interface RegisterForm {
   fullName: string;
@@ -214,7 +207,7 @@ export default function RegisterPage() {
                   placeholder="Nhập họ và tên"
                   value={form.fullName}
                   icon={
-                    <UserIcon className="h-5 w-5" />
+                    <UserRound className="h-5 w-5" strokeWidth={1.8} />
                   }
                   onChange={(value) =>
                     handleChange('fullName', value)
@@ -228,7 +221,7 @@ export default function RegisterPage() {
                   placeholder="example@email.com"
                   value={form.email}
                   icon={
-                    <MailIcon className="h-5 w-5" />
+                    <Mail className="h-5 w-5" strokeWidth={1.8} />
                   }
                   onChange={(value) =>
                     handleChange('email', value)
@@ -242,7 +235,7 @@ export default function RegisterPage() {
                   placeholder="Nhập số điện thoại"
                   value={form.phone}
                   icon={
-                    <PhoneIcon className="h-5 w-5" />
+                    <Phone className="h-5 w-5" strokeWidth={1.8} />
                   }
                   onChange={(value) =>
                     handleChange('phone', value)
@@ -445,7 +438,7 @@ function PasswordField({
       <div className="relative">
         {/* Lock */}
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#52638F]">
-          <LockIcon className="h-5 w-5" />
+          <LockKeyhole className="h-5 w-5" strokeWidth={1.8} />
         </span>
 
         {/* Input */}
@@ -470,10 +463,11 @@ function PasswordField({
           }
           className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#667085] transition hover:text-[#3157C7]"
         >
-          <EyeIcon
-            className="h-5 w-5"
-            visible={visible}
-          />
+          {visible ? (
+            <EyeOff className="h-5 w-5" strokeWidth={1.8} />
+          ) : (
+            <Eye className="h-5 w-5" strokeWidth={1.8} />
+          )}
         </button>
       </div>
     </div>

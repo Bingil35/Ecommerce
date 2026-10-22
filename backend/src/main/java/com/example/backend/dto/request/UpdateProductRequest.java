@@ -8,6 +8,9 @@ import java.util.UUID;
 public class UpdateProductRequest {
 
     private UUID categoryId;
+    private UUID brandId;
+    private String thumbnailUrl;
+    private Boolean featured;
     private String name;
     private String description;
     private BigDecimal price;
@@ -24,6 +27,13 @@ public class UpdateProductRequest {
     public void setCategoryId(UUID categoryId) {
         this.categoryId = categoryId;
     }
+
+    public UUID getBrandId(){return brandId;}
+    public void setBrandId(UUID v){brandId=v;}
+    public String getThumbnailUrl(){return thumbnailUrl;}
+    public void setThumbnailUrl(String v){thumbnailUrl=v;}
+    public Boolean getFeatured(){return featured;}
+    public void setFeatured(Boolean v){featured=v;}
 
     public String getName() {
         return name;

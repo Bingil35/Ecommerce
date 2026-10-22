@@ -1,6 +1,8 @@
 package com.example.backend.service;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -60,8 +62,8 @@ public class UserService {
         return userRepository.existsByPhone(phone);
     }
 
-    public Role getRoleByCode(String roleCode) {
-        return roleRepository.findByCode(roleCode)
+    public Role getRoleByName(String roleName) {
+        return roleRepository.findByName(roleName)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Role not found"
@@ -90,7 +92,7 @@ public class UserService {
             );
         }
 
-        Role customerRole = roleRepository.findByCode("CUSTOMER")
+        Role customerRole = roleRepository.findByName("CUSTOMER")
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Customer role not found"
@@ -105,7 +107,6 @@ public class UserService {
         user.setPasswordHash(
                 passwordEncoder.encode(password)
         );
-        user.setRoleDefault(customerRole.getCode());
 
         User savedUser = userRepository.save(user);
 
@@ -117,6 +118,11 @@ public class UserService {
         userRoleRepository.save(userRole);
 
         return savedUser;
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getRoleNamesByUserId(UUID userId) {
+        return userRoleRepository.findRoleNamesByUserId(userId);
     }
 
     public User save(User user) {

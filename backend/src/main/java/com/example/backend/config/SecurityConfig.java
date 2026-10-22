@@ -1,5 +1,7 @@
 package com.example.backend.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -11,8 +13,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -84,17 +84,21 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**")
                         .permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/products/**"
-                        )
+                        // Public read-only catalog endpoints
+                        .requestMatchers("/api/categories/**")
                         .permitAll()
-
-                        .requestMatchers("/api/customer/**")
-                        .hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/api/products/**")
+                        .permitAll()
 
                         .requestMatchers("/api/shop-owner/**")
                         .hasRole("SHOP_OWNER")
+
+                        // Legacy product-management URLs remain shop-owner only
+                        .requestMatchers("/api/shop/**")
+                        .hasRole("SHOP_OWNER")
+
+                        .requestMatchers("/api/customer/**")
+                        .hasRole("CUSTOMER")
 
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
