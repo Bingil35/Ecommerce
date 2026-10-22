@@ -1,19 +1,29 @@
 package com.example.backend.entity;
 
-import jakarta.persistence.*;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "products")
 public class Product {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "shop_id")
@@ -47,143 +57,30 @@ public class Product {
     private Boolean featured;
 
     @Column(name = "rating_average", precision = 2, scale = 1)
-    private BigDecimal ratingAverage = BigDecimal.ZERO;
+    private java.math.BigDecimal ratingAverage;
 
     @Column(name = "rating_count")
     private Integer ratingCount = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
-
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    public Product() {
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        OffsetDateTime now = OffsetDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-
-        if (status == null) {
-            status = ProductStatus.ACTIVE;
-        }
-        if (ratingAverage == null) {
-            ratingAverage = BigDecimal.ZERO;
-        }
-        if (ratingCount == null) {
-            ratingCount = 0;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public UUID getShopId() {
-        return shopId;
-    }
-
-    public void setShopId(UUID shopId) {
-        this.shopId = shopId;
-    }
-
-    public Category getCategory() {
-        return category;
-    }
-
-    public void setCategory(Category category) {
-        this.category = category;
-    }
-
-    public UUID getBrandId() {
-        return brandId;
-    }
-
-    public void setBrandId(UUID brandId) {
-        this.brandId = brandId;
-    }
-
-    public String getThumbnailUrl() {
-        return thumbnailUrl;
-    }
-
-    public void setThumbnailUrl(String thumbnailUrl) {
-        this.thumbnailUrl = thumbnailUrl;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getSlug() {
-        return slug;
-    }
-
-    public void setSlug(String slug) {
-        this.slug = slug;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public ProductStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ProductStatus status) {
-        this.status = status;
-    }
-
-    public Boolean getFeatured() {
-        return featured;
-    }
-
-    public void setFeatured(Boolean featured) {
-        this.featured = featured;
-    }
-
-    public BigDecimal getRatingAverage() {
-        return ratingAverage;
-    }
-
-    public void setRatingAverage(BigDecimal ratingAverage) {
-        this.ratingAverage = ratingAverage;
-    }
-
-    public Integer getRatingCount() {
-        return ratingCount;
-    }
-
-    public void setRatingCount(Integer ratingCount) {
-        this.ratingCount = ratingCount;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+    public Product() {}
+    @PrePersist protected void onCreate() { OffsetDateTime now=OffsetDateTime.now(); createdAt=now; updatedAt=now; if(status==null) status=ProductStatus.ACTIVE; if(ratingCount==null) ratingCount=0; }
+    @PreUpdate protected void onUpdate() { updatedAt=OffsetDateTime.now(); }
+    public UUID getId(){return id;} public void setId(UUID id){this.id=id;}
+    public UUID getShopId(){return shopId;} public void setShopId(UUID v){shopId=v;}
+    public Category getCategory(){return category;} public void setCategory(Category v){category=v;}
+    public UUID getBrandId(){return brandId;} public void setBrandId(UUID v){brandId=v;}
+    public String getThumbnailUrl(){return thumbnailUrl;} public void setThumbnailUrl(String v){thumbnailUrl=v;}
+    public String getName(){return name;} public void setName(String v){name=v;}
+    public String getSlug(){return slug;} public void setSlug(String v){slug=v;}
+    public String getDescription(){return description;} public void setDescription(String v){description=v;}
+    public ProductStatus getStatus(){return status;} public void setStatus(ProductStatus v){status=v;}
+    public Boolean getFeatured(){return featured;} public void setFeatured(Boolean v){featured=v;}
+    public java.math.BigDecimal getRatingAverage(){return ratingAverage;} public void setRatingAverage(java.math.BigDecimal v){ratingAverage=v;}
+    public Integer getRatingCount(){return ratingCount;} public void setRatingCount(Integer v){ratingCount=v;}
+    public OffsetDateTime getCreatedAt(){return createdAt;} public OffsetDateTime getUpdatedAt(){return updatedAt;}
 }
