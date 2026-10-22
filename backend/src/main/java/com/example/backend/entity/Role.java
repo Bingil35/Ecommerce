@@ -1,93 +1,68 @@
 package com.example.backend.entity;
 
-import java.util.UUID;
+import java.time.OffsetDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(
-        name = "roles",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_roles_code",
-                        columnNames = "code"
-                )
-        }
-)
+@Table(name = "roles")
 public class Role {
 
+    // Roles.id is SMALLSERIAL in the SQL baseline (PostgreSQL SMALLINT).
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Short id;
 
-    @Column(
-            name = "code",
-            nullable = false,
-            length = 30
-    )
-    private String code;
-
-    @Column(
-            name = "name",
-            nullable = false,
-            length = 100
-    )
+    // The baseline has no code column. Use stable values CUSTOMER, SHOP_OWNER, ADMIN as name.
+    @Column(name = "name", length = 255)
     private String name;
 
-    @Column(
-            name = "description",
-            length = 255
-    )
+    @Column(name = "description", columnDefinition = "text")
     private String description;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
     public Role() {
     }
 
-    public Role(
-            String code,
-            String name,
-            String description
-    ) {
-        this.code = code;
+    public Role(String name, String description) {
         this.name = name;
         this.description = description;
     }
 
-    public UUID getId() {
-        return id;
+    @PrePersist
+    protected void onCreate() {
+        OffsetDateTime now = OffsetDateTime.now();
+        createdAt = now;
+        updatedAt = now;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
     }
 
-    public String getCode() {
-        return code;
-    }
+    public Short getId() { return id; }
+    public void setId(Short id) { this.id = id; }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getName() {
-        return name;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

@@ -6,6 +6,7 @@ import PublicLayout from '../layouts/PublicLayout';
 import HomePage from '../pages/public/HomePage';
 import SearchPage from '../pages/public/SearchPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
+import ProductListingPage from '../pages/public/ProductListingPage';
 
 import LoginPage from '../pages/guest/LoginPage';
 import RegisterPage from '../pages/guest/RegisterPage';
@@ -17,6 +18,7 @@ const PublicRoutes = () => {
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/products" element={<ProductListingPage />} />
         <Route
           path="/product/:slug"
           element={<ProductDetailPage />}

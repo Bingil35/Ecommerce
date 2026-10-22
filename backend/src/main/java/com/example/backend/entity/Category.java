@@ -1,8 +1,10 @@
 package com.example.backend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -19,6 +21,11 @@ public class Category {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(
+            name = "id",
+            nullable = false,
+            updatable = false
+    )
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -32,50 +39,72 @@ public class Category {
 
     @Column(
             name = "name",
-            nullable = false,
-            length = 100
+            length = 255
     )
     private String name;
 
     @Column(
             name = "slug",
             nullable = false,
-            length = 150
+            unique = true,
+            length = 255
     )
     private String slug;
 
-    @Column(
-            name = "image_url"
-    )
+    @Column(name = "image_url")
     private String imageUrl;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(
+            name = "status",
+            columnDefinition = "category_status_enum"
+    )
+    private CategoryStatus status;
+
+    @Column(name = "sort_order")
+    private Short sortOrder;
 
     @Column(
             name = "created_at",
             nullable = false,
             updatable = false
     )
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(
             name = "updated_at",
             nullable = false
     )
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     public Category() {
     }
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
 
-        createdAt = now;
-        updatedAt = now;
+        if (createdAt == null) {
+            createdAt = now;
+        }
+
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+
+        if (status == null) {
+            status = CategoryStatus.ACTIVE;
+        }
+
+        if (sortOrder == null) {
+            sortOrder = (short) 0;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     public UUID getId() {
@@ -118,11 +147,27 @@ public class Category {
         this.imageUrl = imageUrl;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public CategoryStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(CategoryStatus status) {
+        this.status = status;
+    }
+
+    public Short getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Short sortOrder) {
+        this.sortOrder = sortOrder;
+    }
+
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
 }
