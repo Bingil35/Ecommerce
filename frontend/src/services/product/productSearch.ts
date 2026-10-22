@@ -1,4 +1,10 @@
-import axiosClient from '../api/axiosClient';
+import {
+  categoryApi,
+  productApi,
+  type CategoryDto,
+  type ProductCardDto,
+  type ProductQuery,
+} from '../catalog/productApi';
 import type { Category, Product } from './productTypes';
 
 export const PAGE_SIZE = 9;
@@ -7,7 +13,6 @@ export const SORT_KEYS = [
   'relevance',
   'price-asc',
   'price-desc',
-  'best-selling',
   'top-rated',
 ] as const;
 
@@ -16,8 +21,6 @@ export type SortKey = (typeof SORT_KEYS)[number];
 export interface SearchFilters {
   q: string;
   category: string;
-  brands: string[];
-  tags: string[];
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
@@ -34,7 +37,7 @@ export interface SearchResult {
 }
 
 /* =====================================================
-   URL <-> filters (giữ nguyên, dùng cho thanh địa chỉ)
+   URL <-> filters
 ===================================================== */
 
 const toNumber = (value: string | null): number | undefined => {
@@ -43,17 +46,12 @@ const toNumber = (value: string | null): number | undefined => {
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 };
 
-const toList = (value: string | null): string[] =>
-  value ? value.split(',').filter(Boolean) : [];
-
 export function parseFilters(params: URLSearchParams): SearchFilters {
   const sort = params.get('sort') as SortKey | null;
 
   return {
     q: params.get('q')?.trim() ?? '',
     category: params.get('category') ?? '',
-    brands: toList(params.get('brand')),
-    tags: toList(params.get('tag')),
     minPrice: toNumber(params.get('minPrice')),
     maxPrice: toNumber(params.get('maxPrice')),
     minRating: toNumber(params.get('rating')),
@@ -68,8 +66,6 @@ export function buildParams(filters: SearchFilters): URLSearchParams {
 
   if (filters.q) params.set('q', filters.q);
   if (filters.category) params.set('category', filters.category);
-  if (filters.brands.length) params.set('brand', filters.brands.join(','));
-  if (filters.tags.length) params.set('tag', filters.tags.join(','));
   if (filters.minPrice !== undefined)
     params.set('minPrice', String(filters.minPrice));
   if (filters.maxPrice !== undefined)
@@ -84,104 +80,202 @@ export function buildParams(filters: SearchFilters): URLSearchParams {
 }
 
 /* =====================================================
-   GỌI BACKEND
-   Nếu backend đặt tên khác, chỉ cần sửa 3 chỗ dưới đây.
+   DANH MỤC
+   BE trả danh sách phẳng (có parentId) -> dựng thành cây.
 ===================================================== */
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
+let categoryCache: Promise<CategoryDto[]> | null = null;
+
+const loadCategories = (): Promise<CategoryDto[]> => {
+  if (!categoryCache) {
+    categoryCache = categoryApi.list().catch((error) => {
+      categoryCache = null; // lần sau thử lại
+      throw error;
+    });
+  }
+  return categoryCache;
+};
+
+const buildCategoryTree = (flat: CategoryDto[]): Category[] => {
+  const sorted = [...flat].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+  );
+  const nodes = new Map<string, Category>(
+    sorted.map((c) => [c.id, { id: c.id, name: c.name, parentId: c.parentId }]),
+  );
+  const roots: Category[] = [];
+
+  for (const category of sorted) {
+    const node = nodes.get(category.id)!;
+    const parent = category.parentId ? nodes.get(category.parentId) : undefined;
+
+    if (parent) {
+      (parent.children ??= []).push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
+};
+
+export async function getCategories(): Promise<Category[]> {
+  return buildCategoryTree(await loadCategories());
 }
 
-// Dạng dữ liệu phân trang backend trả về (GIẢ ĐỊNH - sửa cho khớp).
-interface ApiPage {
-  items: Product[];
-  total: number;
-  totalPages: number;
-}
+/** Chọn danh mục cha thì tính cả sản phẩm của các danh mục con. */
+const collectCategoryIds = (flat: CategoryDto[], rootId: string): Set<string> => {
+  const ids = new Set<string>([rootId]);
+  let added = true;
 
-// (1) Tên tham số gửi lên backend.
-function toApiParams(filters: SearchFilters, size = PAGE_SIZE) {
+  while (added) {
+    added = false;
+    for (const category of flat) {
+      if (category.parentId && ids.has(category.parentId) && !ids.has(category.id)) {
+        ids.add(category.id);
+        added = true;
+      }
+    }
+  }
+
+  return ids;
+};
+
+/* =====================================================
+   TÌM KIẾM
+   BE chỉ so khớp từ khóa theo chuỗi liền, có phân biệt dấu
+   ("ao thun" không ra "Áo thun"), và không có lọc theo
+   đánh giá / còn hàng, không phân trang. Phần này xử lý ở FE
+   trên danh sách sản phẩm đang bán mà BE trả về.
+===================================================== */
+
+const normalize = (value?: string | null): string =>
+  (value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd');
+
+const tokenize = (q: string): string[] =>
+  normalize(q).split(/\s+/).filter(Boolean);
+
+const splitWords = (text: string): string[] =>
+  text.split(/[^a-z0-9]+/).filter(Boolean);
+
+// Từ ngắn (< 4 ký tự) phải khớp ĐẦU một từ, để "ao" không khớp "thao".
+// Từ dài thì cho khớp ở bất kỳ vị trí nào.
+const matchesTokens = (text: string, tokens: string[]): boolean => {
+  const words = splitWords(text);
+
+  return tokens.every((token) =>
+    token.length >= 4
+      ? text.includes(token)
+      : words.some((word) => word.startsWith(token)),
+  );
+};
+
+const SORT_TO_API: Record<SortKey, ProductQuery['sortBy']> = {
+  relevance: 'newest',
+  'price-asc': 'price_asc',
+  'price-desc': 'price_desc',
+  'top-rated': 'rating_desc',
+};
+
+const toProduct = (dto: ProductCardDto): Product => {
+  const price = dto.minPrice ?? dto.price;
+
   return {
-    keyword: filters.q || undefined,
-    category: filters.category || undefined,
-    brand: filters.brands.length ? filters.brands.join(',') : undefined,
-    tag: filters.tags.length ? filters.tags.join(',') : undefined,
-    minPrice: filters.minPrice,
-    maxPrice: filters.maxPrice,
-    minRating: filters.minRating,
-    inStock: filters.inStock || undefined,
-    sort: filters.sort === 'relevance' ? undefined : filters.sort,
-    page: filters.page - 1, // đổi thành filters.page nếu backend đánh số từ 1
-    size,
+    id: dto.id,
+    slug: dto.slug,
+    name: dto.name,
+    categoryId: dto.categoryId,
+    price: price == null ? null : Number(price),
+    rating: Number(dto.ratingAverage ?? 0),
+    reviewCount: dto.ratingCount ?? 0,
+    inStock: (dto.stockQuantity ?? 0) > 0,
+    imageUrl: dto.thumbnailUrl ?? undefined,
   };
-}
+};
 
-// (2) Đổi tên field từ JSON của backend sang Product.
-function mapProduct(raw: Product): Product {
-  return raw; // ví dụ: { ...raw, price: raw.minPrice, imageUrl: raw.thumbnail }
-}
-
-// (3) Đọc phần phân trang từ response.
-async function fetchPage(filters: SearchFilters, size = PAGE_SIZE) {
-  const res = await axiosClient.get<ApiResponse<ApiPage>>('/products', {
-    params: toApiParams(filters, size),
-  });
-
-  const page = res.data.data;
-
-  return {
-    items: page.items.map(mapProduct),
-    total: page.total,
-    totalPages: Math.max(1, page.totalPages),
-  };
-}
+// Tên khớp đủ các từ thì xếp trước kết quả chỉ khớp ở mô tả/slug.
+const relevanceScore = (dto: ProductCardDto, tokens: string[]): number => {
+  return matchesTokens(normalize(dto.name), tokens) ? 1 : 0;
+};
 
 export async function searchProducts(
   filters: SearchFilters,
 ): Promise<SearchResult> {
-  const page = await fetchPage(filters);
+  const [list, categories] = await Promise.all([
+    productApi.list({
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      sortBy: SORT_TO_API[filters.sort],
+    }),
+    filters.category ? loadCategories() : Promise.resolve([]),
+  ]);
 
-  // Không có kết quả -> lấy sản phẩm bán chạy để gợi ý.
-  let related: Product[] = [];
+  const tokens = tokenize(filters.q);
+  const categoryIds = filters.category
+    ? collectCategoryIds(categories, filters.category)
+    : null;
 
-  if (page.total === 0) {
-    const suggestion = await fetchPage(
-      {
-        q: '',
-        category: '',
-        brands: [],
-        tags: [],
-        inStock: false,
-        sort: 'best-selling',
-        page: 1,
-      },
-      4,
+  let matched = list.filter((dto) => {
+    if (categoryIds && (!dto.categoryId || !categoryIds.has(dto.categoryId))) {
+      return false;
+    }
+
+    if (
+      filters.minRating !== undefined &&
+      Number(dto.ratingAverage ?? 0) < filters.minRating
+    ) {
+      return false;
+    }
+
+    if (filters.inStock && (dto.stockQuantity ?? 0) <= 0) return false;
+
+    if (tokens.length) {
+      const haystack = [
+        normalize(dto.name),
+        normalize(dto.slug).replace(/-/g, ' '),
+        normalize(dto.description),
+      ].join(' ');
+
+      if (!matchesTokens(haystack, tokens)) return false;
+    }
+
+    return true;
+  });
+
+  if (tokens.length && filters.sort === 'relevance') {
+    // Array.sort ổn định -> các sản phẩm cùng điểm giữ thứ tự mới nhất
+    matched = [...matched].sort(
+      (a, b) => relevanceScore(b, tokens) - relevanceScore(a, tokens),
     );
-    related = suggestion.items;
   }
 
-  return { ...page, related };
-}
+  const total = matched.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(filters.page, totalPages);
+  const items = matched
+    .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    .map(toProduct);
 
-/* =====================================================
-   DỮ LIỆU CHO BỘ LỌC (danh mục, thương hiệu, thẻ)
-===================================================== */
+  // Không có kết quả -> gợi ý sản phẩm nổi bật.
+  let related: Product[] = [];
 
-export async function getCategories(): Promise<Category[]> {
-  const res = await axiosClient.get<ApiResponse<Category[]>>('/categories');
-  return res.data.data;
-}
+  if (total === 0) {
+    try {
+      const featured = await productApi.list({ featured: true });
+      const suggestions = featured.length
+        ? featured
+        : await productApi.list({});
+      related = suggestions.slice(0, 4).map(toProduct);
+    } catch {
+      related = [];
+    }
+  }
 
-export async function getBrands(): Promise<string[]> {
-  const res = await axiosClient.get<ApiResponse<string[]>>('/brands');
-  return res.data.data;
-}
-
-export async function getTags(): Promise<string[]> {
-  const res = await axiosClient.get<ApiResponse<string[]>>('/tags');
-  return res.data.data;
+  return { items, total, totalPages, related };
 }
 
 /* =====================================================

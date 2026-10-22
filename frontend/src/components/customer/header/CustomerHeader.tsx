@@ -19,12 +19,14 @@ import {
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useCart } from '../../../context/CartContext';
 
 import logo from '../../../assets/logo.png';
 
 const CustomerHeader = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
+  const { itemCount } = useCart();
   const { scrollY } = useScroll();
 
   const [isHidden, setIsHidden] = useState(false);
@@ -158,7 +160,7 @@ const CustomerHeader = () => {
             <button
                 type="button"
                 aria-label="Giỏ hàng"
-                onClick={() => isAuthenticated ? window.alert('API giỏ hàng chưa được triển khai trong SCRUM 64–66.') : navigate('/login', { state: { from: location.pathname, notice: 'Đăng nhập để sử dụng giỏ hàng.' } })}
+                onClick={() => isAuthenticated ? navigate('/cart') : navigate('/login', { state: { from: location.pathname, notice: 'Đăng nhập để sử dụng giỏ hàng.' } })}
                 className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full
                 text-[#4B5563]
                 transition-colors
@@ -173,6 +175,7 @@ const CustomerHeader = () => {
                 />
             </button>
 
+            {itemCount > 0 && (
             <span
                 className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#5B6FF5] px-1
                 text-[10px]
@@ -183,8 +186,9 @@ const CustomerHeader = () => {
                 ring-white/70
                 "
             >
-                2
+                {itemCount > 99 ? '99+' : itemCount}
             </span>
+            )}
             </div>
 
             {/* Wishlist */}
