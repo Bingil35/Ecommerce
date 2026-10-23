@@ -1,15 +1,34 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.response.ProductCardResponse;
-import com.example.backend.dto.response.ProductDetailResponse;
-import com.example.backend.entity.*;
-import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.repository.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.*;
+import com.example.backend.dto.response.ProductCardResponse;
+import com.example.backend.dto.response.ProductDetailResponse;
+import com.example.backend.entity.Product;
+import com.example.backend.entity.ProductMedia;
+import com.example.backend.entity.ProductMediaType;
+import com.example.backend.entity.ProductStatus;
+import com.example.backend.entity.ProductVariant;
+import com.example.backend.entity.Shop;
+import com.example.backend.entity.ShopStatus;
+import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.repository.InventoryRepository;
+import com.example.backend.repository.ProductMediaRepository;
+import com.example.backend.repository.ProductOptionRepository;
+import com.example.backend.repository.ProductOptionValueRepository;
+import com.example.backend.repository.ProductRepository;
+import com.example.backend.repository.ProductVariantRepository;
+import com.example.backend.repository.ShopRepository;
+import com.example.backend.repository.VariantOptionValueRepository;
 
 /** Read-only catalog business logic for both guests and customers. */
 @Service
@@ -53,7 +72,7 @@ public class ProductCatalogService {
             ProductMetrics metrics = metrics(p.getId());
             if (minPrice != null && (metrics.maxPrice == null || metrics.maxPrice.compareTo(minPrice) < 0)) continue;
             if (maxPrice != null && (metrics.minPrice == null || metrics.minPrice.compareTo(maxPrice) > 0)) continue;
-            result.add(new ProductCardResponse(p, metrics.minPrice, metrics.maxPrice, metrics.stock));
+            result.add(toCard(p, metrics));
         }
         Comparator<ProductCardResponse> comparator = comparator(sortBy);
         if (comparator != null) result.sort(comparator);
@@ -65,6 +84,19 @@ public class ProductCatalogService {
         Product p = products.findById(id)
                 .filter(item -> item.getStatus() == ProductStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."));
+        return detail(p);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductDetailResponse detailBySlug(String slug) {
+        Product p = products.findBySlug(slug)
+                .filter(item -> item.getStatus() == ProductStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."));
+        return detail(p);
+    }
+
+    private ProductDetailResponse detail(Product p) {
+        UUID id = p.getId();
         Shop shop = shops.findById(p.getShopId())
                 .filter(s -> s.getStatus() == ShopStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."));
@@ -104,10 +136,32 @@ public class ProductCatalogService {
         for (Product p : candidates) {
             if (p.getId().equals(id) || !isPublicShop(p.getShopId())) continue;
             ProductMetrics m = metrics(p.getId());
-            result.add(new ProductCardResponse(p,m.minPrice,m.maxPrice,m.stock));
+            result.add(toCard(p, m));
             if (result.size() >= safeLimit) break;
         }
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductCardResponse> relatedBySlug(String slug, int limit) {
+        Product current = products.findBySlug(slug)
+                .filter(p -> p.getStatus() == ProductStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."));
+        return related(current.getId(), limit);
+    }
+
+    private ProductCardResponse toCard(Product product, ProductMetrics metrics) {
+        String thumbnail = product.getThumbnailUrl();
+        if (thumbnail == null || thumbnail.isBlank()) {
+            thumbnail = media.findByProductIdOrderBySortOrderAsc(product.getId()).stream()
+                    .filter(m -> m.getSortOrder() != null && m.getSortOrder() == 1)
+                    .filter(m -> m.getMediaType() == ProductMediaType.IMAGE)
+                    .map(ProductMedia::getUrl)
+                    .filter(url -> url != null && !url.isBlank())
+                    .findFirst().orElse(null);
+        }
+        return new ProductCardResponse(product, metrics.minPrice, metrics.maxPrice,
+                metrics.representativeComparePrice, metrics.stock, thumbnail);
     }
 
     private boolean isPublicShop(UUID shopId) {
@@ -121,15 +175,23 @@ public class ProductCatalogService {
     }
     private ProductMetrics metrics(UUID productId) {
         List<ProductVariant> active = variants.findByProductIdAndStatusOrderByCreatedAtAsc(productId, ProductStatus.ACTIVE);
-        BigDecimal min = null, max = null; int stock = 0;
+        BigDecimal min = null, max = null, representativeComparePrice = null;
+        UUID representativeVariantId = null;
+        int stock = 0;
         for (ProductVariant v : active) {
             if (v.getPrice() != null) {
-                if (min == null || v.getPrice().compareTo(min) < 0) min=v.getPrice();
+                if (min == null || v.getPrice().compareTo(min) < 0
+                        || (v.getPrice().compareTo(min) == 0 && representativeVariantId != null
+                        && v.getId().compareTo(representativeVariantId) < 0)) {
+                    min = v.getPrice();
+                    representativeComparePrice = v.getComparePrice();
+                    representativeVariantId = v.getId();
+                }
                 if (max == null || v.getPrice().compareTo(max) > 0) max=v.getPrice();
             }
             stock += availableStock(v.getId());
         }
-        return new ProductMetrics(min,max,stock);
+        return new ProductMetrics(min,max,representativeComparePrice,stock);
     }
     private Comparator<ProductCardResponse> comparator(String sortBy) {
         if (sortBy == null || sortBy.isBlank() || sortBy.equalsIgnoreCase("newest")) return null; // repository defaults newest first
@@ -141,5 +203,5 @@ public class ProductCatalogService {
             default -> throw new IllegalArgumentException("sortBy chỉ nhận newest, price_asc, price_desc, rating_desc hoặc name_asc.");
         };
     }
-    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, Integer stock) {}
+    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, BigDecimal representativeComparePrice, Integer stock) {}
 }
