@@ -5,6 +5,8 @@ export interface ProductCardDto {
   id: string; shopId: string; categoryId?: string | null; brandId?: string | null;
   name: string; slug: string; description?: string | null; thumbnailUrl?: string | null;
   minPrice?: number | string | null; maxPrice?: number | string | null; price?: number | string | null;
+  comparePrice?: number | string | null;
+  tags?: (string | { id?: string; name?: string; label?: string })[] | null;
   stockQuantity?: number | null; featured?: boolean; ratingAverage?: number | string | null; ratingCount?: number | null;
 }
 export interface ProductDetailDto extends ProductCardDto {
@@ -21,9 +23,27 @@ const dataOf = <T,>(response: { data: ApiEnvelope<T> | T }): T => {
   return body && typeof body === 'object' && 'data' in body ? body.data : response.data as T;
 };
 export const productApi = {
-  async list(params: ProductQuery = {}) { const r = await axiosClient.get('/products', { params }); return dataOf<ProductCardDto[]>(r); },
-  async detail(id: string) { const r = await axiosClient.get(`/products/${id}`); return dataOf<ProductDetailDto>(r); },
-  async related(id: string, limit = 8) { const r = await axiosClient.get(`/products/${id}/related`, { params: { limit } }); return dataOf<ProductCardDto[]>(r); },
+  async list(params: ProductQuery = {}) { 
+    const r = await axiosClient.get(
+      '/products', { params }
+    ); 
+    return dataOf<ProductCardDto[]>(r); 
+  },
+
+  async detail(slug: string) {
+    const r = await axiosClient.get(
+      `/products/slug/${encodeURIComponent(slug)}`
+    );
+    return dataOf<ProductDetailDto>(r);
+  },
+
+  async related(slug: string, limit = 8) {
+  const r = await axiosClient.get(
+      `/products/slug/${encodeURIComponent(slug)}/related`,
+      { params: { limit } }
+    );
+    return dataOf<ProductCardDto[]>(r);
+  },
 };
 export const categoryApi = {
   async list() { const r = await axiosClient.get('/categories'); return dataOf<CategoryDto[]>(r); },
