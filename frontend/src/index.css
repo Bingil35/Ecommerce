@@ -1,1 +1,15 @@
 @import 'tailwindcss';
+
+
+@keyframes productImageFade {
+  from { opacity: 0.55; transform: scale(1.015); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.product-detail-image {
+  animation: productImageFade 500ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-detail-image { animation: none; }
+}

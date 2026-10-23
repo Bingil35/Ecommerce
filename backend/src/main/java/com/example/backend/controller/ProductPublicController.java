@@ -34,6 +34,18 @@ public class ProductPublicController {
         return ApiResponse.success("Lấy chi tiết sản phẩm thành công.", catalog.detail(id));
     }
 
+    @GetMapping("/slug/{slug}")
+    public ApiResponse<ProductDetailResponse> detailBySlug(@PathVariable String slug) {
+        return ApiResponse.success("Lấy chi tiết sản phẩm thành công.", catalog.detailBySlug(slug));
+    }
+
+    @GetMapping("/slug/{slug}/related")
+    public ApiResponse<List<ProductCardResponse>> relatedBySlug(
+            @PathVariable String slug,
+            @RequestParam(required=false, defaultValue="8") int limit) {
+        return ApiResponse.success("Lấy sản phẩm liên quan thành công.", catalog.relatedBySlug(slug, limit));
+    }
+
     @GetMapping("/{id}/related")
     public ApiResponse<List<ProductCardResponse>> related(
             @PathVariable UUID id,

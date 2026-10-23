@@ -1,17 +1,19 @@
 package com.example.backend.repository;
 
-import com.example.backend.entity.Product;
-import com.example.backend.entity.ProductStatus;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.List;
-import java.util.UUID;
+import com.example.backend.entity.Product;
+import com.example.backend.entity.ProductStatus;
 
 public interface ProductRepository
         extends JpaRepository<Product, UUID>,
                 JpaSpecificationExecutor<Product> {
+
+    java.util.Optional<Product> findBySlug(String slug);
 
     boolean existsBySlug(String slug);
     boolean existsBySlugAndIdNot(String slug, UUID id);
