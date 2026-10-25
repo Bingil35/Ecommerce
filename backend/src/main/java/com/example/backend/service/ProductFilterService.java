@@ -1,11 +1,12 @@
 package com.example.backend.service;
 
-import com.example.backend.entity.Product;
-import com.example.backend.entity.ProductStatus;
-import com.example.backend.repository.ProductFilterRepository;
-
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
+import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,13 +16,17 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import com.example.backend.entity.Product;
+import com.example.backend.entity.ProductStatus;
+import com.example.backend.entity.ProductVariant;
+import com.example.backend.entity.Shop;
+import com.example.backend.entity.ShopStatus;
+import com.example.backend.repository.ProductFilterRepository;
+
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 @Service
 public class ProductFilterService {
@@ -77,15 +82,16 @@ public class ProductFilterService {
                 ? DEFAULT_PAGE_SIZE
                 : Math.min(pageSize, MAX_PAGE_SIZE);
 
+        String sortKey = normalizeSortKey(sort);
         Pageable pageable = PageRequest.of(
                 pageNumber,
                 pageSize,
-                resolveSort(sort)
+                isPriceSort(sortKey) ? Sort.unsorted() : resolveSort(sortKey)
         );
 
         Specification<Product> spec = buildSpec(
                 tokens, category, brand, min, max,
-                productStatus, minRating
+                productStatus, minRating, sortKey
         );
 
         return productFilterRepository.findAll(spec, pageable);
@@ -102,7 +108,8 @@ public class ProductFilterService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             ProductStatus status,
-            BigDecimal minRating
+            BigDecimal minRating,
+            String sortKey
     ) {
         return (root, query, cb) -> {
 
@@ -116,9 +123,14 @@ public class ProductFilterService {
             List<Predicate> predicates = new ArrayList<>();
 
             // Khách hàng không bao giờ thấy sản phẩm INACTIVE.
-            predicates.add(
-                    cb.notEqual(root.get("status"), ProductStatus.INACTIVE)
-            );
+            predicates.add(cb.equal(root.get("status"), ProductStatus.ACTIVE));
+
+            Subquery<UUID> activeShop = query.subquery(UUID.class);
+            Root<Shop> shopRoot = activeShop.from(Shop.class);
+            activeShop.select(shopRoot.get("id"))
+                    .where(cb.equal(shopRoot.get("id"), root.get("shopId")),
+                           cb.equal(shopRoot.get("status"), ShopStatus.ACTIVE));
+            predicates.add(cb.exists(activeShop));
 
             if (categoryId != null) {
                 predicates.add(
@@ -131,19 +143,47 @@ public class ProductFilterService {
             }
 
             if (minPrice != null) {
-                predicates.add(
-                        cb.greaterThanOrEqualTo(root.get("price"), minPrice)
-                );
+                // A product matches the lower bound if at least one active variant
+                // reaches that price. Price is stored on ProductVariant, not Product.
+                Subquery<Integer> hasVariantAtOrAboveMin = query.subquery(Integer.class);
+                Root<ProductVariant> variant = hasVariantAtOrAboveMin.from(ProductVariant.class);
+                hasVariantAtOrAboveMin.select(cb.literal(1))
+                        .where(cb.equal(variant.get("product").get("id"), root.get("id")),
+                               cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                               cb.isNotNull(variant.get("price")),
+                               cb.greaterThanOrEqualTo(variant.get("price"), minPrice));
+                predicates.add(cb.exists(hasVariantAtOrAboveMin));
             }
 
             if (maxPrice != null) {
-                predicates.add(
-                        cb.lessThanOrEqualTo(root.get("price"), maxPrice)
-                );
+                // A product matches the upper bound if at least one active variant
+                // is priced at or below it. Together, both bounds mean the variant
+                // price range overlaps the requested range, matching /api/products.
+                Subquery<Integer> hasVariantAtOrBelowMax = query.subquery(Integer.class);
+                Root<ProductVariant> variant = hasVariantAtOrBelowMax.from(ProductVariant.class);
+                hasVariantAtOrBelowMax.select(cb.literal(1))
+                        .where(cb.equal(variant.get("product").get("id"), root.get("id")),
+                               cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                               cb.isNotNull(variant.get("price")),
+                               cb.lessThanOrEqualTo(variant.get("price"), maxPrice));
+                predicates.add(cb.exists(hasVariantAtOrBelowMax));
             }
 
-            if (status != null) {
+            if (status != null && status != ProductStatus.ACTIVE) {
                 predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+                if ("price_asc".equals(sortKey) || "price_desc".equals(sortKey)) {
+                    Subquery<BigDecimal> minVariantPrice = query.subquery(BigDecimal.class);
+                    Root<ProductVariant> variant = minVariantPrice.from(ProductVariant.class);
+                    minVariantPrice.select(cb.min(variant.get("price")))
+                            .where(cb.equal(variant.get("product").get("id"), root.get("id")),
+                                   cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                                   cb.isNotNull(variant.get("price")));
+                    query.orderBy("price_asc".equals(sortKey)
+                            ? cb.asc(minVariantPrice) : cb.desc(minVariantPrice), cb.asc(root.get("id")));
+                }
             }
 
             // rating = điểm trung bình tối thiểu (ví dụ rating=4 -> từ 4.0 trở lên)
@@ -186,23 +226,22 @@ public class ProductFilterService {
     // SORT
     // =========================
 
-    private Sort resolveSort(String sort) {
+    private String normalizeSortKey(String sort) {
+        String key = (sort == null || sort.isBlank()) ? "newest" : sort.trim().toLowerCase(Locale.ROOT);
+        if (!List.of("newest", "price_asc", "price_desc", "name_asc").contains(key)) {
+            throw new IllegalArgumentException("Invalid sort. Allowed: newest, price_asc, price_desc, name_asc");
+        }
+        return key;
+    }
 
-        String key = (sort == null || sort.isBlank())
-                ? "newest"
-                : sort.trim().toLowerCase(Locale.ROOT);
+    private boolean isPriceSort(String sort) {
+        return "price_asc".equals(sort) || "price_desc".equals(sort);
+    }
 
-        Sort primary = switch (key) {
-            case "price_asc" -> Sort.by(Sort.Direction.ASC, "price");
-            case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
-            case "name_asc" -> Sort.by(Sort.Direction.ASC, "name");
-            case "newest" -> Sort.by(Sort.Direction.DESC, "createdAt");
-            default -> throw new IllegalArgumentException(
-                    "Invalid sort. Allowed: newest, price_asc, "
-                            + "price_desc, name_asc");
-        };
-
-        // Thứ tự phụ để phân trang ổn định.
+    private Sort resolveSort(String key) {
+        Sort primary = "name_asc".equals(key)
+                ? Sort.by(Sort.Direction.ASC, "name")
+                : Sort.by(Sort.Direction.DESC, "createdAt");
         return primary.and(Sort.by(Sort.Direction.ASC, "id"));
     }
 
@@ -261,19 +300,14 @@ public class ProductFilterService {
                     value.trim().toUpperCase(Locale.ROOT)
             );
 
-            // Khách hàng không được xem sản phẩm đã ngừng bán.
-            if (status == ProductStatus.INACTIVE) {
-                throw new IllegalArgumentException(
-                        "status must be ACTIVE or OUT_OF_STOCK"
-                );
+            // Public catalog only exposes active products. The status parameter is retained
+            // for API compatibility, but INACTIVE is intentionally rejected.
+            if (status != ProductStatus.ACTIVE) {
+                throw new IllegalArgumentException("status must be ACTIVE");
             }
-
             return status;
-
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException(
-                    "status must be ACTIVE or OUT_OF_STOCK"
-            );
+            throw new IllegalArgumentException("status must be ACTIVE");
         }
     }
 

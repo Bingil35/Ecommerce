@@ -2,9 +2,10 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.PageResponse;
-import com.example.backend.dto.response.ProductResponse;
+import com.example.backend.dto.response.ProductCardResponse;
 import com.example.backend.entity.Product;
 import com.example.backend.service.ProductSearchService;
+import com.example.backend.service.ProductCatalogService;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -22,16 +23,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductSearchController {
 
     private final ProductSearchService searchService;
+    private final ProductCatalogService catalogService;
 
-    public ProductSearchController(
-            ProductSearchService searchService
-    ) {
+    public ProductSearchController(ProductSearchService searchService, ProductCatalogService catalogService) {
         this.searchService = searchService;
+        this.catalogService = catalogService;
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> search(
-            @RequestParam(required = false) String keyword,
+    public ResponseEntity<ApiResponse<PageResponse<ProductCardResponse>>> search(
+            @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "newest") String sort
@@ -39,8 +40,8 @@ public class ProductSearchController {
         Page<Product> result =
                 searchService.search(keyword, page, size, sort);
 
-        PageResponse<ProductResponse> data =
-                PageResponse.from(result, ProductResponse::new);
+        PageResponse<ProductCardResponse> data =
+                PageResponse.from(result, catalogService::toPublicCard);
 
         String message = result.isEmpty()
                 ? "Không tìm thấy sản phẩm phù hợp."

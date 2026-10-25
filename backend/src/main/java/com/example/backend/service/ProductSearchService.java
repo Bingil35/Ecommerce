@@ -1,8 +1,6 @@
 package com.example.backend.service;
 
-import com.example.backend.entity.Product;
-import com.example.backend.repository.ProductRepository;
-import com.example.backend.repository.ProductSpecifications;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -11,7 +9,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import com.example.backend.entity.Product;
+import com.example.backend.repository.ProductRepository;
+import com.example.backend.repository.ProductSpecifications;
 
 @Service
 public class ProductSearchService {
@@ -36,14 +36,15 @@ public class ProductSearchService {
     ) {
         List<String> tokens = ProductSpecifications.tokenize(keyword);
 
+        String sortKey = normalizeSortKey(sort);
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 normalizeSize(size),
-                resolveSort(sort)
+                isPriceSort(sortKey) ? Sort.unsorted() : resolveSort(sortKey)
         );
 
         return productRepository.findAll(
-                ProductSpecifications.searchByKeywords(tokens),
+                ProductSpecifications.searchByKeywords(tokens, sortKey),
                 pageable
         );
     }
@@ -55,22 +56,23 @@ public class ProductSearchService {
         return Math.min(size, MAX_PAGE_SIZE);
     }
 
-    private Sort resolveSort(String sort) {
+    private String normalizeSortKey(String sort) {
+        String key = sort == null || sort.isBlank() ? "newest" : sort.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!List.of("newest", "price_asc", "price_desc", "name_asc").contains(key)) {
+            throw new IllegalArgumentException("Invalid sort. Allowed: newest, price_asc, price_desc, name_asc");
+        }
+        return key;
+    }
 
-        String key = sort == null ? "newest" : sort.trim().toLowerCase();
+    private boolean isPriceSort(String sort) {
+        return "price_asc".equals(sort) || "price_desc".equals(sort);
+    }
 
+    private Sort resolveSort(String key) {
         Sort primary = switch (key) {
-            case "price_asc" -> Sort.by(Sort.Direction.ASC, "price");
-            case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
             case "name_asc" -> Sort.by(Sort.Direction.ASC, "name");
-            case "newest" -> Sort.by(Sort.Direction.DESC, "createdAt");
-            default -> throw new IllegalArgumentException(
-                    "Invalid sort. Allowed: newest, price_asc, "
-                            + "price_desc, name_asc"
-            );
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
-
-        // Thứ tự phụ để phân trang ổn định.
         return primary.and(Sort.by(Sort.Direction.ASC, "id"));
     }
 }
