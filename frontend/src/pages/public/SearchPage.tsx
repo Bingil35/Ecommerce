@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 
-import ProductCard, { formatPrice } from '../../components/ProductCard';
+import ProductCard from '../../components/customer/home/recommendation/ProductCard';
+import { formatVnd, productApi } from '../../services/catalog/productApi';
 import type { Category } from '../../services/product/productTypes';
 import {
   buildParams,
@@ -19,7 +20,7 @@ const SORT_OPTIONS: { id: SortKey; label: string }[] = [
   { id: 'relevance', label: 'Liên quan nhất' },
   { id: 'price-asc', label: 'Giá thấp đến cao' },
   { id: 'price-desc', label: 'Giá cao đến thấp' },
-  { id: 'top-rated', label: 'Đánh giá cao nhất' },
+  { id: 'name-asc', label: 'Tên sản phẩm A–Z' },
 ];
 
 const RATING_OPTIONS = [4, 3, 2];
@@ -31,7 +32,6 @@ export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => parseFilters(params), [params]);
 
-  const [keyword, setKeyword] = useState(filters.q);
   const [minInput, setMinInput] = useState(String(filters.minPrice ?? ''));
   const [maxInput, setMaxInput] = useState(String(filters.maxPrice ?? ''));
 
@@ -40,15 +40,21 @@ export default function SearchPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brandIds, setBrandIds] = useState<string[]>([]);
 
-  // Đồng bộ các ô nhập khi URL đổi (bấm Back, xóa bộ lọc...).
+  // Đồng bộ các ô giá khi URL đổi (Back, xóa bộ lọc...). Từ khóa được quản lý tại Header.
   useEffect(() => {
-    setKeyword(filters.q);
     setMinInput(String(filters.minPrice ?? ''));
     setMaxInput(String(filters.maxPrice ?? ''));
-  }, [filters.q, filters.minPrice, filters.maxPrice]);
+  }, [filters.minPrice, filters.maxPrice]);
 
   // Tải danh mục một lần khi mở trang.
+  useEffect(() => {
+    productApi.list()
+      .then((products) => setBrandIds([...new Set(products.map((p) => p.brandId).filter((id): id is string => Boolean(id)))].sort()))
+      .catch(() => setBrandIds([]));
+  }, []);
+
   useEffect(() => {
     getCategories()
       .then(setCategories)
@@ -89,11 +95,6 @@ export default function SearchPage() {
     setParams(buildParams({ ...filters, page: 1, ...patch }));
   };
 
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    update({ q: keyword.trim() });
-  };
-
   const applyPrice = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -121,6 +122,14 @@ export default function SearchPage() {
     });
   }
 
+  if (filters.brandId) {
+    activeChips.push({
+      key: 'brandId',
+      label: `Thương hiệu: ${filters.brandId}`,
+      remove: () => update({ brandId: '' }),
+    });
+  }
+
   if (filters.category) {
     activeChips.push({
       key: 'category',
@@ -130,8 +139,8 @@ export default function SearchPage() {
   }
 
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-    const from = filters.minPrice !== undefined ? formatPrice(filters.minPrice) : '0đ';
-    const to = filters.maxPrice !== undefined ? formatPrice(filters.maxPrice) : 'trở lên';
+    const from = filters.minPrice !== undefined ? formatVnd(filters.minPrice) : '0đ';
+    const to = filters.maxPrice !== undefined ? formatVnd(filters.maxPrice) : 'trở lên';
 
     activeChips.push({
       key: 'price',
@@ -148,13 +157,6 @@ export default function SearchPage() {
     });
   }
 
-  if (filters.inStock) {
-    activeChips.push({
-      key: 'inStock',
-      label: 'Còn hàng',
-      remove: () => update({ inStock: false }),
-    });
-  }
 
   const inputClass =
     'h-11 w-full rounded-xl border border-[#D7E0F2] bg-white px-3 text-sm text-[#172033] outline-none transition placeholder:text-[#9AA8C6] focus:border-[#5B8DEF] focus:ring-4 focus:ring-[#5B8DEF]/10';
@@ -162,47 +164,12 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-[#F7F9FC] px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-6xl">
-        {/* ================= SEARCH BAR ================= */}
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold tracking-tight text-[#29266F]">{filters.q ? `Kết quả tìm kiếm: “${filters.q}”` : 'Khám phá sản phẩm'}</h1>
+          <p className="mt-1 text-sm text-[#667085]">Sử dụng thanh tìm kiếm trên Header để tìm sản phẩm.</p>
+        </div>
 
-        <form
-          onSubmit={handleSearch}
-          role="search"
-          className={`${cardClass} p-5 sm:p-6`}
-        >
-          <h1 className="text-[26px] font-bold tracking-tight text-[#29266F]">
-            Tìm kiếm sản phẩm
-          </h1>
-
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <label htmlFor="keyword" className="sr-only">
-                Từ khóa
-              </label>
-
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#52638F]">
-                <Search className="h-[22px] w-[22px]" />
-              </span>
-              <input
-                id="keyword"
-                type="text"
-                value={keyword}
-                placeholder="Nhập tên sản phẩm cần tìm"
-                autoComplete="off"
-                onChange={(event) => setKeyword(event.target.value)}
-                className="h-[56px] w-full rounded-xl border border-[#D7E0F2] bg-white pl-14 pr-4 text-[15px] text-[#172033] outline-none transition placeholder:text-[#9AA8C6] focus:border-[#5B8DEF] focus:ring-4 focus:ring-[#5B8DEF]/10"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="flex h-[56px] items-center justify-center rounded-full bg-[#4F7CFF] px-10 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(79,124,255,0.2)] transition hover:bg-[#3D63D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#5B8DEF]/30"
-            >
-              Tìm kiếm
-            </button>
-          </div>
-        </form>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-[280px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           {/* ================= FILTERS ================= */}
 
           <aside className={`${cardClass} h-fit space-y-6 p-6`}>
@@ -242,6 +209,23 @@ export default function SearchPage() {
                 </ul>
               </fieldset>
             )}
+
+            {/* Thương hiệu. API hiện chỉ cung cấp brandId, chưa có API danh sách tên thương hiệu. */}
+            <fieldset className="border-t border-[#E1E7F2] pt-6">
+              <legend className="text-sm font-medium text-[#52638F]">Thương hiệu</legend>
+              <select
+                value={filters.brandId}
+                onChange={(event) => update({ brandId: event.target.value })}
+                className={`${inputClass} mt-3`}
+                aria-label="Lọc theo thương hiệu"
+              >
+                <option value="">Tất cả thương hiệu</option>
+                {brandIds.map((id) => (
+                  <option key={id} value={id}>Thương hiệu · {id.slice(0, 8)}</option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs leading-5 text-[#8A93A6]">Backend hiện chỉ cung cấp mã thương hiệu, chưa có API tên thương hiệu.</p>
+            </fieldset>
 
             {/* Khoảng giá */}
             <form onSubmit={applyPrice} className="border-t border-[#E1E7F2] pt-6">
@@ -306,16 +290,6 @@ export default function SearchPage() {
               </div>
             </fieldset>
 
-            {/* Trạng thái */}
-            <label className="flex cursor-pointer items-center gap-2.5 border-t border-[#E1E7F2] pt-6 text-sm text-[#667085]">
-              <input
-                type="checkbox"
-                checked={filters.inStock}
-                onChange={(event) => update({ inStock: event.target.checked })}
-                className="h-5 w-5 cursor-pointer accent-[#4F7CFF]"
-              />
-              Chỉ hiện sản phẩm còn hàng
-            </label>
           </aside>
 
           {/* ================= RESULTS ================= */}
@@ -381,7 +355,7 @@ export default function SearchPage() {
             {result && result.items.length > 0 && (
               <>
                 <div
-                  className={`mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 ${
+                  className={`mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 ${
                     isLoading ? 'opacity-60' : ''
                   }`}
                 >

@@ -5,6 +5,7 @@ import {
   MessageCircle, Plus, ShieldCheck, ShoppingCart, Star, Store, Truck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import ProductCard from '../../components/customer/home/recommendation/ProductCard';
 import {
   formatVnd, productApi, productImage,
@@ -15,6 +16,7 @@ export default function ProductDetailPage() {
   const { slug = '' } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,6 +24,7 @@ export default function ProductDetailPage() {
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState('');
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [shopProducts, setShopProducts] = useState<import('../../services/catalog/productApi').ProductCardDto[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<import('../../services/catalog/productApi').ProductCardDto[]>([]);
 
@@ -126,17 +129,35 @@ export default function ProductDetailPage() {
     return true;
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!requireLogin('Đăng nhập để thêm sản phẩm vào giỏ hàng.')) return;
-    if (!selectedVariant && product?.variants?.length) {
-      setNotice('Vui lòng chọn phân loại sản phẩm còn hàng.');
+    if (!product) return;
+    if (!selectedVariant && product.variants?.length) {
+      setNotice('Vui lòng chọn phân loại sản phẩm hợp lệ.');
       return;
     }
     if (outOfStock) {
       setNotice('Sản phẩm hiện đã hết hàng.');
       return;
     }
-    setNotice('Giao diện chi tiết đã sẵn sàng. Chức năng giỏ hàng sẽ được kết nối khi API giỏ hàng được triển khai.');
+    if (stock != null && quantity > stock) {
+      setQuantity(stock);
+      setNotice(`Số lượng đã được điều chỉnh theo tồn kho (${stock}).`);
+      return;
+    }
+
+    setIsAddingToCart(true);
+    setNotice('');
+    try {
+      const success = await addToCart({
+        productId: product.id,
+        variantId: selectedVariant?.id ?? null,
+        quantity,
+      });
+      if (success) setNotice('Đã thêm sản phẩm vào giỏ hàng.');
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   if (loading) {
@@ -179,7 +200,7 @@ export default function ProductDetailPage() {
             <div className="mt-5 flex flex-wrap items-center gap-3"><span className="text-sm font-semibold text-[#343D55]">Số lượng</span><div className="flex items-center overflow-hidden rounded-xl border border-[#DFE6F2]"><button type="button" aria-label="Giảm số lượng" disabled={quantity <= 1} onClick={() => setQuantity((n) => Math.max(1, n - 1))} className="flex h-10 w-10 items-center justify-center text-[#626C82] disabled:opacity-40"><Minus size={15}/></button><span className="min-w-10 text-center text-sm font-semibold text-[#343D55]">{quantity}</span><button type="button" aria-label="Tăng số lượng" disabled={stock != null && quantity >= stock} onClick={() => setQuantity((n) => Math.min(stock ?? 99, n + 1))} className="flex h-10 w-10 items-center justify-center text-[#626C82] disabled:opacity-40"><Plus size={15}/></button></div><span className="text-xs text-[#8A93A6]">{outOfStock ? 'Sản phẩm đã hết hàng' : stock != null ? `Có thể mua tối đa ${stock} sản phẩm` : 'Số lượng có giới hạn'}</span></div>
 
             {notice && <div role="status" className="mt-4 rounded-xl border border-[#DCE5FA] bg-[#F4F7FF] p-3 text-sm text-[#5367C9]">{notice}</div>}
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]"><button type="button" disabled={outOfStock} onClick={handleAddToCart} className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#4559B7] disabled:cursor-not-allowed disabled:bg-[#B8C0D9]"><ShoppingCart size={18}/> Thêm vào giỏ hàng</button><button type="button" onClick={() => { if (requireLogin('Đăng nhập để thêm sản phẩm vào danh sách yêu thích.')) setNotice('Chức năng yêu thích sẽ được kết nối khi API danh sách yêu thích được triển khai.'); }} className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#DCE4F2] px-5 py-3 text-sm font-semibold text-[#59647D] transition hover:border-[#AAB8E8] hover:text-[#5367C9]"><Heart size={18}/> Yêu thích</button></div>
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]"><button type="button" disabled={outOfStock || isAddingToCart} onClick={handleAddToCart} className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#4559B7] disabled:cursor-not-allowed disabled:bg-[#B8C0D9]"><ShoppingCart size={18}/> {isAddingToCart ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}</button><button type="button" onClick={() => { if (requireLogin('Đăng nhập để thêm sản phẩm vào danh sách yêu thích.')) setNotice('Chức năng yêu thích sẽ được kết nối khi API danh sách yêu thích được triển khai.'); }} className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#DCE4F2] px-5 py-3 text-sm font-semibold text-[#59647D] transition hover:border-[#AAB8E8] hover:text-[#5367C9]"><Heart size={18}/> Yêu thích</button></div>
             <div className="mt-6 grid gap-3 border-t border-[#EDF0F6] pt-5 sm:grid-cols-2"><div className="flex gap-3"><Truck size={19} className="mt-0.5 shrink-0 text-[#6E7FCB]"/><div><p className="text-sm font-semibold text-[#343D55]">Thông tin giao hàng</p><p className="mt-1 text-xs leading-5 text-[#8A93A6]">Chi phí và thời gian giao hàng sẽ được hiển thị khi thanh toán.</p></div></div><div className="flex gap-3"><ShieldCheck size={19} className="mt-0.5 shrink-0 text-[#6E7FCB]"/><div><p className="text-sm font-semibold text-[#343D55]">Mua sắm trên Kala</p><p className="mt-1 text-xs leading-5 text-[#8A93A6]">Thông tin sản phẩm được cung cấp bởi cửa hàng.</p></div></div></div>
           </div>
         </section>
