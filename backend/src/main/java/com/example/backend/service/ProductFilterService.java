@@ -54,6 +54,7 @@ public class ProductFilterService {
             String keyword,
             String categoryId,
             String brandId,
+            String shopAddress,
             String minPrice,
             String maxPrice,
             String status,
@@ -65,6 +66,7 @@ public class ProductFilterService {
         List<String> tokens = tokenizeKeyword(keyword);
         UUID category = parseUuid("categoryId", categoryId);
         UUID brand = parseUuid("brandId", brandId);
+        String normalizedShopAddress = normalizeTextFilter(shopAddress);
         BigDecimal min = parsePrice("minPrice", minPrice);
         BigDecimal max = parsePrice("maxPrice", maxPrice);
         ProductStatus productStatus = parseStatus(status);
@@ -90,7 +92,7 @@ public class ProductFilterService {
         );
 
         Specification<Product> spec = buildSpec(
-                tokens, category, brand, min, max,
+                tokens, category, brand, normalizedShopAddress, min, max,
                 productStatus, minRating, sortKey
         );
 
@@ -105,6 +107,7 @@ public class ProductFilterService {
             List<String> tokens,
             UUID categoryId,
             UUID brandId,
+            String shopAddress,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             ProductStatus status,
@@ -129,7 +132,7 @@ public class ProductFilterService {
             Root<Shop> shopRoot = activeShop.from(Shop.class);
             activeShop.select(shopRoot.get("id"))
                     .where(cb.equal(shopRoot.get("id"), root.get("shopId")),
-                           cb.equal(shopRoot.get("status"), ShopStatus.ACTIVE));
+                            cb.equal(shopRoot.get("status"), ShopStatus.ACTIVE));
             predicates.add(cb.exists(activeShop));
 
             if (categoryId != null) {
@@ -142,6 +145,18 @@ public class ProductFilterService {
                 predicates.add(cb.equal(root.get("brandId"), brandId));
             }
 
+            // Lọc theo địa chỉ shop; địa chỉ thuộc Shops, không phải Products.
+            if (shopAddress != null) {
+                Subquery<UUID> matchingShop = query.subquery(UUID.class);
+                Root<Shop> addressShop = matchingShop.from(Shop.class);
+                matchingShop.select(addressShop.get("id"))
+                        .where(cb.equal(addressShop.get("id"), root.get("shopId")),
+                                cb.equal(addressShop.get("status"), ShopStatus.ACTIVE),
+                                cb.like(cb.lower(addressShop.get("address")),
+                                        "%" + escapeLike(shopAddress.toLowerCase(Locale.ROOT)) + "%", LIKE_ESCAPE));
+                predicates.add(cb.exists(matchingShop));
+            }
+
             if (minPrice != null) {
                 // A product matches the lower bound if at least one active variant
                 // reaches that price. Price is stored on ProductVariant, not Product.
@@ -149,9 +164,9 @@ public class ProductFilterService {
                 Root<ProductVariant> variant = hasVariantAtOrAboveMin.from(ProductVariant.class);
                 hasVariantAtOrAboveMin.select(cb.literal(1))
                         .where(cb.equal(variant.get("product").get("id"), root.get("id")),
-                               cb.equal(variant.get("status"), ProductStatus.ACTIVE),
-                               cb.isNotNull(variant.get("price")),
-                               cb.greaterThanOrEqualTo(variant.get("price"), minPrice));
+                                cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                                cb.isNotNull(variant.get("price")),
+                                cb.greaterThanOrEqualTo(variant.get("price"), minPrice));
                 predicates.add(cb.exists(hasVariantAtOrAboveMin));
             }
 
@@ -163,9 +178,9 @@ public class ProductFilterService {
                 Root<ProductVariant> variant = hasVariantAtOrBelowMax.from(ProductVariant.class);
                 hasVariantAtOrBelowMax.select(cb.literal(1))
                         .where(cb.equal(variant.get("product").get("id"), root.get("id")),
-                               cb.equal(variant.get("status"), ProductStatus.ACTIVE),
-                               cb.isNotNull(variant.get("price")),
-                               cb.lessThanOrEqualTo(variant.get("price"), maxPrice));
+                                cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                                cb.isNotNull(variant.get("price")),
+                                cb.lessThanOrEqualTo(variant.get("price"), maxPrice));
                 predicates.add(cb.exists(hasVariantAtOrBelowMax));
             }
 
@@ -179,8 +194,8 @@ public class ProductFilterService {
                     Root<ProductVariant> variant = minVariantPrice.from(ProductVariant.class);
                     minVariantPrice.select(cb.min(variant.get("price")))
                             .where(cb.equal(variant.get("product").get("id"), root.get("id")),
-                                   cb.equal(variant.get("status"), ProductStatus.ACTIVE),
-                                   cb.isNotNull(variant.get("price")));
+                                    cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                                    cb.isNotNull(variant.get("price")));
                     query.orderBy("price_asc".equals(sortKey)
                             ? cb.asc(minVariantPrice) : cb.desc(minVariantPrice), cb.asc(root.get("id")));
                 }
@@ -243,6 +258,13 @@ public class ProductFilterService {
                 ? Sort.by(Sort.Direction.ASC, "name")
                 : Sort.by(Sort.Direction.DESC, "createdAt");
         return primary.and(Sort.by(Sort.Direction.ASC, "id"));
+    }
+
+    private String normalizeTextFilter(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim();
+        if (normalized.length() > 150) throw new IllegalArgumentException("shopAddress must be at most 150 characters");
+        return normalized;
     }
 
     // =========================

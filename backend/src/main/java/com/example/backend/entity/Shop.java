@@ -26,6 +26,7 @@ public class Shop {
     @Column(name = "banner_url", columnDefinition = "text") private String bannerUrl;
     @Column(name = "phone", length = 10) private String phone;
     @Column(name = "email", length = 255) private String email;
+    @Column(name = "address", columnDefinition = "text") private String address;
     @Column(name = "rating_average", precision = 2, scale = 1) private BigDecimal ratingAverage;
     @Column(name = "rating_count") private Integer ratingCount = 0;
     @Column(name = "followers_count") private Integer followersCount = 0;
@@ -49,6 +50,7 @@ public class Shop {
     public String getBannerUrl(){return bannerUrl;} public void setBannerUrl(String v){bannerUrl=v;}
     public String getPhone(){return phone;} public void setPhone(String v){phone=v;}
     public String getEmail(){return email;} public void setEmail(String v){email=v;}
+    public String getAddress(){return address;} public void setAddress(String v){address=v;}
     public BigDecimal getRatingAverage(){return ratingAverage;} public void setRatingAverage(BigDecimal v){ratingAverage=v;}
     public Integer getRatingCount(){return ratingCount;} public void setRatingCount(Integer v){ratingCount=v;}
     public Integer getFollowersCount(){return followersCount;} public void setFollowersCount(Integer v){followersCount=v;}

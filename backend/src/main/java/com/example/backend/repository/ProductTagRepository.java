@@ -1,4 +1,7 @@
 package com.example.backend.repository;
-
-public class ProductTagRepository {
+import com.example.backend.entity.ProductTag;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.UUID;
+public interface ProductTagRepository extends JpaRepository<ProductTag, UUID> {
+    boolean existsBySlug(String slug);
 }

@@ -87,6 +87,10 @@ public class SecurityConfig {
                         // Public read-only catalog endpoints
                         .requestMatchers("/api/categories/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/brands")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/shops")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**")
                         .permitAll()
 
