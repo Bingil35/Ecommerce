@@ -2,11 +2,16 @@ package com.example.backend.service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.ToIntFunction;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +23,7 @@ import com.example.backend.entity.ProductMedia;
 import com.example.backend.entity.ProductMediaType;
 import com.example.backend.entity.ProductStatus;
 import com.example.backend.entity.ProductVariant;
+import com.example.backend.entity.Inventory;
 import com.example.backend.entity.Shop;
 import com.example.backend.entity.ShopStatus;
 import com.example.backend.exception.ResourceNotFoundException;
@@ -161,7 +167,63 @@ public class ProductCatalogService {
         return related(current.getId(), limit);
     }
 
-    /** Maps a product returned by public search/filter endpoints to the same card contract as the catalog API. */
+    /**
+     * Builds catalog cards for many products with a fixed number of queries (variants, stock,
+     * fallback media), instead of several queries per product. Same price, stock and thumbnail
+     * rules as the single-product path. The result keeps the order of the input. Callers are
+     * responsible for only passing products that are visible.
+     */
+    @Transactional(readOnly = true)
+    public List<ProductCardResponse> toCards(Collection<Product> source) {
+        if (source == null || source.isEmpty()) return List.of();
+        List<UUID> productIds = source.stream().map(Product::getId).toList();
+
+        Map<UUID, List<ProductVariant>> variantsByProduct = new HashMap<>();
+        List<UUID> variantIds = new ArrayList<>();
+        for (ProductVariant v : variants.findByProductIdInAndStatusOrderByCreatedAtAsc(productIds, ProductStatus.ACTIVE)) {
+            variantsByProduct.computeIfAbsent(v.getProduct().getId(), k -> new ArrayList<>()).add(v);
+            variantIds.add(v.getId());
+        }
+
+        Map<UUID, Integer> freeStock = new HashMap<>();
+        if (!variantIds.isEmpty()) {
+            for (Inventory i : inventories.findByVariantIdIn(variantIds)) {
+                int quantity = i.getQuantity() == null ? 0 : i.getQuantity();
+                int reserved = i.getReservedQuantity() == null ? 0 : i.getReservedQuantity();
+                freeStock.putIfAbsent(i.getVariant().getId(), Math.max(0, quantity - reserved));
+            }
+        }
+
+        List<UUID> needFallback = source.stream()
+                .filter(p -> p.getThumbnailUrl() == null || p.getThumbnailUrl().isBlank())
+                .map(Product::getId).toList();
+        Map<UUID, String> fallbackThumbnail = new HashMap<>();
+        if (!needFallback.isEmpty()) {
+            for (ProductMedia m : media.findByProductIdInOrderBySortOrderAsc(needFallback)) {
+                if (m.getSortOrder() != null && m.getSortOrder() == 1
+                        && m.getMediaType() == ProductMediaType.IMAGE
+                        && m.getUrl() != null && !m.getUrl().isBlank()) {
+                    fallbackThumbnail.putIfAbsent(m.getProduct().getId(), m.getUrl());
+                }
+            }
+        }
+
+        Map<UUID, ProductCardResponse> byId = new LinkedHashMap<>();
+        for (Product p : source) {
+            ProductMetrics metrics = metricsOf(variantsByProduct.getOrDefault(p.getId(), List.of()),
+                    variantId -> freeStock.getOrDefault(variantId, 0));
+            String thumbnail = p.getThumbnailUrl() == null || p.getThumbnailUrl().isBlank()
+                    ? fallbackThumbnail.get(p.getId()) : p.getThumbnailUrl();
+            byId.put(p.getId(), new ProductCardResponse(p, metrics.minPrice, metrics.maxPrice,
+                    metrics.representativeComparePrice, metrics.stock, thumbnail));
+        }
+        return source.stream().map(p -> byId.get(p.getId())).toList();
+    }
+
+    /**
+     * Builds a public catalog card for a single product (used by search/filter controllers
+     * through a method reference). Callers are responsible for only passing visible products.
+     */
     @Transactional(readOnly = true)
     public ProductCardResponse toPublicCard(Product product) {
         return toCard(product, metrics(product.getId()));
@@ -192,6 +254,9 @@ public class ProductCatalogService {
     }
     private ProductMetrics metrics(UUID productId) {
         List<ProductVariant> active = variants.findByProductIdAndStatusOrderByCreatedAtAsc(productId, ProductStatus.ACTIVE);
+        return metricsOf(active, this::availableStock);
+    }
+    private ProductMetrics metricsOf(List<ProductVariant> active, ToIntFunction<UUID> stockOf) {
         BigDecimal min = null, max = null, representativeComparePrice = null;
         UUID representativeVariantId = null;
         int stock = 0;
@@ -206,7 +271,7 @@ public class ProductCatalogService {
                 }
                 if (max == null || v.getPrice().compareTo(max) > 0) max=v.getPrice();
             }
-            stock += availableStock(v.getId());
+            stock += stockOf.applyAsInt(v.getId());
         }
         return new ProductMetrics(min,max,representativeComparePrice,stock);
     }
