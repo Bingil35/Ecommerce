@@ -21,13 +21,16 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final WishlistService wishlistService;
 
     public ProductService(
             ProductRepository productRepository,
-            CategoryRepository categoryRepository
+            CategoryRepository categoryRepository,
+            WishlistService wishlistService
     ) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+        this.wishlistService = wishlistService;
     }
 
     // =========================
@@ -231,6 +234,12 @@ public class ProductService {
          * Khi triển khai Order Management sẽ bổ sung
          * business rule kiểm tra lịch sử/đơn hàng đang xử lý.
          */
+
+        /*
+         * Xóa sản phẩm khỏi mọi danh sách yêu thích, nếu không sẽ vi phạm khóa ngoại.
+         * Wishlist không phải dữ liệu đơn hàng nên việc xóa này là an toàn.
+         */
+        wishlistService.removeProductFromAllWishlists(id);
 
         productRepository.delete(product);
     }

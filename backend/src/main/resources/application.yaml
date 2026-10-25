@@ -3,9 +3,9 @@ spring:
     name: backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/ecommerce_db
+    url: jdbc:postgresql://localhost:5432/ecomerce_db
     username: postgres
-    password: Binh035205@
+    password: viethz21
     driver-class-name: org.postgresql.Driver
 
   jpa:

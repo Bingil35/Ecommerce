@@ -20,6 +20,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
+import { useWishlist } from '../../../context/WishlistContext';
 
 import logo from '../../../assets/logo.png';
 
@@ -28,6 +29,7 @@ const CustomerHeader = () => {
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
   const { itemCount } = useCart();
+  const { count: wishlistCount } = useWishlist();
   const { scrollY } = useScroll();
 
   const [isHidden, setIsHidden] = useState(false);
@@ -97,6 +99,7 @@ const CustomerHeader = () => {
               src={logo}
               alt="Kala"
               className="h-8 w-auto sm:h-9 lg:h-10"
+              onClick={() => navigate('/')}
             />
           </div>
 
@@ -197,31 +200,39 @@ const CustomerHeader = () => {
             </div>
 
             {/* Wishlist */}
-            <button
-              type="button"
-              aria-label="Yêu thích"
-              onClick={() => isAuthenticated ? window.alert('API danh sách yêu thích chưa được triển khai trong SCRUM 64–66.') : navigate('/login', { state: { from: location.pathname, notice: 'Đăng nhập để xem danh sách yêu thích.' } })}
-              className="
-                flex
-                h-9
-                w-9
-                sm:h-10
-                sm:w-10
-                items-center
-                justify-center
-                rounded-full
-                text-[#4B5563]
-                transition-colors
-                duration-200
-                hover:bg-white
-                hover:text-[#171B7A]
-              "
-            >
-              <Heart
-                size={20}
-                strokeWidth={1.8}
-              />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Yêu thích"
+                onClick={() => isAuthenticated ? navigate('/wishlist') : navigate('/login', { state: { from: '/wishlist', notice: 'Đăng nhập để xem danh sách yêu thích.' } })}
+                className="
+                  flex
+                  h-9
+                  w-9
+                  sm:h-10
+                  sm:w-10
+                  items-center
+                  justify-center
+                  rounded-full
+                  text-[#4B5563]
+                  transition-colors
+                  duration-200
+                  hover:bg-white
+                  hover:text-[#171B7A]
+                "
+              >
+                <Heart
+                  size={20}
+                  strokeWidth={1.8}
+                />
+              </button>
+
+              {wishlistCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#E5334F] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white/70">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
+                </span>
+              )}
+            </div>
 
             {/* Account / Guest login */}
             {isAuthenticated ? (
