@@ -30,7 +30,27 @@ const CategorySection = () => {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    categoryApi.list().then((items: CategoryDto[]) => setCategories(items.filter((c) => !c.status || c.status === 'ACTIVE').map((c) => ({ id: c.id, name: c.name, slug: c.slug, image: c.imageUrl || 'https://placehold.co/160x160/EEF3FF/5367C9?text=Category' })))).catch(() => setLoadError(true)).finally(() => setLoading(false));
+    categoryApi
+      .list()
+      .then((items: CategoryDto[]) => {
+        // Trang chủ chỉ hiển thị danh mục gốc, tức là danh mục không có danh mục cha.
+        // API có thể trả về cả danh mục con nên cần lọc theo parentId ở frontend.
+        const rootCategories = items
+          .filter((category) => !category.status || category.status === 'ACTIVE')
+          .filter((category) => category.parentId == null || category.parentId.trim() === '')
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+        setCategories(
+          rootCategories.map((category) => ({
+            id: category.id,
+            name: category.name,
+            slug: category.slug,
+            image: category.imageUrl || 'https://placehold.co/160x160/EEF3FF/5367C9?text=Category',
+          })),
+        );
+      })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
   }, []);
 
   const visibleCategories = categories.slice(0, VISIBLE_CATEGORY_COUNT);
@@ -89,7 +109,7 @@ const CategorySection = () => {
             sm:text-2xl
           "
         >
-          Danh mục nổi bật
+          Danh mục
         </h2>
 
         <p className="mt-1 text-xs text-[#8A93A6] sm:text-sm">

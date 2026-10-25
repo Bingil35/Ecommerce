@@ -16,8 +16,8 @@ import {
   useScroll,
 } from 'framer-motion';
 
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 
@@ -25,13 +25,18 @@ import logo from '../../../assets/logo.png';
 
 const CustomerHeader = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
   const { itemCount } = useCart();
   const { scrollY } = useScroll();
 
   const [isHidden, setIsHidden] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+
+  useEffect(() => {
+    setSearchQuery(new URLSearchParams(location.search).get('q') ?? '');
+  }, [location.search]);
 
   useMotionValueEvent(scrollY, 'change', (current) => {
     const previous = scrollY.getPrevious() ?? 0;

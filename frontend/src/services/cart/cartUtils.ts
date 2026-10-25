@@ -11,13 +11,9 @@ import type {
 export const getShopPath = (shop: Pick<CartShop, 'shopSlug'>): string =>
   `/shop/${shop.shopSlug}`;
 
-/**
- * Đường dẫn tới trang chi tiết sản phẩm.
- * Cả app (ProductCard...) link theo id và BE `GET /products/{id}` chỉ nhận UUID,
- * nên dùng productId; khi BE hỗ trợ tra theo slug thì đổi sang item.productSlug ở đây.
- */
-export const getProductPath = (item: Pick<CartItem, 'productId'>): string =>
-  `/product/${item.productId}`;
+/** Đường dẫn tới trang chi tiết sản phẩm theo slug, khớp route `/product/:slug`. */
+export const getProductPath = (item: Pick<CartItem, 'productSlug'>): string =>
+  `/product/${encodeURIComponent(item.productSlug)}`;
 
 /** Sản phẩm hết hàng / ngừng bán thì không cho tích chọn thanh toán. */
 export const isItemSelectable = (item: CartItem): boolean =>

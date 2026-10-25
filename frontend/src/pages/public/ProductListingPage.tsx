@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import ProductCard from '../../components/customer/home/recommendation/ProductCard';
 import type { HomeProduct } from '../../components/customer/home/recommendation/productData';
-import { productApi } from '../../services/catalog/productApi';
+import { categoryApi, productApi, type CategoryDto } from '../../services/catalog/productApi';
 
 export default function ProductListingPage() {
   const [params] = useSearchParams();
@@ -19,14 +19,55 @@ export default function ProductListingPage() {
     let alive = true;
     setLoading(true);
     setError('');
-    productApi.list({
-      q: q || undefined,
-      categoryId: categoryId || undefined,
-      featured: featured ? true : undefined,
-    })
+
+    const loadProducts = async () => {
+      const baseQuery = {
+        q: q || undefined,
+        featured: featured ? true : undefined,
+      };
+
+      // Danh mục được chọn có thể là danh mục cha. Lấy toàn bộ cây danh mục
+      // để truy vấn sản phẩm thuộc chính danh mục đó và tất cả danh mục con/cháu.
+      if (categoryId) {
+        const categories = await categoryApi.list();
+        const activeCategories = categories.filter((category: CategoryDto) =>
+          !category.status || category.status.toUpperCase() === 'ACTIVE'
+        );
+        const categoryById = new Map(activeCategories.map((category) => [category.id, category]));
+        const selectedCategory = categoryById.get(categoryId);
+
+        if (!selectedCategory) {
+          return productApi.list({ ...baseQuery, categoryId });
+        }
+
+        const categoryIds = new Set<string>([categoryId]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const category of activeCategories) {
+            if (category.parentId && categoryIds.has(category.parentId) && !categoryIds.has(category.id)) {
+              categoryIds.add(category.id);
+              changed = true;
+            }
+          }
+        }
+
+        const lists = await Promise.all(
+          [...categoryIds].map((id) => productApi.list({ ...baseQuery, categoryId: id }))
+        );
+        const uniqueProducts = new Map<string, (typeof lists)[number][number]>();
+        lists.flat().forEach((product) => uniqueProducts.set(product.id, product));
+        return [...uniqueProducts.values()];
+      }
+
+      return productApi.list(baseQuery);
+    };
+
+    loadProducts()
       .then((items) => { if (alive) setProducts(items); })
       .catch(() => { if (alive) setError('Không thể tải danh sách sản phẩm. Vui lòng kiểm tra kết nối backend và thử lại.'); })
       .finally(() => { if (alive) setLoading(false); });
+
     return () => { alive = false; };
   }, [q, categoryId, featured]);
 
