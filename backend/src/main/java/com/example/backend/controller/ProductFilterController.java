@@ -2,9 +2,10 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.PageResponse;
-import com.example.backend.dto.response.ProductResponse;
+import com.example.backend.dto.response.ProductCardResponse;
 import com.example.backend.entity.Product;
 import com.example.backend.service.ProductFilterService;
+import com.example.backend.service.ProductCatalogService;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -29,15 +30,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductFilterController {
 
     private final ProductFilterService filterService;
+    private final ProductCatalogService catalogService;
 
-    public ProductFilterController(
-            ProductFilterService filterService
-    ) {
+    public ProductFilterController(ProductFilterService filterService, ProductCatalogService catalogService) {
         this.filterService = filterService;
+        this.catalogService = catalogService;
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> filter(
+    public ResponseEntity<ApiResponse<PageResponse<ProductCardResponse>>> filter(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) String brandId,
@@ -63,8 +64,8 @@ public class ProductFilterController {
                 sort
         );
 
-        PageResponse<ProductResponse> data =
-                PageResponse.from(result, ProductResponse::new);
+        PageResponse<ProductCardResponse> data =
+                PageResponse.from(result, catalogService::toPublicCard);
 
         String message = result.isEmpty()
                 ? "Không có sản phẩm nào phù hợp với bộ lọc."

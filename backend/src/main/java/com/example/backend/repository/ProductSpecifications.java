@@ -1,18 +1,25 @@
 package com.example.backend.repository;
 
-import com.example.backend.entity.Product;
-import com.example.backend.entity.ProductStatus;
-
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
-
-import org.springframework.data.jpa.domain.Specification;
-
+import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
+
+import org.springframework.data.jpa.domain.Specification;
+
+import com.example.backend.entity.Product;
+import com.example.backend.entity.ProductStatus;
+import com.example.backend.entity.ProductVariant;
+import com.example.backend.entity.Shop;
+import com.example.backend.entity.ShopStatus;
+
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 public final class ProductSpecifications {
 
@@ -33,9 +40,11 @@ public final class ProductSpecifications {
      * mà MỖI từ khóa đều xuất hiện trong tên, slug (không dấu)
      * hoặc mô tả.
      */
-    public static Specification<Product> searchByKeywords(
-            List<String> tokens
-    ) {
+    public static Specification<Product> searchByKeywords(List<String> tokens) {
+        return searchByKeywords(tokens, "newest");
+    }
+
+    public static Specification<Product> searchByKeywords(List<String> tokens, String sort) {
         return (root, query, cb) -> {
 
             // Tránh N+1 khi đọc category;
@@ -50,12 +59,15 @@ public final class ProductSpecifications {
             List<Predicate> predicates = new ArrayList<>();
 
             // Không hiển thị sản phẩm INACTIVE
-            predicates.add(
-                    cb.notEqual(
-                            root.get("status"),
-                            ProductStatus.INACTIVE
-                    )
-            );
+            predicates.add(cb.equal(root.get("status"), ProductStatus.ACTIVE));
+
+            // Only products belonging to active shops are visible to guests/customers.
+            Subquery<UUID> activeShop = query.subquery(UUID.class);
+            Root<Shop> shopRoot = activeShop.from(Shop.class);
+            activeShop.select(shopRoot.get("id"))
+                    .where(cb.equal(shopRoot.get("id"), root.get("shopId")),
+                           cb.equal(shopRoot.get("status"), ShopStatus.ACTIVE));
+            predicates.add(cb.exists(activeShop));
 
             // Mỗi token phải xuất hiện ở ít nhất một field
             for (String token : tokens) {
@@ -103,9 +115,21 @@ public final class ProductSpecifications {
                 );
             }
 
-            return cb.and(
-                    predicates.toArray(new Predicate[0])
-            );
+            if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+                String sortKey = sort == null ? "newest" : sort.trim().toLowerCase(Locale.ROOT);
+                if (sortKey.equals("price_asc") || sortKey.equals("price_desc")) {
+                    Subquery<BigDecimal> minPrice = query.subquery(BigDecimal.class);
+                    Root<ProductVariant> variant = minPrice.from(ProductVariant.class);
+                    minPrice.select(cb.min(variant.get("price")))
+                            .where(cb.equal(variant.get("product").get("id"), root.get("id")),
+                                   cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                                   cb.isNotNull(variant.get("price")));
+                    query.orderBy(sortKey.equals("price_asc")
+                            ? cb.asc(minPrice) : cb.desc(minPrice), cb.asc(root.get("id")));
+                }
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 

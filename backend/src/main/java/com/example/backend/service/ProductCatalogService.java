@@ -150,6 +150,12 @@ public class ProductCatalogService {
         return related(current.getId(), limit);
     }
 
+    /** Maps a product returned by public search/filter endpoints to the same card contract as the catalog API. */
+    @Transactional(readOnly = true)
+    public ProductCardResponse toPublicCard(Product product) {
+        return toCard(product, metrics(product.getId()));
+    }
+
     private ProductCardResponse toCard(Product product, ProductMetrics metrics) {
         String thumbnail = product.getThumbnailUrl();
         if (thumbnail == null || thumbnail.isBlank()) {
