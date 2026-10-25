@@ -15,7 +15,8 @@ export type SortKey = (typeof SORT_KEYS)[number];
 export interface SearchFilters {
   q: string;
   category: string;
-  brandId: string;
+  brandIds: string[];
+  shopAddresses: string[];
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
@@ -41,7 +42,8 @@ export function parseFilters(params: URLSearchParams): SearchFilters {
   return {
     q: params.get('q')?.trim() ?? '',
     category: params.get('category') ?? '',
-    brandId: params.get('brandId') ?? '',
+    brandIds: params.getAll('brandId').filter(Boolean),
+    shopAddresses: params.getAll('shopAddress').map((value) => value.trim()).filter(Boolean),
     minPrice: toNumber(params.get('minPrice')),
     maxPrice: toNumber(params.get('maxPrice')),
     minRating: toNumber(params.get('rating')),
@@ -54,7 +56,8 @@ export function buildParams(filters: SearchFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.q) params.set('q', filters.q);
   if (filters.category) params.set('category', filters.category);
-  if (filters.brandId) params.set('brandId', filters.brandId);
+  filters.brandIds.forEach((id) => params.append('brandId', id));
+  filters.shopAddresses.forEach((address) => params.append('shopAddress', address));
   if (filters.minPrice !== undefined) params.set('minPrice', String(filters.minPrice));
   if (filters.maxPrice !== undefined) params.set('maxPrice', String(filters.maxPrice));
   if (filters.minRating !== undefined) params.set('rating', String(filters.minRating));
@@ -99,46 +102,73 @@ const SORT_TO_API: Record<SortKey, NonNullable<ProductSearchQuery['sort']>> = {
 };
 
 export async function searchProducts(filters: SearchFilters): Promise<SearchResult> {
-  const page = Math.max(0, filters.page - 1); // Backend phân trang từ 0, UI từ 1.
   const common: ProductSearchQuery = {
     keyword: filters.q.trim() || undefined,
     categoryId: filters.category || undefined,
-    brandId: filters.brandId || undefined,
     minPrice: filters.minPrice,
     maxPrice: filters.maxPrice,
     rating: filters.minRating,
     status: 'ACTIVE',
-    page,
+    page: 0,
     size: PAGE_SIZE,
     sort: SORT_TO_API[filters.sort],
   };
 
-  // Search endpoint yêu cầu keyword; khi có bộ lọc hoặc không có từ khóa thì dùng filter endpoint.
-  const useSearchEndpoint = Boolean(filters.q.trim()) &&
-    !filters.category && !filters.brandId && filters.minPrice === undefined &&
-    filters.maxPrice === undefined && filters.minRating === undefined;
+  // Khi không dùng bộ lọc đa lựa chọn, giữ luồng tìm kiếm/phân trang của backend.
+  const hasMultiFilters = filters.brandIds.length > 0 || filters.shopAddresses.length > 0;
+  if (!hasMultiFilters) {
+    const useSearchEndpoint = Boolean(filters.q.trim()) && !filters.category &&
+      filters.minPrice === undefined && filters.maxPrice === undefined && filters.minRating === undefined;
+    const response = useSearchEndpoint
+      ? await productApi.search({ keyword: filters.q.trim(), page: Math.max(0, filters.page - 1), size: PAGE_SIZE, sort: SORT_TO_API[filters.sort] })
+      : await productApi.filter({ ...common, page: Math.max(0, filters.page - 1) });
 
-  const response = useSearchEndpoint
-    ? await productApi.search({ keyword: filters.q.trim(), page, size: PAGE_SIZE, sort: SORT_TO_API[filters.sort] })
-    : await productApi.filter(common);
+    let related: ProductCardDto[] = [];
+    if (response.totalElements === 0) {
+      try {
+        const featured = await productApi.list({ featured: true, sortBy: 'newest' });
+        const suggestions = featured.length ? featured : await productApi.list({ sortBy: 'newest' });
+        related = suggestions.slice(0, 4);
+      } catch { related = []; }
+    }
+    return { items: response.items ?? [], total: response.totalElements ?? 0, totalPages: Math.max(1, response.totalPages ?? 0), related };
+  }
 
+  // Semantics: OR giữa các thương hiệu, OR giữa các địa chỉ, AND giữa hai nhóm.
+  // Mỗi cặp thương hiệu/địa chỉ được truy vấn riêng rồi hợp nhất và loại trùng theo ID.
+  const brandValues: (string | undefined)[] = filters.brandIds.length ? filters.brandIds : [undefined];
+  const addressValues: (string | undefined)[] = filters.shopAddresses.length ? filters.shopAddresses : [undefined];
+  const merged = new Map<string, ProductCardDto>();
   let related: ProductCardDto[] = [];
-  if (response.totalElements === 0) {
+  for (const brandId of brandValues) {
+    for (const shopAddress of addressValues) {
+      let page = 0;
+      let totalPages = 1;
+      do {
+        const response = await productApi.filter({ ...common, brandId, shopAddress, page, size: PAGE_SIZE });
+        for (const product of response.items ?? []) merged.set(product.id, product);
+        totalPages = Math.max(1, response.totalPages ?? 1);
+        page += 1;
+      } while (page < totalPages);
+    }
+  }
+
+  let allItems = Array.from(merged.values());
+  if (filters.sort === 'price-asc') allItems.sort((a, b) => Number(a.price ?? a.minPrice ?? 0) - Number(b.price ?? b.minPrice ?? 0));
+  else if (filters.sort === 'price-desc') allItems.sort((a, b) => Number(b.price ?? b.minPrice ?? 0) - Number(a.price ?? a.minPrice ?? 0));
+  else if (filters.sort === 'name-asc') allItems.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+
+  if (allItems.length === 0) {
     try {
       const featured = await productApi.list({ featured: true, sortBy: 'newest' });
       const suggestions = featured.length ? featured : await productApi.list({ sortBy: 'newest' });
       related = suggestions.slice(0, 4);
-    } catch {
-      related = [];
-    }
+    } catch { related = []; }
   }
-
-  return {
-    items: response.items ?? [],
-    total: response.totalElements ?? 0,
-    totalPages: Math.max(1, response.totalPages ?? 0),
-    related,
-  };
+  const total = allItems.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const start = (Math.max(1, filters.page) - 1) * PAGE_SIZE;
+  return { items: allItems.slice(start, start + PAGE_SIZE), total, totalPages, related };
 }
 
 export function findCategory(id: string, nodes: Category[]): Category | undefined {

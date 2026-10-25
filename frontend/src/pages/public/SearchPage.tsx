@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight } from 'lucide-react';
 
 import ProductCard from '../../components/customer/home/recommendation/ProductCard';
-import { formatVnd, productApi } from '../../services/catalog/productApi';
+import { brandApi, shopApi, formatVnd, type BrandDto, type ShopAddressDto } from '../../services/catalog/productApi';
 import type { Category } from '../../services/product/productTypes';
 import {
   buildParams,
@@ -34,13 +34,17 @@ export default function SearchPage() {
 
   const [minInput, setMinInput] = useState(String(filters.minPrice ?? ''));
   const [maxInput, setMaxInput] = useState(String(filters.maxPrice ?? ''));
+  const [expandedBrands, setExpandedBrands] = useState(false);
+  const [expandedAddresses, setExpandedAddresses] = useState(false);
+  const [shops, setShops] = useState<ShopAddressDto[]>([]);
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
 
   const [result, setResult] = useState<SearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
   const [categories, setCategories] = useState<Category[]>([]);
-  const [brandIds, setBrandIds] = useState<string[]>([]);
+  const [brands, setBrands] = useState<BrandDto[]>([]);
 
   // Đồng bộ các ô giá khi URL đổi (Back, xóa bộ lọc...). Từ khóa được quản lý tại Header.
   useEffect(() => {
@@ -48,11 +52,17 @@ export default function SearchPage() {
     setMaxInput(String(filters.maxPrice ?? ''));
   }, [filters.minPrice, filters.maxPrice]);
 
-  // Tải danh mục một lần khi mở trang.
+  // Tải danh sách thương hiệu từ API Brands.
   useEffect(() => {
-    productApi.list()
-      .then((products) => setBrandIds([...new Set(products.map((p) => p.brandId).filter((id): id is string => Boolean(id)))].sort()))
-      .catch(() => setBrandIds([]));
+    brandApi.list()
+      .then((items) => setBrands(items.slice().sort((a, b) => a.name.localeCompare(b.name, 'vi'))))
+      .catch(() => setBrands([]));
+  }, []);
+
+  useEffect(() => {
+    shopApi.list()
+      .then((items) => setShops(items.filter((shop) => shop.address?.trim()).sort((a, b) => (a.address ?? '').localeCompare(b.address ?? '', 'vi'))))
+      .catch(() => setShops([]));
   }, []);
 
   useEffect(() => {
@@ -122,12 +132,12 @@ export default function SearchPage() {
     });
   }
 
-  if (filters.brandId) {
-    activeChips.push({
-      key: 'brandId',
-      label: `Thương hiệu: ${filters.brandId}`,
-      remove: () => update({ brandId: '' }),
-    });
+  if (filters.brandIds.length) {
+    filters.brandIds.forEach((id) => activeChips.push({
+      key: `brandId-${id}`,
+      label: `Thương hiệu: ${brands.find((brand) => brand.id === id)?.name ?? id}`,
+      remove: () => update({ brandIds: filters.brandIds.filter((selected) => selected !== id) }),
+    }));
   }
 
   if (filters.category) {
@@ -136,6 +146,14 @@ export default function SearchPage() {
       label: findCategory(filters.category, categories)?.name ?? filters.category,
       remove: () => update({ category: '' }),
     });
+  }
+
+  if (filters.shopAddresses.length) {
+    filters.shopAddresses.forEach((address) => activeChips.push({
+      key: `shopAddress-${address}`,
+      label: `Địa chỉ shop: ${address}`,
+      remove: () => update({ shopAddresses: filters.shopAddresses.filter((selected) => selected !== address) }),
+    }));
   }
 
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
@@ -201,30 +219,48 @@ export default function SearchPage() {
                       node={node}
                       depth={0}
                       activeId={filters.category}
-                      onSelect={(id) =>
-                        update({ category: id === filters.category ? '' : id })
-                      }
+                      expandedIds={expandedCategoryIds}
+                      onToggle={(id) => setExpandedCategoryIds((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+                      onSelect={(id) => update({ category: id === filters.category ? '' : id })}
                     />
                   ))}
                 </ul>
               </fieldset>
             )}
 
-            {/* Thương hiệu. API hiện chỉ cung cấp brandId, chưa có API danh sách tên thương hiệu. */}
+            {/* Thương hiệu: checkbox nhiều lựa chọn, có thu gọn/xem thêm. */}
             <fieldset className="border-t border-[#E1E7F2] pt-6">
               <legend className="text-sm font-medium text-[#52638F]">Thương hiệu</legend>
-              <select
-                value={filters.brandId}
-                onChange={(event) => update({ brandId: event.target.value })}
-                className={`${inputClass} mt-3`}
-                aria-label="Lọc theo thương hiệu"
-              >
-                <option value="">Tất cả thương hiệu</option>
-                {brandIds.map((id) => (
-                  <option key={id} value={id}>Thương hiệu · {id.slice(0, 8)}</option>
+              <div className="mt-3 space-y-3">
+                {(expandedBrands ? brands : brands.slice(0, 5)).map((brand) => (
+                  <label key={brand.id} className="flex cursor-pointer items-center gap-2.5 text-sm text-[#667085]">
+                    <input type="checkbox" checked={filters.brandIds.includes(brand.id)}
+                      onChange={(event) => update({ brandIds: event.target.checked ? [...filters.brandIds, brand.id] : filters.brandIds.filter((id) => id !== brand.id) })}
+                      className="h-4 w-4 rounded accent-[#4F7CFF]" />
+                    <span>{brand.name}</span>
+                  </label>
                 ))}
-              </select>
-              <p className="mt-2 text-xs leading-5 text-[#8A93A6]">Backend hiện chỉ cung cấp mã thương hiệu, chưa có API tên thương hiệu.</p>
+                {brands.length > 5 && <button type="button" onClick={() => setExpandedBrands((value) => !value)} className="text-sm font-medium text-[#3975E8] hover:underline">{expandedBrands ? 'Thu gọn' : `Xem thêm (${brands.length - 5})`}</button>}
+                {brands.length === 0 && <p className="text-sm text-[#98A2B3]">Chưa có dữ liệu thương hiệu.</p>}
+              </div>
+            </fieldset>
+
+            {/* Địa chỉ shop: các giá trị lấy từ danh sách shop. */}
+            <fieldset className="border-t border-[#E1E7F2] pt-6">
+              <legend className="text-sm font-medium text-[#52638F]">Địa chỉ cửa hàng</legend>
+              <div className="mt-3 space-y-3">
+                {(expandedAddresses ? shops : shops.slice(0, 5)).map((shop) => {
+                  const address = shop.address!.trim();
+                  return <label key={shop.id} className="flex cursor-pointer items-start gap-2.5 text-sm text-[#667085]">
+                    <input type="checkbox" checked={filters.shopAddresses.includes(address)}
+                      onChange={(event) => update({ shopAddresses: event.target.checked ? [...filters.shopAddresses, address] : filters.shopAddresses.filter((value) => value !== address) })}
+                      className="mt-0.5 h-4 w-4 rounded accent-[#4F7CFF]" />
+                    <span>{address}</span>
+                  </label>;
+                })}
+                {shops.length > 5 && <button type="button" onClick={() => setExpandedAddresses((value) => !value)} className="text-sm font-medium text-[#3975E8] hover:underline">{expandedAddresses ? 'Thu gọn' : `Xem thêm (${shops.length - 5})`}</button>}
+                {shops.length === 0 && <p className="text-sm text-[#98A2B3]">Chưa tải được danh sách địa chỉ shop.</p>}
+              </div>
             </fieldset>
 
             {/* Khoảng giá */}
@@ -446,43 +482,33 @@ interface CategoryItemProps {
   node: Category;
   depth: number;
   activeId: string;
+  expandedIds: Set<string>;
+  onToggle: (id: string) => void;
   onSelect: (id: string) => void;
 }
 
-function CategoryItem({ node, depth, activeId, onSelect }: CategoryItemProps) {
+function CategoryItem({ node, depth, activeId, expandedIds, onToggle, onSelect }: CategoryItemProps) {
   const active = activeId === node.id;
+  const hasChildren = Boolean(node.children?.length);
+  const expanded = expandedIds.has(node.id);
 
   return (
     <li>
-      <button
-        type="button"
-        aria-pressed={active}
-        onClick={() => onSelect(node.id)}
-        style={{ paddingLeft: 12 + depth * 16 }}
-        className={`w-full rounded-xl py-2 pr-3 text-left text-sm transition ${
-          active
-            ? 'bg-[#EEF4FF] font-semibold text-[#29266F]'
-            : depth === 0
-              ? 'font-medium text-[#52638F] hover:bg-[#F8FAFE]'
-              : 'text-[#667085] hover:bg-[#F8FAFE]'
-        }`}
-      >
-        {node.name}
-      </button>
-
-      {node.children && (
-        <ul className="space-y-1">
-          {node.children.map((child) => (
-            <CategoryItem
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              activeId={activeId}
-              onSelect={onSelect}
-            />
-          ))}
-        </ul>
-      )}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          aria-pressed={active}
+          onClick={() => onSelect(node.id)}
+          style={{ paddingLeft: 12 + depth * 16 }}
+          className={`min-w-0 flex-1 rounded-xl py-2 pr-2 text-left text-sm transition ${active ? 'bg-[#EEF4FF] font-semibold text-[#29266F]' : depth === 0 ? 'font-medium text-[#52638F] hover:bg-[#F8FAFE]' : 'text-[#667085] hover:bg-[#F8FAFE]'}`}
+        >
+          {node.name}
+        </button>
+        {hasChildren && <button type="button" aria-label={`${expanded ? 'Thu gọn' : 'Mở rộng'} danh mục ${node.name}`} aria-expanded={expanded} onClick={() => onToggle(node.id)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#667085] hover:bg-[#F0F4FA]">
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>}
+      </div>
+      {hasChildren && expanded && <ul className="space-y-1">{node.children!.map((child) => <CategoryItem key={child.id} node={child} depth={depth + 1} activeId={activeId} expandedIds={expandedIds} onToggle={onToggle} onSelect={onSelect} />)}</ul>}
     </li>
   );
 }

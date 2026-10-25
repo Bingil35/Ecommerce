@@ -20,9 +20,24 @@ export interface ProductCardDto {
   ratingAverage?: number | string | null;
   ratingCount?: number | null;
 }
+export interface ShopAddressDto { id: string; name?: string; address?: string | null; }
+export interface BrandDto {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl?: string | null;
+}
+
+export interface ProductTagDto {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
 export interface ProductDetailDto extends ProductCardDto {
   status?: string;
-  shop?: { id: string; name: string; slug?: string; logoUrl?: string; bannerUrl?: string; ratingAverage?: number | string; ratingCount?: number; followersCount?: number } | null;
+  tags?: (string | ProductTagDto | { id?: string; name?: string; label?: string })[] | null;
+  shop?: { id: string; name: string; slug?: string; logoUrl?: string; bannerUrl?: string; address?: string | null; ratingAverage?: number | string; ratingCount?: number; followersCount?: number } | null;
   category?: { id: string; name: string; slug?: string; imageUrl?: string } | null;
   media?: { id: string; type?: string; url: string; sortOrder?: number }[];
   options?: { id: string; name: string; sortOrder?: number; values: { id: string; value: string; sortOrder?: number }[] }[];
@@ -46,6 +61,7 @@ export interface ProductSearchQuery {
   maxPrice?: number;
   status?: string;
   rating?: number;
+  shopAddress?: string;
   page?: number;
   size?: number;
   sort?: 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
@@ -76,6 +92,21 @@ export const productApi = {
   async related(slug: string, limit = 8) {
     const r = await axiosClient.get(`/products/slug/${encodeURIComponent(slug)}/related`, { params: { limit } });
     return dataOf<ProductCardDto[]>(r);
+  },
+};
+
+export const shopApi = {
+  async list() {
+    const r = await axiosClient.get('/shops');
+    const value = dataOf<ShopAddressDto[] | { items?: ShopAddressDto[] }>(r);
+    return Array.isArray(value) ? value : (value.items ?? []);
+  },
+};
+
+export const brandApi = {
+  async list() {
+    const r = await axiosClient.get('/brands');
+    return dataOf<BrandDto[]>(r);
   },
 };
 
