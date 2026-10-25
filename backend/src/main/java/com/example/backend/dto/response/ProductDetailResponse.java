@@ -17,34 +17,40 @@ public class ProductDetailResponse {
     private List<Media> media;
     private List<Option> options;
     private List<Variant> variants;
+    private List<Tag> tags;
 
     public ProductDetailResponse(Product product, PublicShop shop, List<Media> media, List<Option> options,
-                                 List<Variant> variants, BigDecimal minPrice, BigDecimal maxPrice, Integer stockQuantity) {
+                                 List<Variant> variants, List<Tag> tags, BigDecimal minPrice, BigDecimal maxPrice, Integer stockQuantity) {
         this.id=product.getId(); this.shopId=product.getShopId();
         this.categoryId=product.getCategory()==null?null:product.getCategory().getId(); this.brandId=product.getBrandId();
         this.name=product.getName(); this.slug=product.getSlug(); this.description=product.getDescription();
         this.thumbnailUrl=product.getThumbnailUrl(); this.status=product.getStatus().name(); this.featured=product.getFeatured();
         this.ratingAverage=product.getRatingAverage(); this.ratingCount=product.getRatingCount(); this.shop=shop;
         this.category=product.getCategory()==null?null:new PublicCategory(product.getCategory());
-        this.media=media; this.options=options; this.variants=variants; this.minPrice=minPrice; this.maxPrice=maxPrice; this.stockQuantity=stockQuantity;
+        this.media=media; this.options=options; this.variants=variants; this.tags=tags; this.minPrice=minPrice; this.maxPrice=maxPrice; this.stockQuantity=stockQuantity;
     }
     public UUID getId(){return id;} public UUID getShopId(){return shopId;} public UUID getCategoryId(){return categoryId;}
     public UUID getBrandId(){return brandId;} public String getName(){return name;} public String getSlug(){return slug;}
     public String getDescription(){return description;} public String getThumbnailUrl(){return thumbnailUrl;} public String getStatus(){return status;}
     public Boolean getFeatured(){return featured;} public BigDecimal getRatingAverage(){return ratingAverage;} public Integer getRatingCount(){return ratingCount;}
     public BigDecimal getMinPrice(){return minPrice;} public BigDecimal getMaxPrice(){return maxPrice;} public Integer getStockQuantity(){return stockQuantity;}
-    public BigDecimal getPrice(){return minPrice;} public PublicShop getShop(){return shop;} public PublicCategory getCategory(){return category;} public List<Media> getMedia(){return media;} public List<Option> getOptions(){return options;} public List<Variant> getVariants(){return variants;}
+    public BigDecimal getPrice(){return minPrice;} public PublicShop getShop(){return shop;} public PublicCategory getCategory(){return category;} public List<Media> getMedia(){return media;} public List<Option> getOptions(){return options;} public List<Variant> getVariants(){return variants;} public List<Tag> getTags(){return tags;}
 
 
+    public static class Tag {
+        private UUID id; private String name, slug;
+        public Tag(ProductTag tag){id=tag.getId();name=tag.getName();slug=tag.getSlug();}
+        public UUID getId(){return id;} public String getName(){return name;} public String getSlug(){return slug;}
+    }
     public static class PublicCategory {
         private UUID id; private String name, slug, imageUrl;
         public PublicCategory(Category c){id=c.getId();name=c.getName();slug=c.getSlug();imageUrl=c.getImageUrl();}
         public UUID getId(){return id;} public String getName(){return name;} public String getSlug(){return slug;} public String getImageUrl(){return imageUrl;}
     }
     public static class PublicShop {
-        private UUID id; private String name, slug, logoUrl, bannerUrl; private BigDecimal ratingAverage; private Integer ratingCount, followersCount;
-        public PublicShop(Shop s){id=s.getId();name=s.getShopName();slug=s.getSlug();logoUrl=s.getLogoUrl();bannerUrl=s.getBannerUrl();ratingAverage=s.getRatingAverage();ratingCount=s.getRatingCount();followersCount=s.getFollowersCount();}
-        public UUID getId(){return id;} public String getName(){return name;} public String getSlug(){return slug;} public String getLogoUrl(){return logoUrl;} public String getBannerUrl(){return bannerUrl;} public BigDecimal getRatingAverage(){return ratingAverage;} public Integer getRatingCount(){return ratingCount;} public Integer getFollowersCount(){return followersCount;}
+        private UUID id; private String name, slug, logoUrl, bannerUrl, address; private BigDecimal ratingAverage; private Integer ratingCount, followersCount;
+        public PublicShop(Shop s){id=s.getId();name=s.getShopName();slug=s.getSlug();logoUrl=s.getLogoUrl();bannerUrl=s.getBannerUrl();address=s.getAddress();ratingAverage=s.getRatingAverage();ratingCount=s.getRatingCount();followersCount=s.getFollowersCount();}
+        public UUID getId(){return id;} public String getName(){return name;} public String getSlug(){return slug;} public String getLogoUrl(){return logoUrl;} public String getBannerUrl(){return bannerUrl;} public String getAddress(){return address;} public BigDecimal getRatingAverage(){return ratingAverage;} public Integer getRatingCount(){return ratingCount;} public Integer getFollowersCount(){return followersCount;}
     }
     public static class Media {
         private UUID id; private String type, url; private Integer sortOrder;

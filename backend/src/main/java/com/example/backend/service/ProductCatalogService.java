@@ -27,6 +27,8 @@ import com.example.backend.repository.ProductOptionRepository;
 import com.example.backend.repository.ProductOptionValueRepository;
 import com.example.backend.repository.ProductRepository;
 import com.example.backend.repository.ProductVariantRepository;
+import com.example.backend.repository.ProductTagMappingRepository;
+import com.example.backend.repository.ProductTagRepository;
 import com.example.backend.repository.ShopRepository;
 import com.example.backend.repository.VariantOptionValueRepository;
 
@@ -41,13 +43,17 @@ public class ProductCatalogService {
     private final ProductOptionValueRepository optionValues;
     private final VariantOptionValueRepository variantOptionValues;
     private final ShopRepository shops;
+    private final ProductTagMappingRepository productTagMappings;
+    private final ProductTagRepository productTags;
 
     public ProductCatalogService(ProductRepository products, ProductMediaRepository media,
                                  ProductVariantRepository variants, InventoryRepository inventories,
                                  ProductOptionRepository options, ProductOptionValueRepository optionValues,
-                                 VariantOptionValueRepository variantOptionValues, ShopRepository shops) {
+                                 VariantOptionValueRepository variantOptionValues, ShopRepository shops,
+                                 ProductTagMappingRepository productTagMappings, ProductTagRepository productTags) {
         this.products=products; this.media=media; this.variants=variants; this.inventories=inventories;
         this.options=options; this.optionValues=optionValues; this.variantOptionValues=variantOptionValues; this.shops=shops;
+        this.productTagMappings=productTagMappings; this.productTags=productTags;
     }
 
     @Transactional(readOnly = true)
@@ -118,9 +124,14 @@ public class ProductCatalogService {
                             .map(ProductDetailResponse.SelectedOption::new).toList();
                     return new ProductDetailResponse.Variant(v, availableStock(v.getId()), selected);
                 }).toList();
+        List<ProductDetailResponse.Tag> tagResponse = productTagMappings.findAllByProductId(id).stream()
+                .map(mapping -> productTags.findById(mapping.getTagId()).orElse(null))
+                .filter(Objects::nonNull)
+                .map(ProductDetailResponse.Tag::new)
+                .toList();
         ProductMetrics metrics = metrics(id);
         return new ProductDetailResponse(p, new ProductDetailResponse.PublicShop(shop), mediaResponse,
-                optionResponse, variantResponse, metrics.minPrice, metrics.maxPrice, metrics.stock);
+                optionResponse, variantResponse, tagResponse, metrics.minPrice, metrics.maxPrice, metrics.stock);
     }
 
     @Transactional(readOnly = true)
