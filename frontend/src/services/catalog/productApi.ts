@@ -14,7 +14,7 @@ export interface ProductCardDto {
   maxPrice?: number | string | null;
   price?: number | string | null;
   comparePrice?: number | string | null;
-  tags?: (string | { id?: string; name?: string; label?: string })[] | null;
+  tags?: (string | { id?: string; name?: string; slug?: string })[] | null;
   stockQuantity?: number | null;
   featured?: boolean;
   ratingAverage?: number | string | null;
@@ -36,7 +36,7 @@ export interface ProductTagDto {
 
 export interface ProductDetailDto extends ProductCardDto {
   status?: string;
-  tags?: (string | ProductTagDto | { id?: string; name?: string; label?: string })[] | null;
+  tags?: (string | ProductTagDto | { id?: string; name?: string; slug?: string })[] | null;
   shop?: { id: string; name: string; slug?: string; logoUrl?: string; bannerUrl?: string; address?: string | null; ratingAverage?: number | string; ratingCount?: number; followersCount?: number } | null;
   category?: { id: string; name: string; slug?: string; imageUrl?: string } | null;
   media?: { id: string; type?: string; url: string; sortOrder?: number }[];
