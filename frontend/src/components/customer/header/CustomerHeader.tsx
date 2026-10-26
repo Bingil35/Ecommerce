@@ -257,7 +257,7 @@ const CustomerHeader = () => {
                     </div>
                     <div className="p-1.5">
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
-                        <UserRound size={17} strokeWidth={1.8} /><span>Tài khoản</span>
+                        <UserRound size={17} strokeWidth={1.8} /><span>Thông tin</span>
                       </button>
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/orders'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
                         <Package size={17} strokeWidth={1.8} /><span>Đơn mua</span>

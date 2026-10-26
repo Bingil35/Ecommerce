@@ -120,6 +120,51 @@ public class UserService {
         return savedUser;
     }
 
+    @Transactional
+    public User updateCustomerProfile(String currentEmail, String fullName, String email, String phone) {
+        // Resolve the account from the authenticated principal; never accept a target user ID from the client.
+        User user = getUserByEmail(currentEmail);
+
+        String normalizedName = fullName == null ? "" : fullName.trim();
+        if (normalizedName.isEmpty()) {
+            throw new IllegalArgumentException("Họ và tên không được để trống.");
+        }
+
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase(java.util.Locale.ROOT);
+        if (normalizedEmail.isEmpty()) {
+            throw new IllegalArgumentException("Email không được để trống.");
+        }
+        if (userRepository.existsByEmailIgnoreCaseAndIdNot(normalizedEmail, user.getId())) {
+            throw new IllegalArgumentException("Email này đã được sử dụng bởi tài khoản khác.");
+        }
+
+        String normalizedPhone = phone == null || phone.isBlank() ? null : phone.trim();
+        if (normalizedPhone != null && userRepository.existsByPhoneAndIdNot(normalizedPhone, user.getId())) {
+            throw new IllegalArgumentException("Số điện thoại này đã được sử dụng bởi tài khoản khác.");
+        }
+
+        user.setFullName(normalizedName);
+        user.setEmail(normalizedEmail);
+        user.setPhone(normalizedPhone);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void changeCustomerPassword(String currentEmail, String currentPassword, String newPassword) {
+        User user = getUserByEmail(currentEmail);
+        if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu hiện tại không chính xác.");
+        }
+        if (newPassword == null || newPassword.length() < 8 || newPassword.length() > 72) {
+            throw new IllegalArgumentException("Mật khẩu mới phải có từ 8 đến 72 ký tự.");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     @Transactional(readOnly = true)
     public List<String> getRoleNamesByUserId(UUID userId) {
         return userRoleRepository.findRoleNamesByUserId(userId);

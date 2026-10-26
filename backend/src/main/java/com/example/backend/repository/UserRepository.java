@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import jakarta.persistence.LockModeType;
-
 import com.example.backend.entity.User;
+
+import jakarta.persistence.LockModeType;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
@@ -24,7 +24,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, UUID id);
+
     boolean existsByPhone(String phone);
+
+    boolean existsByPhoneAndIdNot(String phone, UUID id);
 
     /**
      * Pessimistic row lock on the customer. Cart mutations take this lock first so
