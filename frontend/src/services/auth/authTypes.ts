@@ -4,7 +4,8 @@ export interface UserResponse {
   email: string;
   phone: string | null;
   avatarUrl: string | null;
-  roleDefault: string;
+  roleDefault: string | null;
+  roles?: string[];
   status: string;
 }
 

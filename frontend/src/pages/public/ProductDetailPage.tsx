@@ -504,7 +504,7 @@ const { addToCart } = useCart();
 
 
 
-        <section className="mt-6 rounded-3xl border border-[#E7ECF5] bg-white p-5 sm:p-7"><h2 className="text-lg font-bold text-[#202642] sm:text-xl">Mô tả sản phẩm</h2><div className="mt-4 whitespace-pre-line text-sm leading-7 text-[#626C82]">{product.description || 'Cửa hàng chưa cập nhật mô tả cho sản phẩm này.'}</div><div className="mt-5 flex flex-wrap gap-2 text-xs text-[#7B8498]">{product.category && <span className="rounded-full bg-[#F3F6FC] px-3 py-1.5">Danh mục: {product.category.name}</span>}{product.tags?.map((tag, index) => { const label = typeof tag === 'string' ? tag : tag.name || tag.label; return label ? <span key={(typeof tag === 'string' ? tag : tag.id) || `${label}-${index}`} className="rounded-full border border-[#E1E7F1] bg-white px-3 py-1.5 text-[#5367C9]">#{label.replace(/^#/, '')}</span> : null; })}</div></section>
+        <section className="mt-6 rounded-3xl border border-[#E7ECF5] bg-white p-5 sm:p-7"><h2 className="text-lg font-bold text-[#202642] sm:text-xl">Mô tả sản phẩm</h2><div className="mt-4 whitespace-pre-line text-sm leading-7 text-[#626C82]">{product.description || 'Cửa hàng chưa cập nhật mô tả cho sản phẩm này.'}</div><div className="mt-5 flex flex-wrap gap-2 text-xs text-[#7B8498]">{product.category && <span className="rounded-full bg-[#F3F6FC] px-3 py-1.5">Danh mục: {product.category.name}</span>}{product.tags?.map((tag, index) => { const label = typeof tag === 'string' ? tag : tag.slug || tag.name; return label ? <span key={(typeof tag === 'string' ? tag : tag.id) || `${label}-${index}`} className="rounded-full border border-[#E1E7F1] bg-white px-3 py-1.5 text-[#5367C9]">#{label.replace(/^#/, '')}</span> : null; })}</div></section>
 
 
 
