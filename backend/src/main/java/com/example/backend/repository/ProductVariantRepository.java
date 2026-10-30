@@ -4,6 +4,7 @@ import com.example.backend.entity.ProductVariant;
 import com.example.backend.entity.ProductStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,6 +17,11 @@ public interface ProductVariantRepository
 
     List<ProductVariant> findByProductIdAndStatusOrderByCreatedAtAsc(
             UUID productId,
+            ProductStatus status
+    );
+
+    List<ProductVariant> findByProductIdInAndStatusOrderByCreatedAtAsc(
+            Collection<UUID> productIds,
             ProductStatus status
     );
 

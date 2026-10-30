@@ -12,6 +12,7 @@ import LoginPage from '../pages/guest/LoginPage';
 import RegisterPage from '../pages/guest/RegisterPage';
 import ShopDetailPage from '../pages/public/ShopDetailPage';
 import CartPage from '../pages/customer/CartPage';
+import WishlistPage from '../pages/customer/WishlistPage';
 import AccountInfoPage from '../pages/customer/AccountInfoPage';
 const PublicRoutes = () => {
   return (
@@ -22,6 +23,7 @@ const PublicRoutes = () => {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/products" element={<ProductListingPage />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/account" element={<AccountInfoPage />} />
         <Route
           path="/product/:slug"

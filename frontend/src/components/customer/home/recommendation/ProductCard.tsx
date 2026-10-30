@@ -1,11 +1,13 @@
 import { Heart, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
+import { useWishlist } from '../../../../context/WishlistContext';
 import type { HomeProduct } from './productData';
 import { formatVnd, productImage } from '../../../../services/catalog/productApi';
 interface ProductCardProps { product: HomeProduct; }
 export default function ProductCard({ product }: ProductCardProps) {
-  const navigate = useNavigate(); const { isAuthenticated } = useAuth();
+  const navigate = useNavigate(); const { isAuthenticated } = useAuth(); const { isWishlisted, isPending, toggle } = useWishlist();
+  const wishlisted = isWishlisted(product.id);
   const price = product.minPrice ?? product.price;
   const comparePrice = product.comparePrice;
   const hasDiscount = comparePrice != null && Number(comparePrice) > Number(price);
@@ -17,7 +19,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <img src={productImage(product)} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
       {product.featured && <span className="absolute left-2 top-2 rounded-md bg-[#5367C9] px-2 py-1 text-[10px] font-semibold text-white">Nổi bật</span>}
       {hasDiscount && <span className="absolute bottom-2 left-2 rounded-md bg-[#FFECEE] px-2 py-1 text-[10px] font-bold text-[#D95368]">-{discountPercent}%</span>}
-      <button type="button" aria-label="Thêm vào yêu thích" onClick={(e) => { e.stopPropagation(); if (!isAuthenticated) navigate('/login', { state: { from: productPath, notice: 'Đăng nhập để thêm sản phẩm vào yêu thích.' } }); else window.alert('Chức năng yêu thích sẽ được kết nối ở sprint tiếp theo.'); }} className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#667085] shadow-sm transition hover:text-[#5367C9]"><Heart size={16} strokeWidth={1.8}/></button>
+      <button type="button" aria-label={wishlisted ? 'Bỏ khỏi yêu thích' : 'Thêm vào yêu thích'} aria-pressed={wishlisted} disabled={isPending(product.id)} onClick={(e) => { e.stopPropagation(); if (!isAuthenticated) navigate('/login', { state: { from: productPath, notice: 'Đăng nhập để thêm sản phẩm vào yêu thích.' } }); else void toggle(product.id); }} className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition disabled:cursor-wait disabled:opacity-70 ${wishlisted ? 'text-[#E5334F]' : 'text-[#667085] hover:text-[#E5334F]'}`}><Heart size={16} strokeWidth={1.8} fill={wishlisted ? 'currentColor' : 'none'}/></button>
     </div>
     <button type="button" onClick={openProduct} className="block w-full p-3 text-left">
       <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-[#252A3A]">{product.name}</h3>
