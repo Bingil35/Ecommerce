@@ -1,15 +1,21 @@
 package com.example.backend.service;
 
+import com.example.backend.config.RoleConstants;
 import com.example.backend.dto.request.LoginRequest;
 import com.example.backend.dto.response.LoginResponse;
 import com.example.backend.dto.response.UserResponse;
 import com.example.backend.entity.User;
 import com.example.backend.entity.UserStatus;
 import com.example.backend.exception.InvalidCredentialsException;
+import com.example.backend.exception.ShopOwnerRequiredException;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.service.UserService;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +39,21 @@ public class AuthService {
         this.userService = userService;
     }
 
+    /** Đăng nhập thường (khách hàng, mọi vai trò hợp lệ). */
     public LoginResponse login(LoginRequest request) {
+        return doLogin(request, false);
+    }
+
+    /**
+     * Đăng nhập kênh người bán: ngoài việc kiểm tra thông tin đăng nhập,
+     * tài khoản bắt buộc có vai trò SHOP_OWNER. Nếu không, trả 403 và
+     * KHÔNG cấp token, không cập nhật lastLoginAt.
+     */
+    public LoginResponse loginAsSeller(LoginRequest request) {
+        return doLogin(request, true);
+    }
+
+    private LoginResponse doLogin(LoginRequest request, boolean sellerOnly) {
 
         if (request == null || request.getIdentifier() == null
                 || request.getIdentifier().isBlank()
@@ -76,6 +96,12 @@ public class AuthService {
             );
         }
 
+        if (sellerOnly && !roles.contains(RoleConstants.SHOP_OWNER)) {
+            throw new ShopOwnerRequiredException(
+                    "Tài khoản này chưa có gian hàng."
+            );
+        }
+
         user.setLastLoginAt(OffsetDateTime.now());
         userRepository.save(user);
 
@@ -92,5 +118,19 @@ public class AuthService {
                 "Bearer",
                 userResponse
         );
+    }
+
+    /**
+     * Email được lưu dạng chữ thường khi đăng ký, nên nếu không tìm thấy theo đúng
+     * chuỗi người dùng nhập thì thử lại với chữ thường (tài khoản cũ vẫn đăng nhập được).
+     */
+    private Optional<User> findUserByIdentifier(String identifier) {
+        Optional<User> found =
+                userRepository.findByEmailOrPhone(identifier, identifier);
+        String lower = identifier.toLowerCase(Locale.ROOT);
+        if (found.isEmpty() && !lower.equals(identifier)) {
+            found = userRepository.findByEmailOrPhone(lower, lower);
+        }
+        return found;
     }
 }

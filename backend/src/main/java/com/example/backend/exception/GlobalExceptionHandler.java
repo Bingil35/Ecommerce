@@ -61,6 +61,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Bạn không có quyền thực hiện thao tác này."));
     }
 
+    @ExceptionHandler(ShopOwnerRequiredException.class)
+    public ResponseEntity<ApiResponse<Void>> handleShopOwnerRequired(
+            ShopOwnerRequiredException exception
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(exception.getMessage()));
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials(
             InvalidCredentialsException exception

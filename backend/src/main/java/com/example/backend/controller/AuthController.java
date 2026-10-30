@@ -102,4 +102,21 @@ public class AuthController {
                 )
         );
     }
+
+    /**
+     * Đăng nhập kênh người bán: chỉ tài khoản có vai trò SHOP_OWNER mới nhận được token.
+     */
+    @PostMapping("/seller/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> sellerLogin(
+            @RequestBody LoginRequest request
+    ) {
+        LoginResponse response = authService.loginAsSeller(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Đăng nhập kênh người bán thành công.",
+                        response
+                )
+        );
+    }
 }
