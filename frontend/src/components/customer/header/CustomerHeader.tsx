@@ -8,6 +8,7 @@ import {
   LogOut,
   UserRound,
   Settings,
+  Store,
 } from 'lucide-react';
 
 import {
@@ -19,6 +20,8 @@ import {
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { isShopOwner } from '../../../services/auth/roles';
+import { BECOME_SELLER_ENTRY } from '../../../routes/BecomeSellerGuard';
 import { useCart } from '../../../context/CartContext';
 import { useWishlist } from '../../../context/WishlistContext';
 
@@ -275,6 +278,22 @@ const CustomerHeader = () => {
                       </button>
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
                         <Settings size={17} strokeWidth={1.8} /><span>Cài đặt</span>
+                      </button>
+                    </div>
+                    <div className="border-t border-[#EEF1F6] p-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAccountOpen(false);
+                          if (isShopOwner(user)) {
+                            navigate('/seller');
+                          } else {
+                            navigate('/seller/register', { state: { entry: BECOME_SELLER_ENTRY } });
+                          }
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl border border-[#CFE0FB] bg-[#F1F6FF] px-3 py-2.5 text-left text-sm font-medium text-[#2F6BEA] transition-colors hover:bg-[#E6EFFF]"
+                      >
+                        <Store size={17} strokeWidth={1.8} /><span>{isShopOwner(user) ? 'Kênh người bán' : 'Mở gian hàng'}</span>
                       </button>
                     </div>
                     <div className="border-t border-[#EEF1F6] p-1.5">

@@ -27,6 +27,11 @@ export const authStorage = {
     }
   },
 
+  /** true nếu phiên đang được lưu lâu dài (người dùng đã chọn "Ghi nhớ đăng nhập"). */
+  isRemembered(): boolean {
+    return localStorage.getItem(ACCESS_TOKEN_KEY) !== null;
+  },
+
   save(
     accessToken: string,
     user: UserResponse,
