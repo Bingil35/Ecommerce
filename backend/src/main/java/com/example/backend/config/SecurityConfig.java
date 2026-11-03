@@ -14,8 +14,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import org.springframework.http.HttpMethod;
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -97,10 +95,6 @@ public class SecurityConfig {
                         .permitAll()
 
                         .requestMatchers("/api/shop-owner/**")
-                        .hasRole("SHOP_OWNER")
-
-                        // Legacy product-management URLs remain shop-owner only
-                        .requestMatchers("/api/shop/**")
                         .hasRole("SHOP_OWNER")
 
                         .requestMatchers("/api/customer/**")
