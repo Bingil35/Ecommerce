@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, CircleAlert, Heart, Info, Trash2 } from 'lucide-react';
 
 import WishlistBenefits from '../../components/customer/wishlist/WishlistBenefits';
@@ -14,12 +14,9 @@ import {
   WishlistSkeleton,
 } from '../../components/customer/wishlist/WishlistStates';
 import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
-import { getCartErrorMessage } from '../../services/cart/cartApi';
 import {
   categoryApi,
-  productApi,
   type ProductCardDto,
 } from '../../services/catalog/productApi';
 import {
@@ -34,6 +31,7 @@ import {
   ALL_CATEGORIES,
   DEFAULT_PAGE_SIZE,
   EMPTY_FILTERS,
+  buildCategoryRoots,
   buildCategoryChips,
   categoryKeyOf,
   countActiveFilters,
@@ -78,9 +76,7 @@ const WishlistPage = () => {
 };
 
 const WishlistContent = () => {
-  const navigate = useNavigate();
   const { logout } = useAuth();
-  const { addToCart } = useCart();
   const { sync } = useWishlist();
 
   const [status, setStatus] = useState<LoadStatus>('loading');
@@ -89,6 +85,7 @@ const WishlistContent = () => {
   const [serverTotal, setServerTotal] = useState(0);
   const [truncated, setTruncated] = useState(false);
   const [categoryNames, setCategoryNames] = useState<Map<string, string>>(new Map());
+  const [categoryRootIds, setCategoryRootIds] = useState<Map<string, string>>(new Map());
 
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState(ALL_CATEGORIES);
@@ -98,7 +95,6 @@ const WishlistContent = () => {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
-  const [cartBusyIds, setCartBusyIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -107,7 +103,6 @@ const WishlistContent = () => {
 
   // Chặn bấm lặp trước khi state kịp cập nhật
   const removeInFlight = useRef(new Set<string>());
-  const cartInFlight = useRef(new Set<string>());
   const toastTimer = useRef<number | undefined>(undefined);
   const logoutRef = useRef(logout);
   useEffect(() => {
@@ -163,7 +158,9 @@ const WishlistContent = () => {
       .list()
       .then((list) => {
         if (!controller.signal.aborted) {
-          setCategoryNames(new Map(list.map((c) => [c.id, c.name])));
+          const roots = buildCategoryRoots(list);
+          setCategoryNames(roots.rootNames);
+          setCategoryRootIds(roots.rootIds);
         }
       })
       .catch(() => {
@@ -195,8 +192,8 @@ const WishlistContent = () => {
   }, [items, keyword, filters]);
 
   const chips = useMemo(
-    () => buildCategoryChips(items, matched, categoryNames),
-    [items, matched, categoryNames]
+    () => buildCategoryChips(items, matched, categoryNames, categoryRootIds),
+    [items, matched, categoryNames, categoryRootIds]
   );
 
   // Danh mục đang chọn không còn sản phẩm nào (đã xóa hết) -> coi như "Tất cả"
@@ -208,7 +205,7 @@ const WishlistContent = () => {
     const inCategory =
       activeCategory === ALL_CATEGORIES
         ? matched
-        : matched.filter((item) => categoryKeyOf(item.product) === activeCategory);
+        : matched.filter((item) => categoryKeyOf(item.product, categoryRootIds) === activeCategory);
     return sortItems(inCategory, sort);
   }, [matched, activeCategory, sort]);
 
@@ -316,56 +313,6 @@ const WishlistContent = () => {
     }
   };
 
-  /* ---------- Thêm vào giỏ ---------- */
-
-  const handleAddToCart = async (product: ProductCardDto) => {
-    if (cartInFlight.current.has(product.id)) return;
-    cartInFlight.current.add(product.id);
-    setCartBusyIds((current) => new Set(current).add(product.id));
-
-    try {
-      // Giỏ hàng BE cần variantId, mà thẻ wishlist không có; lấy từ chi tiết sản phẩm
-      const detail = await productApi.detail(product.slug);
-      const variants = (detail.variants ?? []).filter(
-        (variant) => !variant.status || variant.status === 'ACTIVE'
-      );
-
-      if (variants.length === 0) {
-        showToast('error', 'Sản phẩm hiện chưa thể mua.');
-        return;
-      }
-
-      // Nhiều phân loại -> để khách chọn ở trang chi tiết, không tự chọn thay
-      if (variants.length > 1) {
-        navigate(`/product/${product.slug || product.id}`);
-        return;
-      }
-
-      const variant = variants[0];
-      if (variant.stockQuantity != null && variant.stockQuantity <= 0) {
-        showToast('error', 'Sản phẩm đã hết hàng.');
-        return;
-      }
-
-      // CartContext tự báo lỗi (hết hàng, vượt tồn kho...) và cập nhật badge giỏ hàng khi thành công
-      const added = await addToCart({
-        productId: product.id,
-        variantId: variant.id,
-        quantity: 1,
-      });
-      if (added) showToast('success', 'Đã thêm sản phẩm vào giỏ hàng.');
-    } catch (error) {
-      showToast('error', getCartErrorMessage(error));
-    } finally {
-      cartInFlight.current.delete(product.id);
-      setCartBusyIds((current) => {
-        const next = new Set(current);
-        next.delete(product.id);
-        return next;
-      });
-    }
-  };
-
   /* ---------- Render ---------- */
 
   const isEmptyWishlist = status === 'ready' && items.length === 0;
@@ -470,9 +417,7 @@ const WishlistContent = () => {
                       key={item.product.id}
                       product={item.product}
                       isRemoving={removingIds.has(item.product.id)}
-                      isAddingToCart={cartBusyIds.has(item.product.id)}
                       onRemove={handleRemove}
-                      onAddToCart={handleAddToCart}
                     />
                   ))}
                 </div>

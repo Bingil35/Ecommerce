@@ -3,7 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import PublicRoutes from './PublicRoutes';
 import CustomerRoutes from './CustomerRoutes';
 import SellerRoutes from './SellerRoutes';
-
+import ShopOwnerRoutes from './ShopOwnerRoutes';
 
 const AppRoutes = () => {
   return (
@@ -11,6 +11,7 @@ const AppRoutes = () => {
       <PublicRoutes />
       <CustomerRoutes />
       <SellerRoutes />
+      <ShopOwnerRoutes />
     </BrowserRouter>
   );
 };

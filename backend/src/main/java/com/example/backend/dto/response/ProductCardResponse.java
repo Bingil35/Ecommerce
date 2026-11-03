@@ -20,11 +20,12 @@ public class ProductCardResponse {
     private BigDecimal comparePrice;
     private Integer discountPercent;
     private Integer stockQuantity;
+    private Integer soldQuantity;
     private Boolean featured;
     private BigDecimal ratingAverage;
     private Integer ratingCount;
 
-    public ProductCardResponse(Product product, BigDecimal minPrice, BigDecimal maxPrice, BigDecimal comparePrice, Integer stockQuantity, String thumbnailUrl) {
+    public ProductCardResponse(Product product, BigDecimal minPrice, BigDecimal maxPrice, BigDecimal comparePrice, Integer stockQuantity, Integer soldQuantity, String thumbnailUrl) {
         this.id = product.getId();
         this.shopId = product.getShopId();
         this.categoryId = product.getCategory() == null ? null : product.getCategory().getId();
@@ -38,6 +39,7 @@ public class ProductCardResponse {
         this.comparePrice = comparePrice;
         this.discountPercent = calculateDiscountPercent(minPrice, comparePrice);
         this.stockQuantity = stockQuantity;
+        this.soldQuantity = soldQuantity;
         this.featured = product.getFeatured();
         this.ratingAverage = product.getRatingAverage();
         this.ratingCount = product.getRatingCount();
@@ -51,6 +53,6 @@ public class ProductCardResponse {
     public UUID getBrandId(){return brandId;} public String getName(){return name;} public String getSlug(){return slug;}
     public String getDescription(){return description;} public String getThumbnailUrl(){return thumbnailUrl;}
     public BigDecimal getMinPrice(){return minPrice;} public BigDecimal getMaxPrice(){return maxPrice;} public BigDecimal getPrice(){return minPrice;} public BigDecimal getComparePrice(){return comparePrice;} public Integer getDiscountPercent(){return discountPercent;}
-    public Integer getStockQuantity(){return stockQuantity;} public Boolean getFeatured(){return featured;}
+    public Integer getStockQuantity(){return stockQuantity;} public Integer getSoldQuantity(){return soldQuantity;} public Boolean getFeatured(){return featured;}
     public BigDecimal getRatingAverage(){return ratingAverage;} public Integer getRatingCount(){return ratingCount;}
 }

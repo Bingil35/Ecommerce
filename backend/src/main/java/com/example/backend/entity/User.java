@@ -55,6 +55,22 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    // Coupon-only restriction. This does not affect login, cart, or regular-price checkout.
+    @Column(name = "coupon_restricted")
+    private Boolean couponRestricted = false;
+
+    @Column(name = "coupon_restricted_at")
+    private OffsetDateTime couponRestrictedAt;
+
+    @Column(name = "coupon_restriction_reason", columnDefinition = "text")
+    private String couponRestrictionReason;
+
+    @Column(name = "coupon_restriction_reviewed_at")
+    private OffsetDateTime couponRestrictionReviewedAt;
+
+    @Column(name = "coupon_restriction_reviewed_by", length = 255)
+    private String couponRestrictionReviewedBy;
+
     @PrePersist
     protected void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -104,4 +120,15 @@ public class User {
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
+
+    public boolean isCouponRestricted() { return Boolean.TRUE.equals(couponRestricted); }
+    public void setCouponRestricted(boolean couponRestricted) { this.couponRestricted = couponRestricted; }
+    public OffsetDateTime getCouponRestrictedAt() { return couponRestrictedAt; }
+    public void setCouponRestrictedAt(OffsetDateTime value) { this.couponRestrictedAt = value; }
+    public String getCouponRestrictionReason() { return couponRestrictionReason; }
+    public void setCouponRestrictionReason(String value) { this.couponRestrictionReason = value; }
+    public OffsetDateTime getCouponRestrictionReviewedAt() { return couponRestrictionReviewedAt; }
+    public void setCouponRestrictionReviewedAt(OffsetDateTime value) { this.couponRestrictionReviewedAt = value; }
+    public String getCouponRestrictionReviewedBy() { return couponRestrictionReviewedBy; }
+    public void setCouponRestrictionReviewedBy(String value) { this.couponRestrictionReviewedBy = value; }
 }

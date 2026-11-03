@@ -14,6 +14,7 @@ import jakarta.persistence.LockModeType;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
+    java.util.List<User> findByCouponRestrictedTrueOrderByCouponRestrictedAtAsc();
 
     Optional<User> findByPhone(String phone);
 

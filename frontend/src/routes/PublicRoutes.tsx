@@ -14,6 +14,10 @@ import ShopDetailPage from '../pages/public/ShopDetailPage';
 import CartPage from '../pages/customer/CartPage';
 import WishlistPage from '../pages/customer/WishlistPage';
 import AccountInfoPage from '../pages/customer/AccountInfoPage';
+import CheckoutPage from '../pages/customer/CheckoutPage';
+import OrderHistoryPage from '../pages/customer/OrderHistoryPage';
+import OrderDetailPage from '../pages/customer/OrderDetailPage';
+import AddressBookPage from '../pages/customer/AddressBookPage';
 const PublicRoutes = () => {
   return (
     <Routes>
@@ -25,6 +29,10 @@ const PublicRoutes = () => {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/account" element={<AccountInfoPage />} />
+        <Route path="/account/addresses" element={<AddressBookPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/orders" element={<OrderHistoryPage />} />
+        <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         <Route
           path="/product/:slug"
           element={<ProductDetailPage />}

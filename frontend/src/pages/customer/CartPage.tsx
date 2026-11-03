@@ -111,18 +111,16 @@ const CartPage = () => {
   const handleCheckout = () => {
     if (selectedCount === 0) return;
 
-    // Dữ liệu sẽ gửi sang bước thanh toán
     const payload = {
-      cartItemIds: [...effectiveSelected],
-      shopVouchers: shopSummaries
-        .filter((s) => s.voucher && s.discount > 0)
-        .map((s) => ({ shopId: s.shopId, voucherId: s.voucher!.id })),
-      orderVoucherId: totals.orderDiscount > 0 ? orderVoucher?.id ?? null : null,
+      itemIds: [...effectiveSelected],
+      shopCouponCodes: Object.fromEntries(
+        shopSummaries
+          .filter((summary) => summary.voucher && summary.discount > 0)
+          .map((summary) => [summary.shopId, summary.voucher!.code])
+      ),
+      platformCouponCode: totals.orderDiscount > 0 ? orderVoucher?.code ?? null : null,
     };
-
-    // TODO: khi làm trang thanh toán -> navigate('/checkout', { state: payload })
-    console.info('[checkout] payload', payload);
-    window.alert('Chức năng thanh toán chưa được triển khai.');
+    navigate('/checkout', { state: payload });
   };
 
   return (

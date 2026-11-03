@@ -2,11 +2,14 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.ShopAddressOptionResponse;
+import com.example.backend.dto.response.PublicShopResponse;
 import com.example.backend.entity.Shop;
 import com.example.backend.entity.ShopStatus;
+import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.repository.ShopRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -42,5 +45,12 @@ public class ShopPublicController {
                 "Lấy danh sách địa chỉ cửa hàng thành công.",
                 List.copyOf(uniqueAddresses.values())
         );
+    }
+
+    @GetMapping("/{slug}")
+    public ApiResponse<PublicShopResponse> getPublicShop(@PathVariable String slug) {
+        Shop shop = shops.findBySlugAndStatus(slug, ShopStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cửa hàng."));
+        return ApiResponse.success("Lấy thông tin cửa hàng thành công.", PublicShopResponse.from(shop));
     }
 }

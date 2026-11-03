@@ -91,7 +91,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/brands")
                         .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/shops")
+                        .requestMatchers(HttpMethod.GET, "/api/shops/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**")
                         .permitAll()

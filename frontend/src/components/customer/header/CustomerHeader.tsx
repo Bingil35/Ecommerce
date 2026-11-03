@@ -9,6 +9,7 @@ import {
   UserRound,
   Settings,
   Store,
+  MapPin,
 } from 'lucide-react';
 
 import {
@@ -274,7 +275,10 @@ const CustomerHeader = () => {
                         <UserRound size={17} strokeWidth={1.8} /><span>Thông tin</span>
                       </button>
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/orders'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
-                        <Package size={17} strokeWidth={1.8} /><span>Đơn mua</span>
+                        <Package size={17} strokeWidth={1.8} /><span>Đơn hàng</span>
+                      </button>
+                      <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/addresses'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
+                        <MapPin size={17} strokeWidth={1.8} /><span>Địa chỉ của tôi</span>
                       </button>
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
                         <Settings size={17} strokeWidth={1.8} /><span>Cài đặt</span>

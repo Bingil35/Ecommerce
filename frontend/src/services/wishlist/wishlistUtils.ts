@@ -1,4 +1,4 @@
-import type { ProductCardDto } from '../catalog/productApi';
+import type { CategoryDto, ProductCardDto } from '../catalog/productApi';
 import type { WishlistItemDto } from './wishlistTypes';
 
 export type WishlistSort =
@@ -137,8 +137,27 @@ export const matchesFilters = (
 
 /* ---------- Danh mục ---------- */
 
-export const categoryKeyOf = (product: ProductCardDto): string =>
-  product.categoryId || NO_CATEGORY;
+export const categoryKeyOf = (
+  product: ProductCardDto,
+  rootIds: ReadonlyMap<string, string> = new Map()
+): string => product.categoryId ? rootIds.get(product.categoryId) ?? product.categoryId : NO_CATEGORY;
+
+export const buildCategoryRoots = (categories: CategoryDto[]) => {
+  const byId = new Map(categories.map(category => [category.id, category]));
+  const rootIds = new Map<string, string>();
+  const rootNames = new Map<string, string>();
+  categories.forEach(category => {
+    let current = category;
+    const visited = new Set<string>([category.id]);
+    while (current.parentId && byId.has(current.parentId) && !visited.has(current.parentId)) {
+      visited.add(current.parentId);
+      current = byId.get(current.parentId)!;
+    }
+    rootIds.set(category.id, current.id);
+    rootNames.set(current.id, current.name);
+  });
+  return { rootIds, rootNames };
+};
 
 /**
  * Chip lấy từ toàn bộ danh sách yêu thích (để chip không biến mất khi đang tìm kiếm);
@@ -147,17 +166,18 @@ export const categoryKeyOf = (product: ProductCardDto): string =>
 export const buildCategoryChips = (
   allItems: WishlistItemDto[],
   matchedItems: WishlistItemDto[],
-  categoryNames: ReadonlyMap<string, string>
+  categoryNames: ReadonlyMap<string, string>,
+  rootIds: ReadonlyMap<string, string> = new Map()
 ): CategoryChip[] => {
   const totals = new Map<string, number>();
   allItems.forEach((item) => {
-    const key = categoryKeyOf(item.product);
+    const key = categoryKeyOf(item.product, rootIds);
     totals.set(key, (totals.get(key) ?? 0) + 1);
   });
 
   const matched = new Map<string, number>();
   matchedItems.forEach((item) => {
-    const key = categoryKeyOf(item.product);
+    const key = categoryKeyOf(item.product, rootIds);
     matched.set(key, (matched.get(key) ?? 0) + 1);
   });
 
