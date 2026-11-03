@@ -4,11 +4,7 @@ export interface UserResponse {
   email: string;
   phone: string | null;
   avatarUrl: string | null;
-<<<<<<< Updated upstream
   roleDefault: string | null;
-=======
-  roleDefault: string;
->>>>>>> Stashed changes
   roles?: string[];
   status: string;
 }
