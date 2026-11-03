@@ -6,6 +6,8 @@ import ShopOwnerLayout from '../layouts/ShopOwnerLayout';
 import SellerLoginPage from '../pages/seller/SellerLoginPage';
 import SellerRegisterShopPage from '../pages/seller/SellerRegisterShopPage';
 import SellerDashboardPage from '../pages/seller/SellerDashboardPage';
+import SellerProductsPage from '../pages/seller/SellerProductsPage';
+import SellerCreateProductPage from '../pages/seller/SellerCreateProductPage';
 
 import BecomeSellerGuard from './BecomeSellerGuard';
 import RequireShopOwner from './RequireShopOwner';
@@ -28,6 +30,8 @@ const SellerRoutes = () => {
       <Route element={<RequireShopOwner />}>
         <Route element={<ShopOwnerLayout />}>
           <Route path="/seller" element={<SellerDashboardPage />} />
+          <Route path="/seller/products" element={<SellerProductsPage />} />
+          <Route path="/seller/products/new" element={<SellerCreateProductPage />} />
         </Route>
       </Route>
     </Routes>

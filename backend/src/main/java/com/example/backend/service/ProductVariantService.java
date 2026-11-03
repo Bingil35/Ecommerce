@@ -36,6 +36,16 @@ import java.util.UUID;
 @Service
 public class ProductVariantService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(ProductVariantService.class);
+
+    private static String currentActor() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder
+                        .getContext().getAuthentication();
+        return authentication == null ? null : authentication.getName();
+    }
+
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ProductOptionRepository productOptionRepository;
@@ -44,6 +54,8 @@ public class ProductVariantService {
     private final InventoryRepository inventoryRepository;
     private final ProductMediaRepository productMediaRepository;
     private final CartService cartService;
+    private final ProductApprovalPolicy approvalPolicy;
+    private final ProductHistoryGuard historyGuard;
 
     public ProductVariantService(
             ProductRepository productRepository,
@@ -53,7 +65,9 @@ public class ProductVariantService {
             VariantOptionValueRepository variantOptionValueRepository,
             InventoryRepository inventoryRepository,
             ProductMediaRepository productMediaRepository,
-            CartService cartService
+            CartService cartService,
+            ProductApprovalPolicy approvalPolicy,
+            ProductHistoryGuard historyGuard
     ) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
@@ -64,6 +78,8 @@ public class ProductVariantService {
         this.inventoryRepository = inventoryRepository;
         this.productMediaRepository = productMediaRepository;
         this.cartService = cartService;
+        this.approvalPolicy = approvalPolicy;
+        this.historyGuard = historyGuard;
     }
 
     // =====================================================
@@ -96,7 +112,12 @@ public class ProductVariantService {
         option.setProduct(product);
         option.setName(name);
 
-        return productOptionRepository.save(option);
+        ProductOption saved = productOptionRepository.save(option);
+
+        // Thay đổi option là thay đổi nội dung cần duyệt lại.
+        approvalPolicy.markContentChanged(product);
+
+        return saved;
     }
 
     public List<ProductOption> getOptions(
@@ -149,9 +170,17 @@ public class ProductVariantService {
             );
         }
 
+        boolean nameChanged = !name.equals(option.getName());
+
         option.setName(name);
 
-        return productOptionRepository.save(option);
+        ProductOption saved = productOptionRepository.save(option);
+
+        if (nameChanged) {
+            approvalPolicy.markContentChanged(option.getProduct());
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -162,15 +191,37 @@ public class ProductVariantService {
         ProductOption option =
                 getOptionById(optionId);
 
+        List<ProductOptionValue> optionValues =
+                productOptionValueRepository
+                        .findByProductOptionIdOrderBySortOrderAsc(optionId);
+
+        int usedBy = 0;
+
+        for (ProductOptionValue value : optionValues) {
+            usedBy += variantOptionValueRepository
+                    .findByOptionValueId(value.getId())
+                    .size();
+        }
+
+        if (usedBy > 0) {
+            throw new IllegalArgumentException(
+                    "Thuộc tính này đang được dùng bởi " + usedBy
+                            + " biến thể. Hãy sửa hoặc xóa các biến thể đó trước."
+            );
+        }
+
         /*
-         * Các ProductOptionValue thuộc option này
-         * sẽ được xóa bởi ON DELETE CASCADE ở DB.
-         *
-         * Các VariantOptionValue liên quan cũng được
-         * xóa bởi ON DELETE CASCADE.
+         * Schema KHÔNG có ON DELETE CASCADE: phải xóa các ProductOptionValue
+         * (đã chắc chắn không còn biến thể nào dùng) trước khi xóa option.
          */
+        productOptionValueRepository.deleteAll(optionValues);
+        productOptionValueRepository.flush();
+
+        Product ownerProduct = option.getProduct();
 
         productOptionRepository.delete(option);
+
+        approvalPolicy.markContentChanged(ownerProduct);
     }
 
     // =====================================================
@@ -208,9 +259,13 @@ public class ProductVariantService {
         optionValue.setOption(option);
         optionValue.setValue(value);
 
-        return productOptionValueRepository.save(
+        ProductOptionValue saved = productOptionValueRepository.save(
                 optionValue
         );
+
+        approvalPolicy.markContentChanged(option.getProduct());
+
+        return saved;
     }
 
     public List<ProductOptionValue> getOptionValues(
@@ -265,11 +320,21 @@ public class ProductVariantService {
             );
         }
 
+        boolean valueChanged = !value.equals(optionValue.getValue());
+
         optionValue.setValue(value);
 
-        return productOptionValueRepository.save(
+        ProductOptionValue saved = productOptionValueRepository.save(
                 optionValue
         );
+
+        if (valueChanged) {
+            approvalPolicy.markContentChanged(
+                    optionValue.getProductOption().getProduct()
+            );
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -280,12 +345,26 @@ public class ProductVariantService {
         ProductOptionValue optionValue =
                 getOptionValueById(optionValueId);
 
+        int usedBy = variantOptionValueRepository
+                .findByOptionValueId(optionValueId)
+                .size();
+
+        if (usedBy > 0) {
+            throw new IllegalArgumentException(
+                    "Giá trị này đang được dùng bởi " + usedBy
+                            + " biến thể. Hãy sửa hoặc xóa các biến thể đó trước."
+            );
+        }
+
         /*
-         * Các VariantOptionValue liên quan sẽ được
-         * xóa bởi ON DELETE CASCADE.
+         * Không còn VariantOptionValue nào tham chiếu giá trị này (đã kiểm tra ở trên),
+         * nên có thể xóa trực tiếp (schema không có ON DELETE CASCADE).
          */
+        Product ownerProduct = optionValue.getProductOption().getProduct();
 
         productOptionValueRepository.delete(optionValue);
+
+        approvalPolicy.markContentChanged(ownerProduct);
     }
 
     // =====================================================
@@ -352,12 +431,65 @@ public class ProductVariantService {
         inventoryRepository.save(inventory);
         savedVariant.setStockQuantity(inventory.getQuantity());
 
+        if (inventory.getQuantity() != null && inventory.getQuantity() > 0) {
+            log.info("INVENTORY INITIAL variantId={} sku={} before=0 after={} by={}",
+                    savedVariant.getId(), savedVariant.getSku(),
+                    inventory.getQuantity(), currentActor());
+        }
+
         saveVariantOptionValues(
                 savedVariant,
                 optionValues
         );
 
+        // Thêm biến thể là thay đổi nội dung cần duyệt lại.
+        approvalPolicy.markContentChanged(product);
+
         return savedVariant;
+    }
+
+    /** Atomic bulk creation: reject duplicate SKUs and option combinations before inserting. */
+    @Transactional
+    public List<ProductVariant> generateVariants(UUID productId,
+                                                 com.example.backend.dto.request.GenerateVariantsRequest request) {
+        if (request == null || request.getVariants() == null || request.getVariants().isEmpty()) {
+            throw new IllegalArgumentException("Variants are required");
+        }
+        if (request.getVariants().size() > 200) {
+            throw new IllegalArgumentException("Maximum 200 variants per request");
+        }
+        Product product = getProduct(productId);
+        Set<String> skus = new HashSet<>();
+        Set<Set<UUID>> combinations = new HashSet<>();
+        List<ProductVariant> existing = productVariantRepository.findByProductIdOrderByCreatedAtAsc(productId);
+        for (ProductVariant v : existing) {
+            if (v.getSku() != null) skus.add(v.getSku().trim().toLowerCase(java.util.Locale.ROOT));
+            Set<UUID> ids = new HashSet<>();
+            for (VariantOptionValue link : variantOptionValueRepository.findByVariantId(v.getId())) {
+                ids.add(link.getOptionValue().getId());
+            }
+            combinations.add(ids);
+        }
+        for (CreateProductVariantRequest item : request.getVariants()) {
+            if (item == null) throw new IllegalArgumentException("Variant cannot be null");
+            if (item.getProductId() != null && !productId.equals(item.getProductId())) {
+                throw new IllegalArgumentException("Variant belongs to another product");
+            }
+            item.setProductId(productId);
+            validateCreateVariantRequest(item);
+            String sku = item.getSku().trim().toLowerCase(java.util.Locale.ROOT);
+            if (!skus.add(sku)) throw new IllegalArgumentException("Duplicate SKU: " + item.getSku());
+            List<ProductOptionValue> values = getAndValidateOptionValues(product, item.getOptionValueIds());
+            validateNoDuplicateOptions(values);
+            Set<UUID> ids = new HashSet<>();
+            for (ProductOptionValue value : values) ids.add(value.getId());
+            if (!combinations.add(ids)) throw new IllegalArgumentException("Duplicate option combination");
+        }
+        List<ProductVariant> created = new ArrayList<>();
+        for (CreateProductVariantRequest item : request.getVariants()) {
+            created.add(createVariant(item));
+        }
+        return created;
     }
 
     public List<ProductVariant> getVariants(
@@ -420,6 +552,12 @@ public class ProductVariantService {
             UpdateProductVariantRequest request
     ) {
 
+        // Khóa dòng variant: tuần tự hóa mọi thay đổi (kể cả tạo dòng tồn kho nếu thiếu),
+        // vì Inventories không có unique trên variant_id.
+        productVariantRepository.findByIdForUpdate(variantId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Product variant not found"));
+
         ProductVariant variant =
                 getVariantById(variantId);
 
@@ -427,6 +565,10 @@ public class ProductVariantService {
 
         Product product =
                 variant.getProduct();
+
+        // SKU, giá, giá so sánh, ảnh chính, option là nội dung cần duyệt lại.
+        // Tồn kho, trạng thái biến thể, giá vốn là thông tin vận hành.
+        boolean contentChanged = false;
 
         if (request.getSku() != null) {
 
@@ -445,11 +587,29 @@ public class ProductVariantService {
                 );
             }
 
+            if (!sku.equals(variant.getSku())) {
+                contentChanged = true;
+            }
+
             variant.setSku(sku);
         }
 
-        if (request.getPrice() != null) variant.setPrice(request.getPrice());
-        if (request.getComparePrice() != null) variant.setComparePrice(request.getComparePrice());
+        if (request.getPrice() != null) {
+            if (variant.getPrice() == null
+                    || variant.getPrice().compareTo(request.getPrice()) != 0) {
+                contentChanged = true;
+            }
+            variant.setPrice(request.getPrice());
+        }
+
+        if (request.getComparePrice() != null) {
+            if (variant.getComparePrice() == null
+                    || variant.getComparePrice().compareTo(request.getComparePrice()) != 0) {
+                contentChanged = true;
+            }
+            variant.setComparePrice(request.getComparePrice());
+        }
+
         if (request.getCostPrice() != null) variant.setCostPrice(request.getCostPrice());
         if (request.getPrimaryMediaId() != null) {
             ProductMedia primaryMedia = productMediaRepository.findById(request.getPrimaryMediaId())
@@ -457,16 +617,35 @@ public class ProductVariantService {
             if (!primaryMedia.getProduct().getId().equals(product.getId())) {
                 throw new IllegalArgumentException("Primary media must belong to the same product");
             }
+            if (variant.getPrimaryMedia() == null
+                    || !variant.getPrimaryMedia().getId().equals(primaryMedia.getId())) {
+                contentChanged = true;
+            }
+
             variant.setPrimaryMedia(primaryMedia);
         }
 
         if (request.getStockQuantity() != null) {
 
-            Inventory inventory = inventoryRepository.findFirstByVariantId(variantId)
+            Inventory inventory = inventoryRepository.findByVariantIdForUpdate(variantId)
                     .orElseGet(() -> { Inventory created = new Inventory(); created.setVariant(variant); created.setReservedQuantity(0); created.setSoldQuantity(0); return created; });
+            int reserved = inventory.getReservedQuantity() == null ? 0 : inventory.getReservedQuantity();
+            if (request.getStockQuantity() < reserved) {
+                throw new IllegalArgumentException(
+                        "Tồn kho không được nhỏ hơn số lượng đang được giữ chỗ (" + reserved + ")."
+                );
+            }
+
+            int stockBefore = inventory.getQuantity() == null ? 0 : inventory.getQuantity();
             inventory.setQuantity(request.getStockQuantity());
             inventoryRepository.save(inventory);
             variant.setStockQuantity(inventory.getQuantity());
+
+            if (inventory.getQuantity() != stockBefore) {
+                log.info("INVENTORY ADJUSTMENT(variant update) variantId={} sku={} before={} after={} by={}",
+                        variant.getId(), variant.getSku(),
+                        stockBefore, inventory.getQuantity(), currentActor());
+            }
         }
 
         if (request.getStatus() != null) {
@@ -483,6 +662,17 @@ public class ProductVariantService {
 
             validateNoDuplicateOptions(optionValues);
 
+            java.util.Set<UUID> oldOptionValueIds = new java.util.HashSet<>();
+            variantOptionValueRepository.findByVariantId(variantId)
+                    .forEach(link -> oldOptionValueIds.add(link.getOptionValue().getId()));
+
+            java.util.Set<UUID> newOptionValueIds = new java.util.HashSet<>();
+            optionValues.forEach(v -> newOptionValueIds.add(v.getId()));
+
+            if (!oldOptionValueIds.equals(newOptionValueIds)) {
+                contentChanged = true;
+            }
+
             /*
              * Xóa toàn bộ liên kết cũ.
              */
@@ -498,28 +688,66 @@ public class ProductVariantService {
             );
         }
 
+        if (contentChanged) {
+            approvalPolicy.markContentChanged(product);
+        }
+
         return productVariantRepository.save(variant);
     }
 
+    /**
+     * Xóa biến thể (API của Shop Owner). Biến thể đã có đơn hàng/đánh giá thì KHÔNG xóa,
+     * và việc kiểm tra diễn ra trước mọi thao tác xóa. Xóa biến thể là thay đổi nội dung
+     * cần duyệt lại.
+     */
     @Transactional
     public void deleteVariant(
             UUID variantId
     ) {
+        removeVariant(variantId, true);
+    }
 
+    /**
+     * Xóa biến thể như một phần của việc xóa cả sản phẩm
+     * (ProductManagementService đã kiểm tra lịch sử cho toàn bộ sản phẩm trước đó).
+     */
+    @Transactional
+    public void deleteVariantWithProduct(
+            UUID variantId
+    ) {
+        removeVariant(variantId, false);
+    }
+
+    private void removeVariant(
+            UUID variantId,
+            boolean requireReview
+    ) {
         ProductVariant variant =
                 getVariantById(variantId);
+
+        // Kiểm tra lịch sử giao dịch TRƯỚC khi xóa bất cứ thứ gì.
+        historyGuard.assertVariantDeletable(variantId, variant.getSku());
+
+        Product ownerProduct = variant.getProduct();
 
         /*
          * Xóa các liên kết variant-option trước.
          */
         variantOptionValueRepository.deleteByVariantId(variantId);
+
         /*
          * Xóa các dòng giỏ hàng tham chiếu variant này, nếu không sẽ vi phạm khóa ngoại.
          * Giỏ hàng không phải dữ liệu đơn hàng, nên việc xóa này là an toàn.
          */
         cartService.removeVariantFromAllCarts(variantId);
+
         inventoryRepository.deleteByVariantId(variantId);
+
         productVariantRepository.delete(variant);
+
+        if (requireReview) {
+            approvalPolicy.markContentChanged(ownerProduct);
+        }
     }
 
     // =====================================================

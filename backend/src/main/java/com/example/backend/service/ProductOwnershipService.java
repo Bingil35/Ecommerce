@@ -5,6 +5,11 @@ import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
+
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -42,5 +47,46 @@ public class ProductOwnershipService {
     public void assertVariant(UUID id, String email) {
         ProductVariant v=variants.findById(id).orElseThrow(()->new ResourceNotFoundException("Không tìm thấy phân loại sản phẩm."));
         assertProduct(v.getProduct().getId(), email);
+    }
+
+    private static final int MAX_BULK = 100;
+
+    /**
+     * Nạp nhiều sản phẩm cho thao tác hàng loạt. TẤT CẢ id phải tồn tại và thuộc shopId;
+     * nếu không, ném lỗi và không thao tác gì (không có thành công một phần).
+     */
+    public List<Product> loadOwnedProducts(UUID shopId, List<UUID> ids) {
+
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalArgumentException("Danh sách sản phẩm không được để trống.");
+        }
+
+        Set<UUID> unique = new LinkedHashSet<>(ids);
+
+        if (unique.contains(null)) {
+            throw new IllegalArgumentException("Danh sách sản phẩm chứa id không hợp lệ.");
+        }
+
+        if (unique.size() > MAX_BULK) {
+            throw new IllegalArgumentException(
+                    "Chỉ được thao tác tối đa " + MAX_BULK + " sản phẩm mỗi lần."
+            );
+        }
+
+        List<Product> found = products.findAllById(unique);
+
+        if (found.size() != unique.size()) {
+            throw new ResourceNotFoundException("Có sản phẩm không tồn tại.");
+        }
+
+        for (Product product : found) {
+            if (!shopId.equals(product.getShopId())) {
+                throw new AccessDeniedException(
+                        "Bạn không có quyền thao tác trên sản phẩm của cửa hàng khác."
+                );
+            }
+        }
+
+        return found;
     }
 }
