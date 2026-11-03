@@ -9,6 +9,7 @@ import java.util.UUID;
 public interface ShopRepository extends JpaRepository<Shop, UUID> {
     Optional<Shop> findByOwnerUserId(UUID ownerUserId);
     java.util.List<Shop> findByStatusOrderByShopNameAsc(ShopStatus status);
+    Optional<Shop> findBySlugAndStatus(String slug, ShopStatus status);
     boolean existsByOwnerUserId(UUID ownerUserId);
     boolean existsBySlug(String slug);
     boolean existsBySlugAndIdNot(String slug, UUID id);

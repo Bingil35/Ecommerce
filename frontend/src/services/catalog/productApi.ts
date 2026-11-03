@@ -19,8 +19,14 @@ export interface ProductCardDto {
   featured?: boolean;
   ratingAverage?: number | string | null;
   ratingCount?: number | null;
+  soldQuantity?: number | null;
 }
 export interface ShopAddressDto { id: string; name?: string; address?: string | null; }
+export interface PublicShopDto {
+  id: string; shopName: string; slug: string; logoUrl?: string | null; bannerUrl?: string | null;
+  address?: string | null; ratingAverage?: number | string | null; ratingCount?: number | null;
+  followersCount?: number | null;
+}
 export interface BrandDto {
   id: string;
   name: string;
@@ -44,7 +50,7 @@ export interface ProductDetailDto extends ProductCardDto {
   variants?: { id: string; sku?: string; status?: string; price: number | string; comparePrice?: number | string | null; imageUrl?: string | null; stockQuantity?: number; selectedOptions?: { optionId: string; optionValueId: string; optionName: string; value: string }[] }[];
 }
 export interface CategoryDto { id: string; name: string; slug: string; imageUrl?: string | null; parentId?: string | null; status?: string; sortOrder?: number; }
-export interface ProductQuery { q?: string; shopId?: string; categoryId?: string; minPrice?: number; maxPrice?: number; featured?: boolean; sortBy?: 'newest'|'price_asc'|'price_desc'|'rating_desc'|'name_asc'; }
+export interface ProductQuery { q?: string; shopId?: string; categoryId?: string; minPrice?: number; maxPrice?: number; featured?: boolean; sortBy?: 'newest'|'price_asc'|'price_desc'|'rating_desc'|'sales_desc'|'name_asc'; }
 export interface ProductPageDto<T> {
   items: T[];
   page: number;
@@ -96,6 +102,10 @@ export const productApi = {
 };
 
 export const shopApi = {
+  async getBySlug(slug: string): Promise<PublicShopDto> {
+    const r = await axiosClient.get(`/shops/${encodeURIComponent(slug)}`);
+    return dataOf<PublicShopDto>(r);
+  },
   async list() {
     const r = await axiosClient.get('/shops');
     const value = dataOf<ShopAddressDto[] | { items?: ShopAddressDto[] }>(r);

@@ -102,7 +102,7 @@ const ShopVoucherBox = ({
 
     const found = vouchers.find((v) => v.code.toUpperCase() === input);
     if (!found) {
-      setCodeError('Mã voucher không hợp lệ hoặc không thuộc shop này.');
+      setCodeError('Mã coupon không hợp lệ hoặc không thuộc phạm vi áp dụng.');
       return;
     }
     if (!isEligible(found)) {
@@ -208,7 +208,7 @@ const ShopVoucherBox = ({
                     setCodeError(null);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleApplyCode()}
-                  placeholder="Nhập mã voucher"
+                  placeholder="Nhập mã coupon"
                   className="h-10 min-w-0 flex-1 rounded-lg border border-[#E8EDF5] px-3 text-sm uppercase placeholder:normal-case focus:border-[#5367C9] focus:outline-none focus:ring-2 focus:ring-[#5367C9]/20"
                 />
                 <button
@@ -231,7 +231,7 @@ const ShopVoucherBox = ({
                   </p>
                 ) : vouchers.length === 0 ? (
                   <p className="py-6 text-center text-sm text-[#667085]">
-                    Shop chưa có voucher khả dụng.
+                    Hiện chưa có coupon khả dụng.
                   </p>
                 ) : (
                   vouchers.map((v) => {
@@ -279,11 +279,6 @@ const ShopVoucherBox = ({
                 )}
               </div>
 
-              {/* TODO: voucher shop thật làm ở SCRUM khác — hiện đang dùng dữ liệu mẫu */}
-              <p className="mt-4 rounded-lg bg-[#F8FAFF] px-3 py-2 text-xs text-[#667085]">
-                Ghi chú: chức năng voucher làm ở SCRUM khác. Danh sách voucher
-                hiện là dữ liệu mẫu để kiểm tra việc tính lại giá.
-              </p>
             </div>
 
             <div className="flex gap-3 border-t border-[#E8EDF5] px-5 py-4">

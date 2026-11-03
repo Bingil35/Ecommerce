@@ -186,11 +186,13 @@ public class ProductCatalogService {
         }
 
         Map<UUID, Integer> freeStock = new HashMap<>();
+        Map<UUID, Integer> soldQuantity = new HashMap<>();
         if (!variantIds.isEmpty()) {
             for (Inventory i : inventories.findByVariantIdIn(variantIds)) {
                 int quantity = i.getQuantity() == null ? 0 : i.getQuantity();
                 int reserved = i.getReservedQuantity() == null ? 0 : i.getReservedQuantity();
                 freeStock.putIfAbsent(i.getVariant().getId(), Math.max(0, quantity - reserved));
+                soldQuantity.merge(i.getVariant().getId(), i.getSoldQuantity() == null ? 0 : i.getSoldQuantity(), Integer::sum);
             }
         }
 
@@ -211,11 +213,12 @@ public class ProductCatalogService {
         Map<UUID, ProductCardResponse> byId = new LinkedHashMap<>();
         for (Product p : source) {
             ProductMetrics metrics = metricsOf(variantsByProduct.getOrDefault(p.getId(), List.of()),
-                    variantId -> freeStock.getOrDefault(variantId, 0));
+                    variantId -> freeStock.getOrDefault(variantId, 0),
+                    variantId -> soldQuantity.getOrDefault(variantId, 0));
             String thumbnail = p.getThumbnailUrl() == null || p.getThumbnailUrl().isBlank()
                     ? fallbackThumbnail.get(p.getId()) : p.getThumbnailUrl();
             byId.put(p.getId(), new ProductCardResponse(p, metrics.minPrice, metrics.maxPrice,
-                    metrics.representativeComparePrice, metrics.stock, thumbnail));
+                    metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail));
         }
         return source.stream().map(p -> byId.get(p.getId())).toList();
     }
@@ -240,7 +243,7 @@ public class ProductCatalogService {
                     .findFirst().orElse(null);
         }
         return new ProductCardResponse(product, metrics.minPrice, metrics.maxPrice,
-                metrics.representativeComparePrice, metrics.stock, thumbnail);
+                metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail);
     }
 
     private boolean isPublicShop(UUID shopId) {
@@ -254,12 +257,20 @@ public class ProductCatalogService {
     }
     private ProductMetrics metrics(UUID productId) {
         List<ProductVariant> active = variants.findByProductIdAndStatusOrderByCreatedAtAsc(productId, ProductStatus.ACTIVE);
-        return metricsOf(active, this::availableStock);
+        Map<UUID, Inventory> inventoryByVariant = new HashMap<>();
+        if (!active.isEmpty()) {
+            inventories.findByVariantIdIn(active.stream().map(ProductVariant::getId).toList())
+                    .forEach(inventory -> inventoryByVariant.putIfAbsent(inventory.getVariant().getId(), inventory));
+        }
+        return metricsOf(active,
+                variantId -> inventoryByVariant.containsKey(variantId)
+                        ? Math.max(0, safe(inventoryByVariant.get(variantId).getQuantity()) - safe(inventoryByVariant.get(variantId).getReservedQuantity())) : 0,
+                variantId -> safe(inventoryByVariant.containsKey(variantId) ? inventoryByVariant.get(variantId).getSoldQuantity() : null));
     }
-    private ProductMetrics metricsOf(List<ProductVariant> active, ToIntFunction<UUID> stockOf) {
+    private ProductMetrics metricsOf(List<ProductVariant> active, ToIntFunction<UUID> stockOf, ToIntFunction<UUID> soldOf) {
         BigDecimal min = null, max = null, representativeComparePrice = null;
         UUID representativeVariantId = null;
-        int stock = 0;
+        int stock = 0, sold = 0;
         for (ProductVariant v : active) {
             if (v.getPrice() != null) {
                 if (min == null || v.getPrice().compareTo(min) < 0
@@ -272,18 +283,21 @@ public class ProductCatalogService {
                 if (max == null || v.getPrice().compareTo(max) > 0) max=v.getPrice();
             }
             stock += stockOf.applyAsInt(v.getId());
+            sold += soldOf.applyAsInt(v.getId());
         }
-        return new ProductMetrics(min,max,representativeComparePrice,stock);
+        return new ProductMetrics(min,max,representativeComparePrice,stock,sold);
     }
+    private int safe(Integer value) { return value == null ? 0 : value; }
     private Comparator<ProductCardResponse> comparator(String sortBy) {
         if (sortBy == null || sortBy.isBlank() || sortBy.equalsIgnoreCase("newest")) return null; // repository defaults newest first
         return switch (sortBy.toLowerCase(Locale.ROOT)) {
             case "price_asc" -> Comparator.comparing(ProductCardResponse::getMinPrice, Comparator.nullsLast(BigDecimal::compareTo));
             case "price_desc" -> Comparator.comparing(ProductCardResponse::getMaxPrice, Comparator.nullsFirst(BigDecimal::compareTo)).reversed();
             case "rating_desc" -> Comparator.comparing(ProductCardResponse::getRatingAverage, Comparator.nullsFirst(BigDecimal::compareTo)).reversed();
+            case "sales_desc" -> Comparator.comparing(ProductCardResponse::getSoldQuantity, Comparator.nullsFirst(Integer::compareTo)).reversed();
             case "name_asc" -> Comparator.comparing(ProductCardResponse::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
             default -> throw new IllegalArgumentException("sortBy chỉ nhận newest, price_asc, price_desc, rating_desc hoặc name_asc.");
         };
     }
-    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, BigDecimal representativeComparePrice, Integer stock) {}
+    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, BigDecimal representativeComparePrice, Integer stock, Integer soldQuantity) {}
 }

@@ -1,4 +1,4 @@
-import { Heart, LoaderCircle, ShoppingCart, Star } from 'lucide-react';
+import { Heart, LoaderCircle, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -18,22 +18,14 @@ interface WishlistProductCardProps {
   product: ProductCardDto;
   /** Đang gọi API xóa sản phẩm này */
   isRemoving: boolean;
-  /** Đang xử lý "Thêm vào giỏ" của sản phẩm này */
-  isAddingToCart: boolean;
   onRemove: (product: ProductCardDto) => void;
-  onAddToCart: (product: ProductCardDto) => void;
 }
 
-/**
- * Giao diện giống ProductCard ở trang chủ / tìm kiếm.
- * Khác biệt duy nhất: nút tim dùng để xóa khỏi yêu thích và có thêm 1 nút "Thêm vào giỏ".
- */
+/** Card dùng cùng bố cục với ProductCard ở trang chủ / tìm kiếm. */
 const WishlistProductCard = ({
   product,
   isRemoving,
-  isAddingToCart,
   onRemove,
-  onAddToCart,
 }: WishlistProductCardProps) => {
   const navigate = useNavigate();
 
@@ -46,7 +38,7 @@ const WishlistProductCard = ({
   const openProduct = () => navigate(productPath);
 
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E8EDF5] bg-white shadow-[0_4px_18px_rgba(72,93,140,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(72,93,140,0.10)]">
+    <article className="group min-w-0 overflow-hidden rounded-2xl border border-[#E8EDF5] bg-white shadow-[0_4px_18px_rgba(72,93,140,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(72,93,140,0.10)]">
       <div
         className="relative aspect-square cursor-pointer overflow-hidden bg-[#F3F6FC]"
         onClick={openProduct}
@@ -97,7 +89,7 @@ const WishlistProductCard = ({
       <button
         type="button"
         onClick={openProduct}
-        className="block w-full p-3 pb-0 text-left"
+        className="block w-full p-3 text-left"
       >
         <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-[#252A3A]">
           {product.name}
@@ -132,21 +124,6 @@ const WishlistProductCard = ({
         </div>
       </button>
 
-      <div className="mt-auto p-3 pt-2.5">
-        <button
-          type="button"
-          disabled={outOfStock || isAddingToCart}
-          onClick={() => onAddToCart(product)}
-          className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#EEF1FD] px-2 text-xs font-semibold text-[#3F4FC4] transition hover:bg-[#E1E7FB] disabled:cursor-not-allowed disabled:bg-[#F1F3F8] disabled:text-[#A4ACBD]"
-        >
-          {isAddingToCart ? (
-            <LoaderCircle size={15} className="animate-spin" />
-          ) : (
-            <ShoppingCart size={15} strokeWidth={1.9} />
-          )}
-          {outOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
-        </button>
-      </div>
     </article>
   );
 };

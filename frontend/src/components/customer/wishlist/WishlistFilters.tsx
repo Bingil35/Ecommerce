@@ -90,11 +90,11 @@ const WishlistFilters = ({
             <select
               value={sort}
               onChange={(event) => onSortChange(event.target.value as WishlistSort)}
-              className={`${controlBase} w-full cursor-pointer appearance-none pl-4 pr-10 font-medium outline-none focus:border-[#9FB2EA] focus:ring-2 focus:ring-[#DCE5F5] md:w-[250px]`}
+              className={`${controlBase} w-full cursor-pointer appearance-none pl-4 pr-10 font-medium outline-none focus:border-[#9FB2EA] focus:ring-2 focus:ring-[#DCE5F5] md:w-[200px]`}
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  Sắp xếp: {option.label}
+                  {option.label}
                 </option>
               ))}
             </select>
