@@ -11,8 +11,15 @@ public class ProductMediaResponse {
     private String mediaType;
     private String mediaUrl;
     private Integer displayOrder;
+    private boolean thumbnail;
 
     public ProductMediaResponse() {
+    }
+
+    public ProductMediaResponse(ProductMedia media, String productThumbnailUrl) {
+        this(media);
+        this.thumbnail = media.getMediaUrl() != null
+                && media.getMediaUrl().equals(productThumbnailUrl);
     }
 
     public ProductMediaResponse(ProductMedia media) {
@@ -41,5 +48,10 @@ public class ProductMediaResponse {
 
     public Integer getDisplayOrder() {
         return displayOrder;
+    }
+
+    /** true nếu đây là ảnh đại diện hiện tại của sản phẩm. */
+    public boolean isThumbnail() {
+        return thumbnail;
     }
 }

@@ -21,6 +21,7 @@ import com.example.backend.entity.ProductStatus;
 import com.example.backend.entity.ProductVariant;
 import com.example.backend.entity.Shop;
 import com.example.backend.entity.ShopStatus;
+import com.example.backend.repository.PublicProductVisibility;
 import com.example.backend.repository.ProductFilterRepository;
 
 import jakarta.persistence.criteria.JoinType;
@@ -125,15 +126,9 @@ public class ProductFilterService {
 
             List<Predicate> predicates = new ArrayList<>();
 
-            // Khách hàng không bao giờ thấy sản phẩm INACTIVE.
-            predicates.add(cb.equal(root.get("status"), ProductStatus.ACTIVE));
-
-            Subquery<UUID> activeShop = query.subquery(UUID.class);
-            Root<Shop> shopRoot = activeShop.from(Shop.class);
-            activeShop.select(shopRoot.get("id"))
-                    .where(cb.equal(shopRoot.get("id"), root.get("shopId")),
-                            cb.equal(shopRoot.get("status"), ShopStatus.ACTIVE));
-            predicates.add(cb.exists(activeShop));
+            // Điều kiện hiển thị công khai dùng chung: ACTIVE + Shop ACTIVE + Category ACTIVE
+            // + có ít nhất một biến thể ACTIVE (hết hàng vẫn hiển thị).
+            predicates.addAll(PublicProductVisibility.predicates(root, query, cb));
 
             if (categoryId != null) {
                 predicates.add(

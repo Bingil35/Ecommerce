@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.backend.dto.response.ProductCardResponse;
 import com.example.backend.dto.response.ProductDetailResponse;
+import com.example.backend.entity.CategoryStatus;
 import com.example.backend.entity.Product;
 import com.example.backend.entity.ProductMedia;
 import com.example.backend.entity.ProductMediaType;
@@ -81,7 +82,10 @@ public class ProductCatalogService {
             if (!q.isBlank() && !contains(p.getName(), q) && !contains(p.getSlug(), q) && !contains(p.getDescription(), q)) continue;
             if (featured != null && !featured.equals(Boolean.TRUE.equals(p.getFeatured()))) continue;
             if (!isPublicShop(p.getShopId())) continue;
+            if (!hasPublicCategory(p)) continue;
             ProductMetrics metrics = metrics(p.getId());
+            // Sản phẩm không có biến thể ACTIVE không được hiển thị. Hết hàng thì vẫn hiển thị.
+            if (metrics.variantCount() == 0) continue;
             if (minPrice != null && (metrics.maxPrice == null || metrics.maxPrice.compareTo(minPrice) < 0)) continue;
             if (maxPrice != null && (metrics.minPrice == null || metrics.minPrice.compareTo(maxPrice) > 0)) continue;
             result.add(toCard(p, metrics));
@@ -112,6 +116,9 @@ public class ProductCatalogService {
         Shop shop = shops.findById(p.getShopId())
                 .filter(s -> s.getStatus() == ShopStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."));
+        if (!hasPublicCategory(p)) {
+            throw new ResourceNotFoundException("Không tìm thấy sản phẩm.");
+        }
 
         List<ProductDetailResponse.Media> mediaResponse = media.findByProductIdOrderBySortOrderAsc(id)
                 .stream().map(ProductDetailResponse.Media::new).toList();
@@ -130,6 +137,10 @@ public class ProductCatalogService {
                             .map(ProductDetailResponse.SelectedOption::new).toList();
                     return new ProductDetailResponse.Variant(v, availableStock(v.getId()), selected);
                 }).toList();
+        // Không có biến thể ACTIVE thì sản phẩm không hiển thị công khai.
+        if (variantResponse.isEmpty()) {
+            throw new ResourceNotFoundException("Không tìm thấy sản phẩm.");
+        }
         List<ProductDetailResponse.Tag> tagResponse = productTagMappings.findAllByProductId(id).stream()
                 .map(mapping -> productTags.findById(mapping.getTagId()).orElse(null))
                 .filter(Objects::nonNull)
@@ -151,8 +162,9 @@ public class ProductCatalogService {
                 : products.findByCategoryIdAndStatusOrderByCreatedAtDesc(current.getCategory().getId(), ProductStatus.ACTIVE);
         List<ProductCardResponse> result = new ArrayList<>();
         for (Product p : candidates) {
-            if (p.getId().equals(id) || !isPublicShop(p.getShopId())) continue;
+            if (p.getId().equals(id) || !isPublicShop(p.getShopId()) || !hasPublicCategory(p)) continue;
             ProductMetrics m = metrics(p.getId());
+            if (m.variantCount() == 0) continue;
             result.add(toCard(p, m));
             if (result.size() >= safeLimit) break;
         }
@@ -246,6 +258,11 @@ public class ProductCatalogService {
                 metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail);
     }
 
+    /** Danh mục phải tồn tại và đang ACTIVE (cùng quy tắc với PublicProductVisibility). */
+    private boolean hasPublicCategory(Product p) {
+        return p.getCategory() != null && p.getCategory().getStatus() == CategoryStatus.ACTIVE;
+    }
+
     private boolean isPublicShop(UUID shopId) {
         return shopId != null && shops.findById(shopId).map(s -> s.getStatus() == ShopStatus.ACTIVE).orElse(false);
     }
@@ -285,7 +302,7 @@ public class ProductCatalogService {
             stock += stockOf.applyAsInt(v.getId());
             sold += soldOf.applyAsInt(v.getId());
         }
-        return new ProductMetrics(min,max,representativeComparePrice,stock,sold);
+        return new ProductMetrics(min,max,representativeComparePrice,stock,sold,active.size());
     }
     private int safe(Integer value) { return value == null ? 0 : value; }
     private Comparator<ProductCardResponse> comparator(String sortBy) {
@@ -299,5 +316,6 @@ public class ProductCatalogService {
             default -> throw new IllegalArgumentException("sortBy chỉ nhận newest, price_asc, price_desc, rating_desc hoặc name_asc.");
         };
     }
-    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, BigDecimal representativeComparePrice, Integer stock, Integer soldQuantity) {}
+
+    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, BigDecimal representativeComparePrice, Integer stock, Integer soldQuantity ,int variantCount) {}
 }

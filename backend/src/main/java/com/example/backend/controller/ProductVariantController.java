@@ -37,6 +37,18 @@ public class ProductVariantController {
         this.ownership = ownership;
     }
 
+    @PostMapping("/products/{productId}/variants/generate")
+    public ApiResponse<List<ProductVariantResponse>> generateVariants(
+            @PathVariable UUID productId,
+            @RequestBody com.example.backend.dto.request.GenerateVariantsRequest request,
+            Authentication authentication) {
+        ownership.assertProduct(productId, authentication.getName());
+        List<ProductVariantResponse> results = productVariantService.generateVariants(productId, request)
+                .stream().map(v -> new ProductVariantResponse(v,
+                        productVariantService.getVariantOptionValues(v.getId()))).toList();
+        return ApiResponse.success("Tạo hàng loạt biến thể thành công.", results);
+    }
+
     // =====================================================
     // PRODUCT OPTION
     // =====================================================

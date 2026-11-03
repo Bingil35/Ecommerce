@@ -1,137 +1,26 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
-import { LogOut, Store } from 'lucide-react';
-
-import { useAuth } from '../../context/AuthContext';
-import { isShopOwner } from '../../services/auth/roles';
+import { Link } from 'react-router-dom';
+import { Wallet, ShoppingBag, Package, Eye, Star, ArrowUpRight, Bell, PackagePlus, AlertTriangle, ClipboardList } from 'lucide-react';
+import { sellerProductApi, type SellerProduct, type ProductStats } from '../../services/seller/productApi';
 import { shopApi } from '../../services/shop/shopApi';
-import type { ShopResponse } from '../../services/shop/shopTypes';
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Chờ xác nhận',
-  ACTIVE: 'Đang hoạt động',
-  CLOSED: 'Đã đóng',
-};
-
-/**
- * Trang đích tạm của kênh người bán sau khi đăng nhập: hiển thị gian hàng và trạng thái duyệt.
- * Thay bằng dashboard thật khi làm các chức năng quản lý.
- */
+const dashboardStyles = '.kd-page{padding-block:24px 32px;min-height:calc(100vh - 102px);color:#111827;font-size:14px}.kd-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:20px}.kd-heading h1{font-size:24px;font-weight:800;margin:0 0 4px}.kd-heading p{color:#64748B;font-size:14px;margin:0}.kd-new{display:flex;align-items:center;gap:9px;background:#5367C9;color:white;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;white-space:nowrap}.kd-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-bottom:16px}.kd-stat,.kd-card{background:white;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 2px 8px #14234b08}.kd-stat{display:flex;align-items:center;justify-content:space-between;padding:16px;min-height:92px;gap:8px}.kd-stat p{color:#64748B;font-size:13px;margin:0 0 8px}.kd-stat strong{font-size:18px;line-height:1.3}.kd-stat span{width:44px;height:44px;flex-shrink:0;display:grid;place-items:center;border-radius:12px}.kd-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.kd-grid>.kd-col-7{grid-column:span 7;min-width:0}.kd-grid>.kd-col-5{grid-column:span 5;min-width:0}.kd-card{padding:20px}.kd-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.kd-card-head h2{font-size:18px;font-weight:800;margin:0}.kd-card-head a{color:#5367C9;display:inline-flex;align-items:center;gap:3px;text-decoration:none;font-size:12px}.kd-card-head>span{color:#75809c;font-size:12px}.kd-empty-chart{height:185px;display:flex;flex-direction:column;justify-content:flex-end}.kd-bars{height:150px;display:flex;align-items:end;gap:6px;border-bottom:1px solid #e8eaf2;background:repeating-linear-gradient(to top,transparent 0,transparent 36px,#f2f3f8 37px,#f2f3f8 38px)}.kd-bars span{flex:1;background:linear-gradient(0deg,#C9D4FF,#8094EC);border-radius:4px 4px 0 0;opacity:.7}.kd-empty-chart p{color:#8390a8;font-size:11px;text-align:center;margin:8px}.kd-chart-foot{display:flex;justify-content:space-around;border-top:1px solid #e9edf5;padding-top:16px;color:#556480;font-size:12px}.kd-chart-foot b{display:block;color:#5367C9;font-size:16px;margin-top:6px}.kd-status-list>div{display:flex;align-items:center;gap:15px;border-bottom:1px solid #eff1f5;padding:13px 0;font-size:13px}.kd-status-list>div:last-child{border-bottom:0}.kd-status-list b{flex:1}.kd-status-list strong{font-size:16px}.kd-small-icon,.kd-notice>span{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#EEF3FF;color:#5367C9}.kd-product{display:flex;align-items:center;gap:13px;padding:10px 0;border-bottom:1px solid #eff1f5;font-size:13px}.kd-product>div{flex:1;min-width:0}.kd-product b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kd-product p,.kd-notice p{color:#64718e;font-size:12px;margin:6px 0 0}.kd-product>span:last-child{font-weight:700}.kd-thumb{width:46px;height:46px;flex-shrink:0;background:#f1f3f8;display:grid;place-items:center;border-radius:9px;overflow:hidden}.kd-thumb img{width:100%;height:100%;object-fit:cover}.kd-notice{display:flex;align-items:center;gap:15px;padding:16px 0}.kd-notice>span{width:43px;height:43px;flex-shrink:0}.kd-notice b{font-size:13px}.kd-footer{text-align:center;color:#63718e;font-size:12px;padding:23px}.kd-alert{background:#FFF0F0;color:#B42336;padding:12px;border-radius:9px;margin-bottom:15px}.kd-no-data{color:#63718e;padding:25px 0}@media(max-width:1279px){.kd-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:1023px){.kd-grid>.kd-col-7,.kd-grid>.kd-col-5{grid-column:span 12}}@media(max-width:767px){.kd-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.kd-page{padding-block:16px 24px}}@media(max-width:500px){.kd-stats{grid-template-columns:1fr}.kd-heading{align-items:flex-start;flex-direction:column}}\n';
+const money = (v: number | null) => v == null ? '—' : new Intl.NumberFormat('vi-VN').format(v) + 'đ';
 export default function SellerDashboardPage() {
-  const { user, isLoading: isAuthLoading, logout } = useAuth();
-
-  const [shop, setShop] = useState<ShopResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const canLoad = !isAuthLoading && isShopOwner(user);
-
-  useEffect(() => {
-    if (!canLoad) {
-      return;
-    }
-
-    let cancelled = false;
-
-    shopApi
-      .getMyShop()
-      .then((data) => {
-        if (!cancelled) {
-          setShop(data);
-        }
-      })
-      .catch((error: any) => {
-        if (cancelled) {
-          return;
-        }
-
-        // Backend từ chối quyền (role đã bị thu hồi hoặc phiên cũ): đăng xuất.
-        if (error.response?.status === 403) {
-          logout();
-          return;
-        }
-
-        setErrorMessage(
-          error.response?.data?.message ||
-            'Không tải được thông tin gian hàng.'
-        );
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canLoad]);
-
-  if (isAuthLoading) {
-    return null;
-  }
-
-  if (!isShopOwner(user)) {
-    return <Navigate to="/seller/login" replace />;
-  }
-
-  return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <div className="rounded-2xl border border-[#E1E7F2] bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#E6EFFF] text-[#3B7BF6]">
-            <Store className="h-6 w-6" strokeWidth={1.8} />
-          </span>
-          <div>
-            <h1 className="text-xl font-bold text-[#1F1B6B]">
-              {shop?.shopName ?? 'Kênh người bán'}
-            </h1>
-            <p className="text-sm text-[#667398]">{user?.email}</p>
-          </div>
-        </div>
-
-        {errorMessage && (
-          <p role="alert" className="mt-5 text-sm text-red-600">
-            {errorMessage}
-          </p>
-        )}
-
-        {shop && (
-          <dl className="mt-6 grid grid-cols-[120px_1fr] gap-y-3 text-sm">
-            <dt className="text-[#667398]">Trạng thái</dt>
-            <dd>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  shop.status === 'ACTIVE'
-                    ? 'bg-[#E6F6EC] text-[#16A34A]'
-                    : 'bg-[#FFF4DC] text-[#9A6B00]'
-                }`}
-              >
-                {STATUS_LABELS[shop.status] ?? shop.status}
-              </span>
-            </dd>
-
-            <dt className="text-[#667398]">Đường dẫn</dt>
-            <dd className="text-[#1F1B6B]">/shop/{shop.slug}</dd>
-
-            <dt className="text-[#667398]">Điện thoại</dt>
-            <dd className="text-[#1F1B6B]">{shop.phone || 'Chưa cập nhật'}</dd>
-
-            <dt className="text-[#667398]">Địa chỉ</dt>
-            <dd className="text-[#1F1B6B]">{shop.address || 'Chưa cập nhật'}</dd>
-          </dl>
-        )}
-
-        <div className="mt-8 flex items-center justify-between border-t border-[#EEF1F6] pt-4 text-sm">
-          <Link to="/" className="font-medium text-[#2F6BEA] hover:underline">
-            Về trang mua sắm
-          </Link>
-
-          <button
-            type="button"
-            onClick={logout}
-            className="flex items-center gap-2 text-[#6B7280] hover:text-[#DC5A5A]"
-          >
-            <LogOut className="h-4 w-4" strokeWidth={1.8} />
-            Đăng xuất
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const [shopName, setShopName] = useState('Kala Store'); const [stats,setStats] = useState<ProductStats|null>(null);
+  const [products,setProducts] = useState<SellerProduct[]>([]); const [error,setError] = useState('');
+  useEffect(() => { let alive=true; void shopApi.getMyShop().then(s=>{if(alive)setShopName(s.shopName);}).catch(()=>{}); void Promise.all([sellerProductApi.stats(),sellerProductApi.list({page:0,size:6,sort:'newest'})]).then(([s,p])=>{if(alive){setStats(s);setProducts(p.items);}}).catch(()=>{if(alive)setError('Chưa tải được số liệu sản phẩm từ Backend.');});return()=>{alive=false;}; },[]);
+  const cards = [
+    {title:'Doanh thu',value:'Chưa có dữ liệu',icon:Wallet,color:'#5367C9',bg:'#EEF3FF'},
+    {title:'Đơn hàng',value:'Chưa có dữ liệu',icon:ShoppingBag,color:'#7a4df1',bg:'#f0eaff'},
+    {title:'Sản phẩm bán',value:stats?.selling ?? '—',icon:Package,color:'#10ad61',bg:'#e4f9ec'},
+    {title:'Lượt xem',value:'Chưa có dữ liệu',icon:Eye,color:'#f5801c',bg:'#fff0e6'},
+    {title:'Đánh giá trung bình',value:'Chưa có dữ liệu',icon:Star,color:'#f5ae00',bg:'#fff8e5'},
+  ];
+  return <><style>{dashboardStyles}</style><div className="kd-page seller-container"><div className="kd-heading"><div><h1>Chào mừng trở lại, Shop Owner! 👋</h1><p>Dưới đây là tổng quan hoạt động của {shopName}.</p></div><Link className="kd-new" to="/seller/products/new"><PackagePlus size={18}/> Thêm sản phẩm</Link></div>{error&&<div className="kd-alert">{error}</div>}
+    <div className="kd-stats">{cards.map(c=><div className="kd-stat" key={c.title}><div><p>{c.title}</p><strong>{c.value}</strong></div><span style={{color:c.color,background:c.bg}}><c.icon size={27}/></span></div>)}</div>
+    <div className="kd-grid"><section className="kd-card kd-col-7"><div className="kd-card-head"><h2>Doanh thu</h2><span>Chưa kết nối dữ liệu đơn hàng</span></div><div className="kd-empty-chart"><div className="kd-bars">{[32,44,39,56,46,65,52,70,60,77,55,68,80,61,72,58,85,75,60,67,73,90,65,72,62,78,84,70,66,79].map((v,i)=><span key={i} style={{height:`${v}%`}}/>)}</div><p>Biểu đồ minh họa · Chưa có số liệu doanh thu thực tế</p></div><div className="kd-chart-foot"><span>Đang bán <b>{stats?.selling??'—'}</b></span><span>Chờ duyệt <b>{stats?.pending??'—'}</b></span><span>Hết hàng <b>{stats?.outOfStock??'—'}</b></span></div></section>
+    <section className="kd-card kd-col-5"><div className="kd-card-head"><h2>Trạng thái sản phẩm</h2><Link to="/seller/products">Xem tất cả <ArrowUpRight size={14}/></Link></div><div className="kd-status-list">{[{name:'Tổng sản phẩm',value:stats?.all,icon:Package},{name:'Đang bán',value:stats?.selling,icon:ShoppingBag},{name:'Chờ Admin duyệt',value:stats?.pending,icon:ClipboardList},{name:'Bị từ chối',value:stats?.rejected,icon:AlertTriangle},{name:'Sắp hết hàng',value:stats?.lowStock,icon:Bell}].map(({name,value,icon:Icon})=><div key={name}><span className="kd-small-icon"><Icon size={18}/></span><b>{name}</b><strong>{value??'—'}</strong></div>)}</div></section>
+    <section className="kd-card kd-col-7"><div className="kd-card-head"><h2>Sản phẩm mới cập nhật</h2><Link to="/seller/products">Xem tất cả <ArrowUpRight size={14}/></Link></div>{products.length?products.map(p=><div className="kd-product" key={p.id}><span className="kd-thumb">{p.thumbnailUrl?<img src={p.thumbnailUrl} alt=""/>:<Package size={22}/>}</span><div><b>{p.name}</b><p>{p.categoryName||'Chưa phân loại'}</p></div><span>{money(p.minPrice)}</span></div>):<p className="kd-no-data">Chưa có sản phẩm.</p>}</section>
+    <section className="kd-card kd-col-5"><div className="kd-card-head"><h2>Thông báo</h2><Link to="/seller/products">Quản lý sản phẩm <ArrowUpRight size={14}/></Link></div><div className="kd-notice"><span><Bell size={20}/></span><div><b>Sản phẩm chờ duyệt</b><p>Hiện có {stats?.pending??'—'} sản phẩm đang chờ Admin phê duyệt.</p></div></div><div className="kd-notice"><span><AlertTriangle size={20}/></span><div><b>Kiểm tra hàng tồn kho</b><p>{stats?.lowStock??'—'} sản phẩm đang có tồn kho thấp.</p></div></div><div className="kd-notice"><span><PackagePlus size={20}/></span><div><b>Đăng sản phẩm mới</b><p>Hoàn thành 4 bước và gửi duyệt để đăng bán.</p></div></div></section></div><footer className="kd-footer">Kala Store · Trang quản lý chủ cửa hàng</footer></div></>;
 }
