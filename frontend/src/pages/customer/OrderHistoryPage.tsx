@@ -7,8 +7,8 @@ import type { OrderListItem, OrderStatus, PageResponse } from '../../services/ch
 
 const statuses: { value: OrderStatus | ''; label: string }[] = [
   { value: '', label: 'Tất cả trạng thái' }, { value: 'PENDING', label: 'Chờ xác nhận' },
-  { value: 'CONFIRMED', label: 'Đã xác nhận' }, { value: 'SHIPPING', label: 'Đang giao' },
-  { value: 'DELIVERED', label: 'Đã giao' }, { value: 'CANCELLED', label: 'Đã hủy' },
+  { value: 'CONFIRMED', label: 'Đã xác nhận' }, { value: 'SHIPPING', label: 'Đang vận chuyển' },
+  { value: 'DELIVERED', label: 'Hoàn thành' }, { value: 'CANCELLED', label: 'Đã hủy' },
 ];
 export default function OrderHistoryPage() {
   const { isAuthenticated, isLoading } = useAuth();

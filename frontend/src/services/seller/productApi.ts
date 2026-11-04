@@ -9,6 +9,8 @@ export interface SellerProduct {
   description: string | null; status: ProductStatus;
   minPrice: number | null; maxPrice: number | null; totalStock: number | null;
   variantCount: number | null; createdAt: string | null;
+  slug?: string | null; shopId?: string | null; brandId?: string | null; featured?: boolean | null;
+  ratingAverage?: number | null; ratingCount?: number | null; updatedAt?: string | null;
 }
 export interface ProductPage { items: SellerProduct[]; page: number; size: number; totalElements: number; totalPages: number; last: boolean }
 export interface ProductStats { all: number; pending: number; rejected: number; selling: number; outOfStock: number; hidden: number; lowStock: number }

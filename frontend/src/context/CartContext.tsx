@@ -100,11 +100,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const shops = useMemo(() => toCartShops(cart), [cart]);
   const items = useMemo(() => shops.flatMap((shop) => shop.items), [shops]);
+  const distinctItemCount = useMemo(() => new Set(items.map(item => item.variantId || item.productId).filter(Boolean)).size, [items]);
 
   const value: CartContextValue = {
     shops,
     items,
     itemCount: Number(cart.totalQuantity ?? 0),
+    distinctItemCount,
     subtotal: Number(cart.subtotal ?? 0),
     isLoading,
     error,
