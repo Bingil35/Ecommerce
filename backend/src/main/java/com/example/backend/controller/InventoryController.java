@@ -109,6 +109,18 @@ public class InventoryController {
     }
 
     /** Cảnh báo tồn thấp: biến thể ACTIVE có tồn khả dụng <= ngưỡng. */
+    @GetMapping("/inventory")
+    public ApiResponse<java.util.List<InventoryResponse>> getInventoryList(Authentication authentication) {
+        Shop myShop = shopService.getMyShop(authentication.getName());
+        return ApiResponse.success("Lấy danh sách tồn kho thành công.", inventoryService.listByShop(myShop.getId()));
+    }
+
+    @GetMapping("/products/{productId}/inventory")
+    public ApiResponse<java.util.List<InventoryResponse>> getProductInventory(@PathVariable UUID productId, Authentication authentication) {
+        ownership.assertProduct(productId, authentication.getName());
+        return ApiResponse.success("Inventory variants loaded.", inventoryService.listByProduct(productId));
+    }
+
     @GetMapping("/inventory/low-stock")
     public ApiResponse<PageResponse<InventoryResponse>> getLowStock(
             @RequestParam(defaultValue = "0") int page,

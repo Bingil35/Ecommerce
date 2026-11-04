@@ -81,6 +81,22 @@ public class InventoryService {
                 .map(inventory -> toResponse(inventory.getVariant(), inventory));
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<InventoryResponse> listByShop(UUID shopId) {
+        var variants = variantRepository.findAllByShopId(shopId);
+        var inventories = inventoryRepository.findByVariantIdIn(variants.stream().map(ProductVariant::getId).toList());
+        var byVariant = inventories.stream().collect(java.util.stream.Collectors.toMap(i -> i.getVariant().getId(), i -> i, (a, b) -> a));
+        return variants.stream().map(v -> toResponse(v, byVariant.get(v.getId()))).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<InventoryResponse> listByProduct(UUID productId) {
+        var variants = variantRepository.findByProductIdOrderByCreatedAtAsc(productId);
+        var inventories = inventoryRepository.findByVariantIdIn(variants.stream().map(ProductVariant::getId).toList());
+        var byVariant = inventories.stream().collect(java.util.stream.Collectors.toMap(i -> i.getVariant().getId(), i -> i, (a, b) -> a));
+        return variants.stream().map(v -> toResponse(v, byVariant.get(v.getId()))).toList();
+    }
+
     // =========================================================
     // STOCK IN / ADJUST / THRESHOLD
     // =========================================================

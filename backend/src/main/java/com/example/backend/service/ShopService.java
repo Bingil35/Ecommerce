@@ -44,6 +44,32 @@ public class ShopService {
         return createShopFor(getUserForUpdate(email), r);
     }
 
+    @Transactional
+    public Shop updateMyShop(String email, CreateShopRequest r) {
+        User u = getUserForUpdate(email);
+        Shop shop = shops.findByOwnerUserId(u.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tài khoản chưa có cửa hàng."));
+        validate(r);
+        shop.setShopName(r.getShopName().trim());
+        shop.setPhone(trimToNull(r.getPhone()));
+        shop.setEmail(trimToNull(r.getEmail()) == null ? u.getEmail() : trimToNull(r.getEmail()));
+        shop.setLogoUrl(trimToNull(r.getLogoUrl()));
+        shop.setBannerUrl(trimToNull(r.getBannerUrl()));
+        shop.setAddress(trimToNull(r.getAddress()));
+        return shops.save(shop);
+    }
+
+    @Transactional
+    public Shop updateMyShopImage(String email, String kind, String imageUrl) {
+        User u = getUserForUpdate(email);
+        Shop shop = shops.findByOwnerUserId(u.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tài khoản chưa có cửa hàng."));
+        if ("logo".equals(kind)) shop.setLogoUrl(imageUrl);
+        else if ("banner".equals(kind)) shop.setBannerUrl(imageUrl);
+        else throw new IllegalArgumentException("Loại ảnh cửa hàng không hợp lệ.");
+        return shops.save(shop);
+    }
+
     /**
      * Khách hàng đăng ký mở shop (POST /api/customer/shop-registration):
      * tạo cửa hàng ở trạng thái PENDING và cấp thêm vai trò SHOP_OWNER trong cùng một transaction.

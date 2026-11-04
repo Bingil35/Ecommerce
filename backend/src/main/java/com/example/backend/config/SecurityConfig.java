@@ -84,6 +84,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**")
                         .permitAll()
 
+                        // The WebSocket authenticates the JWT in its first application frame.
+                        .requestMatchers("/ws/chat")
+                        .permitAll()
+                        .requestMatchers("/uploads/**")
+                        .permitAll()
+
+                        .requestMatchers("/api/chat/customer/**")
+                        .hasRole("CUSTOMER")
+                        .requestMatchers("/api/chat/shop-owner/**")
+                        .hasRole("SHOP_OWNER")
+
                         // Public read-only catalog endpoints
                         .requestMatchers("/api/categories/**")
                         .permitAll()

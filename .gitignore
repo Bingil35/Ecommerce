@@ -1,5 +1,6 @@
 .vscode
 .idea
+/query db/
 
 # Local environment and credentials
 .env

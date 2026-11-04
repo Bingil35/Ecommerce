@@ -66,5 +66,11 @@ public class OrderController {
                 codPaymentService.confirmReceived(authentication.getName(), orderId)));
     }
 
+    @PostMapping("/sub-orders/{subOrderId}/confirm-received")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> confirmSubOrderReceived(Authentication authentication, @PathVariable UUID subOrderId) {
+        var status = codPaymentService.confirmSubOrderReceived(authentication.getName(), subOrderId);
+        return ResponseEntity.ok(ApiResponse.success("Receipt confirmed.", java.util.Map.of("status", status.name())));
+    }
+
     public record CancelRequest(@Size(max = 500) String reason) {}
 }
