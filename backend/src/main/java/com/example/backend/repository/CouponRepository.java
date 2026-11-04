@@ -15,6 +15,7 @@ import com.example.backend.entity.Coupon;
 import jakarta.persistence.LockModeType;
 
 public interface CouponRepository extends JpaRepository<Coupon, UUID> {
+    List<Coupon> findByShop_IdOrderByCreatedAtDesc(UUID shopId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Coupon c where c.id = :id")
     java.util.Optional<Coupon> findByIdForUpdate(@Param("id") UUID id);

@@ -75,6 +75,41 @@ public class LocalStorageService {
         }
     }
 
+    public String storeShopImage(UUID shopId, MultipartFile file, String extension, String imageKind) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")
+                || !java.util.Set.of("logo", "banner").contains(imageKind)) {
+            throw new IllegalArgumentException("Invalid shop image");
+        }
+        try {
+            Path directory = uploadRoot.resolve("shops").resolve(shopId.toString()).normalize();
+            Files.createDirectories(directory);
+            String filename = imageKind + "-" + UUID.randomUUID() + "." + extension;
+            Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target);
+            return "/uploads/shops/" + shopId + "/" + filename;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to store shop image", exception);
+        }
+    }
+
+    public String storeChatMedia(UUID conversationId, MultipartFile file, String extension) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid chat media extension");
+        try {
+            Path directory = uploadRoot.resolve("chat").resolve(conversationId.toString()).normalize();
+            Files.createDirectories(directory);
+            String filename = UUID.randomUUID() + "." + extension;
+            Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target);
+            return "/uploads/chat/" + conversationId + "/" + filename;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to store chat media", exception);
+        }
+    }
+
     /**
      * Sao chép một file media sang thư mục của sản phẩm khác.
      * Trả về URL mới, hoặc null nếu file nguồn không tồn tại / không phải file nội bộ.
