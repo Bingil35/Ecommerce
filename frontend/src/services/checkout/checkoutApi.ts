@@ -1,5 +1,5 @@
 import axiosClient from '../api/axiosClient';
-import type { CustomerAddress, Coupon, CheckoutPreview, CheckoutPreviewRequest, PlaceOrderRequest, OrderListItem, PageResponse, OrderDetail, PaymentConfirmation, OrderStatus, PlaceOrderResult } from './checkoutTypes';
+import type { CustomerAddress, Coupon, CheckoutPreview, CheckoutPreviewRequest, PlaceOrderRequest, OrderListItem, PageResponse, OrderDetail, PaymentConfirmation, OrderStatus, PlaceOrderResult, ShopOwnerOrder } from './checkoutTypes';
 
 type Envelope<T> = { data?: T; success?: boolean; message?: string } | T;
 const unwrap = <T,>(value: Envelope<T>): T =>
@@ -42,8 +42,17 @@ export const checkoutApi = {
   async confirmCodReceived(orderId: string): Promise<PaymentConfirmation> {
     return unwrap((await axiosClient.post<Envelope<PaymentConfirmation>>(`/customer/orders/${orderId}/cod/confirm-received`)).data);
   },
+  async confirmSubOrderReceived(subOrderId: string): Promise<{ status: OrderStatus }> {
+    return unwrap((await axiosClient.post<Envelope<{ status: OrderStatus }>>(`/customer/orders/sub-orders/${subOrderId}/confirm-received`)).data);
+  },
   async updateShopSubOrderStatus(subOrderId: string, status: OrderStatus, note?: string): Promise<{ status: OrderStatus }> {
     return unwrap((await axiosClient.patch<Envelope<{ status: OrderStatus }>>(`/shop-owner/orders/sub-orders/${subOrderId}/status`, { status, note })).data);
+  },
+  async getShopOrders(params: { page: number; size: number; status?: OrderStatus | ''; keyword?: string }): Promise<PageResponse<ShopOwnerOrder>> {
+    return unwrap((await axiosClient.get<Envelope<PageResponse<ShopOwnerOrder>>>('/shop-owner/orders', { params })).data);
+  },
+  async getShopOrder(id: string): Promise<ShopOwnerOrder> {
+    return unwrap((await axiosClient.get<Envelope<ShopOwnerOrder>>(`/shop-owner/orders/sub-orders/${id}`)).data);
   },
 };
 

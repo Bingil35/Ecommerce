@@ -26,4 +26,15 @@ export const shopApi = {
 
     return response.data.data;
   },
+  async updateMyShop(payload: CreateShopRequest): Promise<ShopResponse> {
+    const response = await axiosClient.put<ApiResponse<ShopResponse>>('/shop-owner/shop/me', payload);
+    return response.data.data;
+  },
+  async uploadImage(kind: 'logo' | 'banner', file: File): Promise<ShopResponse> {
+    const body = new FormData();
+    body.append('file', file);
+    body.append('kind', kind);
+    const response = await axiosClient.post<ApiResponse<ShopResponse>>('/shop-owner/shop/me/images', body, { headers: { 'Content-Type': undefined } });
+    return response.data.data;
+  },
 };

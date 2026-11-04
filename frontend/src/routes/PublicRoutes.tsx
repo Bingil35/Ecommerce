@@ -18,6 +18,8 @@ import CheckoutPage from '../pages/customer/CheckoutPage';
 import OrderHistoryPage from '../pages/customer/OrderHistoryPage';
 import OrderDetailPage from '../pages/customer/OrderDetailPage';
 import AddressBookPage from '../pages/customer/AddressBookPage';
+import ChatPage from '../pages/chat/ChatPage';
+import SettingsPage from '../pages/settings/SettingsPage';
 const PublicRoutes = () => {
   return (
     <Routes>
@@ -33,6 +35,8 @@ const PublicRoutes = () => {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/orders" element={<OrderHistoryPage />} />
         <Route path="/orders/:orderId" element={<OrderDetailPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/account/settings" element={<SettingsPage audience="customer" />} />
         <Route
           path="/product/:slug"
           element={<ProductDetailPage />}
