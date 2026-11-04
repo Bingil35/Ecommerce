@@ -11,6 +11,9 @@ import java.util.UUID;
 public interface ProductVariantRepository
         extends JpaRepository<ProductVariant, UUID> {
 
+    @org.springframework.data.jpa.repository.Query("select v from ProductVariant v join fetch v.product p where p.shopId = :shopId order by p.name asc, v.sku asc")
+    List<ProductVariant> findAllByShopId(@org.springframework.data.repository.query.Param("shopId") UUID shopId);
+
     List<ProductVariant> findByProductIdOrderByCreatedAtAsc(
             UUID productId
     );

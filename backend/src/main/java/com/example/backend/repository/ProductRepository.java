@@ -14,6 +14,7 @@ public interface ProductRepository
                 JpaSpecificationExecutor<Product> {
 
     java.util.Optional<Product> findBySlug(String slug);
+    java.util.Optional<Product> findBySlugAndShopIdAndStatus(String slug, UUID shopId, ProductStatus status);
 
     boolean existsBySlug(String slug);
     boolean existsBySlugAndIdNot(String slug, UUID id);

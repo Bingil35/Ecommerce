@@ -50,7 +50,7 @@ public class OrderQueryService {
         Order order=orderRepository.findByIdAndUser_Id(orderId,user.getId()).orElseThrow(()->new ResourceNotFoundException("Không tìm thấy đơn hàng."));
         List<OrderDetailResponse.SubOrderView> children=subOrderRepository.findByOrder_IdOrderByCreatedAtAsc(order.getId()).stream().map(s->{
             List<OrderDetailResponse.OrderLineView> lines=orderDetailRepository.findBySubOrder_Id(s.getId()).stream()
-                    .map(d->new OrderDetailResponse.OrderLineView(d.getId(),d.getVariant()==null?null:d.getVariant().getId(),d.getProductName(),d.getPrice(),d.getQuantity(),d.getDiscountAmount(),d.getTotalAmount())).toList();
+                    .map(d->new OrderDetailResponse.OrderLineView(d.getId(),d.getVariant()==null?null:d.getVariant().getProduct().getId(),d.getVariant()==null?null:d.getVariant().getId(),d.getProductName(),d.getPrice(),d.getQuantity(),d.getDiscountAmount(),d.getTotalAmount())).toList();
             List<OrderDetailResponse.StatusHistoryView> history=historyRepository.findBySubOrder_IdOrderByCreatedAtAsc(s.getId()).stream()
                     .map(h->new OrderDetailResponse.StatusHistoryView(h.getOldStatus(),h.getNewStatus(),h.getNote(),h.getCreatedAt())).toList();
             OrderAddress a=s.getOrderAddress();

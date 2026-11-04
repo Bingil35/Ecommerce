@@ -17,6 +17,6 @@ public record OrderDetailResponse(UUID id, String orderCode, PaymentMethod payme
     public record SubOrderView(UUID id, UUID shopId, String shopName, OrderStatus status, BigDecimal subtotal,
             BigDecimal discountAmount, BigDecimal totalAmount, AddressSnapshot shippingAddress,
             List<StatusHistoryView> statusHistory, List<OrderLineView> items) {}
-    public record OrderLineView(UUID id, UUID variantId, String productName, BigDecimal price, Integer quantity,
+    public record OrderLineView(UUID id, UUID productId, UUID variantId, String productName, BigDecimal price, Integer quantity,
             BigDecimal discountAmount, BigDecimal totalAmount) {}
 }

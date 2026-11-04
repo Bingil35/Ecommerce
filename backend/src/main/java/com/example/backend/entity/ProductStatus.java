@@ -10,7 +10,8 @@ package com.example.backend.entity;
  *
  * Biến thể (ProductVariant) chỉ dùng ACTIVE / INACTIVE.
  * Yêu cầu schema: product_status_enum phải có đủ 4 giá trị
- * (xem 03 - Migration - Product status.sql).
+ * (apply query db/08 - Migration product status enum.sql; Hibernate ddl-auto
+ * does not add values to an existing PostgreSQL named enum).
  */
 public enum ProductStatus {
     PENDING,
