@@ -4,6 +4,7 @@ import { ChevronRight, MapPin, MessageCircle, Package, Star, Store } from 'lucid
 import ProductCard from '../../components/customer/home/recommendation/ProductCard';
 import type { HomeProduct } from '../../components/customer/home/recommendation/productData';
 import { categoryApi, productApi, shopApi, type CategoryDto, type PublicShopDto } from '../../services/catalog/productApi';
+import { mediaUrl } from '../../services/api/mediaUrl';
 
 type ProductTab = 'all' | 'featured' | 'best_selling' | 'categories';
 
@@ -107,13 +108,13 @@ export default function ShopDetailPage() {
       <nav aria-label="Đường dẫn" className="mb-4 flex items-center gap-2 text-xs text-[#8791A4]"><Link to="/" className="hover:text-[#5367C9]">Trang chủ</Link><ChevronRight size={14}/><span className="font-medium text-[#47516A]">{shop.shopName}</span></nav>
       <section className="overflow-hidden rounded-3xl border border-[#E5EAF3] bg-white shadow-[0_8px_28px_rgba(53,69,112,0.06)]">
         <div className="relative h-44 bg-gradient-to-r from-[#293A75] via-[#566CC3] to-[#A8B7F0] sm:h-60">
-          {shop.bannerUrl && <img src={shop.bannerUrl} alt="" className="h-full w-full object-cover"/>}
+          {shop.bannerUrl && <img src={mediaUrl(shop.bannerUrl)} alt="" className="h-full w-full object-cover"/>}
           <div className="absolute inset-0 bg-gradient-to-r from-[#202D5A]/55 to-transparent"/>
           <div className="absolute bottom-4 left-5 text-white sm:bottom-6 sm:left-8"><p className="text-xs font-semibold uppercase tracking-[.18em] text-white/80">Gian hàng Kala</p><h1 className="mt-1 text-2xl font-bold sm:text-3xl">{shop.shopName}</h1></div>
         </div>
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:px-8 sm:py-6">
           <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-[#F0F3FF] shadow-md sm:h-28 sm:w-28">
-            {shop.logoUrl ? <img src={shop.logoUrl} alt={shop.shopName} className="h-full w-full object-cover"/> : <Store size={35} className="text-[#596BD0]"/>}
+            {shop.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt={shop.shopName} className="h-full w-full object-cover"/> : <Store size={35} className="text-[#596BD0]"/>}
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold text-[#202642] sm:text-xl">{shop.shopName}</h2>

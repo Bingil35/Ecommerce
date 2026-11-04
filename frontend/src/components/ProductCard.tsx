@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Star } from 'lucide-react';
 import type { Product } from '../services/product/productTypes.ts';
 
 export const formatPrice = (value: number) =>
@@ -64,9 +65,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <div className="mt-auto flex items-center justify-between pt-3 text-xs text-[#667085]">
-          <span>
-            ★ {product.rating.toFixed(1)} ({product.reviewCount})
-          </span>
+          <span className="inline-flex items-center gap-1"><Star size={13} fill="currentColor" className="text-amber-400"/>{product.rating.toFixed(1)} ({product.reviewCount})</span>
         </div>
       </div>
     </Link>

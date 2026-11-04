@@ -1,17 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, ClipboardList, Home, LogOut, Package, Settings, Star, Store, Tag, Truck, Warehouse } from 'lucide-react';
+import { Bell, ChevronDown, ClipboardList, Home, LogOut, MessageCircle, Package, Settings, Star, Store, Tag, Truck, Warehouse } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { shopApi } from '../services/shop/shopApi';
+import type { ShopResponse } from '../services/shop/shopTypes';
+import { mediaUrl } from '../services/api/mediaUrl';
+import { useChatUnread } from '../hooks/useChatUnread';
 
 const items = [
   { to: '/seller', text: 'Trang chủ', icon: Home },
   { to: '/seller/products', text: 'Sản phẩm', icon: Package },
+  { to: '/shop-owner/orders', text: 'Đơn hàng', icon: ClipboardList },
+  { to: '/shop-owner/reviews', text: 'Đánh giá', icon: Star },
+  { to: '/seller/inventory', text: 'Kho hàng', icon: Warehouse },
+  { to: '/seller/promotions', text: 'Khuyến mãi', icon: Tag },
+  { to: '/seller/shop', text: 'Thông tin cửa hàng', icon: Store },
 ];
 const future = [
-  { text: 'Đơn hàng', icon: ClipboardList }, { text: 'Kho hàng', icon: Warehouse },
-  { text: 'Khuyến mãi', icon: Tag }, { text: 'Đánh giá', icon: Star },
-  { text: 'Thông tin cửa hàng', icon: Store }, { text: 'Vận chuyển', icon: Truck },
-  { text: 'Thiết lập', icon: Settings },
+  { text: 'Vận chuyển', icon: Truck },
 ];
 
 // Container dùng chung cho Header, Navigation và nội dung các trang Shop Owner (cùng max-width 1200px với trang khách hàng).
@@ -19,9 +25,13 @@ const layoutStyles = '.seller-container{width:100%;max-width:1200px;margin-inlin
 
 export default function ShopOwnerLayout() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const hasUnreadChat = useChatUnread('shop-owner');
+  const [shop, setShop] = useState<ShopResponse | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { void shopApi.getMyShop().then(setShop).catch(() => {}); }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -36,15 +46,17 @@ export default function ShopOwnerLayout() {
       <div className="seller-container kso-header-in">
         <span className="kso-logo">Kala°</span>
         <div className="kso-right">
+          <button type="button" className="kso-icon-btn relative" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/seller/chat')}><MessageCircle size={20}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>
           <button type="button" className="kso-icon-btn" aria-label="Thông báo"><Bell size={20}/></button>
           <div className="kso-account" ref={accountRef}>
             <button type="button" className="kso-account-btn" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
-              <span className="kso-avatar"><Store size={18}/></span>
-              <span className="kso-who"><b>Kala Store</b><span>Shop Owner</span></span>
+              <span className="kso-avatar">{shop?.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt="" className="h-full w-full rounded-full object-cover"/> : <Store size={18}/>}</span>
+              <span className="kso-who"><b>{shop?.shopName || 'Cửa hàng'}</b><span>{user?.fullName || 'Chủ cửa hàng'}</span></span>
               <ChevronDown size={16}/>
             </button>
             {menuOpen && <div className="kso-menu" role="menu">
               <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/'); }}><Home size={16}/> Trang khách hàng</button>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/seller/settings'); }}><Settings size={16}/> Cài đặt</button>
               <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); logout(); navigate('/seller/login', { replace: true }); }}><LogOut size={16}/> Đăng xuất</button>
             </div>}
           </div>

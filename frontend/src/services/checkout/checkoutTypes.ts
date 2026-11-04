@@ -45,11 +45,18 @@ export interface OrderDetail {
     subtotal: number | string; discountAmount: number | string; totalAmount: number | string;
     shippingAddress: { recipientName: string; recipientPhone: string; recipientCity: string; ward: string; addressDetail: string } | null;
     statusHistory: { oldStatus: OrderStatus | null; newStatus: OrderStatus; note: string | null; createdAt: string }[];
-    items: { id: string; variantId: string | null; productName: string; price: number | string; quantity: number; discountAmount: number | string; totalAmount: number | string }[];
+    items: { id: string; productId: string | null; variantId: string | null; productName: string; price: number | string; quantity: number; discountAmount: number | string; totalAmount: number | string }[];
   }[];
 }
 export interface PaymentConfirmation {
   orderId: string; orderCode: string; paymentStatus: PaymentStatus; confirmedAt: string; message: string;
+}
+export interface ShopOwnerOrder {
+  id: string; orderCode: string; customerName: string; status: OrderStatus; paymentMethod: PaymentMethod | null; paymentStatus: PaymentStatus;
+  subtotal: number | string; discountAmount: number | string; totalAmount: number | string; createdAt: string;
+  shippingAddress: { recipientName: string; recipientPhone: string; recipientCity: string; ward: string; addressDetail: string } | null;
+  statusHistory: { oldStatus: OrderStatus | null; newStatus: OrderStatus; note: string | null; createdAt: string }[];
+  items: OrderDetail['subOrders'][number]['items'];
 }
 
 export interface PlaceOrderResult { id: string; orderCode: string; paymentMethod: PaymentMethod; paymentStatus: PaymentStatus; subtotal: number | string; discountAmount: number | string; totalAmount: number | string; createdAt: string; subOrders: unknown[]; }

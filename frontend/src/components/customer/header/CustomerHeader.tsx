@@ -10,6 +10,7 @@ import {
   Settings,
   Store,
   MapPin,
+  MessageCircle,
 } from 'lucide-react';
 
 import {
@@ -25,6 +26,7 @@ import { isShopOwner } from '../../../services/auth/roles';
 import { BECOME_SELLER_ENTRY } from '../../../routes/BecomeSellerGuard';
 import { useCart } from '../../../context/CartContext';
 import { useWishlist } from '../../../context/WishlistContext';
+import { useChatUnread } from '../../../hooks/useChatUnread';
 
 import logo from '../../../assets/logo.png';
 
@@ -32,8 +34,9 @@ const CustomerHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
-  const { itemCount } = useCart();
+  const { distinctItemCount } = useCart();
   const { count: wishlistCount } = useWishlist();
+  const hasUnreadChat = useChatUnread('customer');
   const { scrollY } = useScroll();
 
   const [isHidden, setIsHidden] = useState(false);
@@ -167,6 +170,8 @@ const CustomerHeader = () => {
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
 
+            {isAuthenticated && !isShopOwner(user) && <button type="button" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/chat')} className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-white hover:text-[#171B7A] sm:h-10 sm:w-10"><MessageCircle size={20} strokeWidth={1.8}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>}
+
             {/* Cart */}
             <div className="relative">
             <button
@@ -187,7 +192,7 @@ const CustomerHeader = () => {
                 />
             </button>
 
-            {itemCount > 0 && (
+            {distinctItemCount > 0 && (
             <span
                 className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#5B6FF5] px-1
                 text-[10px]
@@ -198,7 +203,7 @@ const CustomerHeader = () => {
                 ring-white/70
                 "
             >
-                {itemCount > 99 ? '99+' : itemCount}
+                {distinctItemCount > 99 ? '99+' : distinctItemCount}
             </span>
             )}
             </div>
