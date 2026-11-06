@@ -94,6 +94,17 @@ public class LocalStorageService {
         }
     }
 
+    public String storeSystemBannerImage(MultipartFile file, String extension) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid banner image extension");
+        try {
+            Path directory = uploadRoot.resolve("banners").normalize(); Files.createDirectories(directory);
+            String filename = UUID.randomUUID() + "." + extension; Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target); return "/uploads/banners/" + filename;
+        } catch (IOException exception) { throw new IllegalStateException("Failed to store banner image", exception); }
+    }
+
     public String storeChatMedia(UUID conversationId, MultipartFile file, String extension) {
         validateFile(file);
         if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid chat media extension");

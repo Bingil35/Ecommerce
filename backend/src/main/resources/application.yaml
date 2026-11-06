@@ -8,9 +8,9 @@ spring:
       max-request-size: 51MB
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/ecommerce_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:}
+    url: jdbc:postgresql://localhost:5432/ecommerce_db
+    username: postgres
+    password: Binh035205@
     driver-class-name: org.postgresql.Driver
 
   jpa:
