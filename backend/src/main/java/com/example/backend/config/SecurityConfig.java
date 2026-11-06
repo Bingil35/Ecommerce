@@ -84,21 +84,30 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**")
                         .permitAll()
 
+                        // The WebSocket authenticates the JWT in its first application frame.
+                        .requestMatchers("/ws/chat")
+                        .permitAll()
+                        .requestMatchers("/uploads/**")
+                        .permitAll()
+
+                        .requestMatchers("/api/chat/customer/**")
+                        .hasRole("CUSTOMER")
+                        .requestMatchers("/api/chat/shop-owner/**")
+                        .hasRole("SHOP_OWNER")
+
                         // Public read-only catalog endpoints
                         .requestMatchers("/api/categories/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/banners")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/brands")
                         .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/shops")
+                        .requestMatchers(HttpMethod.GET, "/api/shops/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**")
                         .permitAll()
 
                         .requestMatchers("/api/shop-owner/**")
-                        .hasRole("SHOP_OWNER")
-
-                        // Legacy product-management URLs remain shop-owner only
-                        .requestMatchers("/api/shop/**")
                         .hasRole("SHOP_OWNER")
 
                         .requestMatchers("/api/customer/**")

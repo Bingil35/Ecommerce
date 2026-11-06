@@ -8,6 +8,9 @@ import {
   LogOut,
   UserRound,
   Settings,
+  Store,
+  MapPin,
+  MessageCircle,
 } from 'lucide-react';
 
 import {
@@ -19,7 +22,12 @@ import {
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { isShopOwner } from '../../../services/auth/roles';
+import { BECOME_SELLER_ENTRY } from '../../../routes/BecomeSellerGuard';
 import { useCart } from '../../../context/CartContext';
+import { useWishlist } from '../../../context/WishlistContext';
+import { useChatUnread } from '../../../hooks/useChatUnread';
+import NotificationBell from '../../notifications/NotificationBell';
 
 import logo from '../../../assets/logo.png';
 
@@ -27,7 +35,9 @@ const CustomerHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
-  const { itemCount } = useCart();
+  const { distinctItemCount } = useCart();
+  const { count: wishlistCount } = useWishlist();
+  const hasUnreadChat = useChatUnread('customer');
   const { scrollY } = useScroll();
 
   const [isHidden, setIsHidden] = useState(false);
@@ -97,6 +107,7 @@ const CustomerHeader = () => {
               src={logo}
               alt="Kala"
               className="h-8 w-auto sm:h-9 lg:h-10"
+              onClick={() => navigate('/')}
             />
           </div>
 
@@ -160,6 +171,10 @@ const CustomerHeader = () => {
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
 
+            {!isShopOwner(user) && <NotificationBell audience="customer" authenticated={isAuthenticated}/>}
+
+            {isAuthenticated && !isShopOwner(user) && <button type="button" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/chat')} className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-white hover:text-[#171B7A] sm:h-10 sm:w-10"><MessageCircle size={20} strokeWidth={1.8}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>}
+
             {/* Cart */}
             <div className="relative">
             <button
@@ -180,7 +195,7 @@ const CustomerHeader = () => {
                 />
             </button>
 
-            {itemCount > 0 && (
+            {distinctItemCount > 0 && (
             <span
                 className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#5B6FF5] px-1
                 text-[10px]
@@ -191,37 +206,45 @@ const CustomerHeader = () => {
                 ring-white/70
                 "
             >
-                {itemCount > 99 ? '99+' : itemCount}
+                {distinctItemCount > 99 ? '99+' : distinctItemCount}
             </span>
             )}
             </div>
 
             {/* Wishlist */}
-            <button
-              type="button"
-              aria-label="Yêu thích"
-              onClick={() => isAuthenticated ? window.alert('API danh sách yêu thích chưa được triển khai trong SCRUM 64–66.') : navigate('/login', { state: { from: location.pathname, notice: 'Đăng nhập để xem danh sách yêu thích.' } })}
-              className="
-                flex
-                h-9
-                w-9
-                sm:h-10
-                sm:w-10
-                items-center
-                justify-center
-                rounded-full
-                text-[#4B5563]
-                transition-colors
-                duration-200
-                hover:bg-white
-                hover:text-[#171B7A]
-              "
-            >
-              <Heart
-                size={20}
-                strokeWidth={1.8}
-              />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Yêu thích"
+                onClick={() => isAuthenticated ? navigate('/wishlist') : navigate('/login', { state: { from: '/wishlist', notice: 'Đăng nhập để xem danh sách yêu thích.' } })}
+                className="
+                  flex
+                  h-9
+                  w-9
+                  sm:h-10
+                  sm:w-10
+                  items-center
+                  justify-center
+                  rounded-full
+                  text-[#4B5563]
+                  transition-colors
+                  duration-200
+                  hover:bg-white
+                  hover:text-[#171B7A]
+                "
+              >
+                <Heart
+                  size={20}
+                  strokeWidth={1.8}
+                />
+              </button>
+
+              {wishlistCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#E5334F] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white/70">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
+                </span>
+              )}
+            </div>
 
             {/* Account / Guest login */}
             {isAuthenticated ? (
@@ -260,8 +283,29 @@ const CustomerHeader = () => {
                         <UserRound size={17} strokeWidth={1.8} /><span>Thông tin</span>
                       </button>
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/orders'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
-                        <Package size={17} strokeWidth={1.8} /><span>Đơn mua</span>
+                        <Package size={17} strokeWidth={1.8} /><span>Đơn hàng</span>
                       </button>
+                      <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/addresses'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
+                        <MapPin size={17} strokeWidth={1.8} /><span>Địa chỉ của tôi</span>
+                      </button>
+                    </div>
+                    <div className="border-t border-[#EEF1F6] p-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAccountOpen(false);
+                          if (isShopOwner(user)) {
+                            navigate('/seller');
+                          } else {
+                            navigate('/seller/register', { state: { entry: BECOME_SELLER_ENTRY } });
+                          }
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl border border-[#CFE0FB] bg-[#F1F6FF] px-3 py-2.5 text-left text-sm font-medium text-[#2F6BEA] transition-colors hover:bg-[#E6EFFF]"
+                      >
+                        <Store size={17} strokeWidth={1.8} /><span>{isShopOwner(user) ? 'Kênh người bán' : 'Mở gian hàng'}</span>
+                      </button>
+                    </div>
+                    <div className="border-t border-[#EEF1F6] p-1.5">
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
                         <Settings size={17} strokeWidth={1.8} /><span>Cài đặt</span>
                       </button>

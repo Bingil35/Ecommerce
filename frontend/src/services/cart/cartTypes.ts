@@ -119,6 +119,7 @@ export interface CartContextValue {
   shops: CartShop[];
   items: CartItem[];
   itemCount: number;
+  distinctItemCount: number;
   subtotal: number;
   isLoading: boolean;
   error: string | null;

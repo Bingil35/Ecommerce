@@ -1,6 +1,17 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import axiosClient from '../../../../services/api/axiosClient';
+
+type Banner = { id:string; title:string; imageUrl:string; priority:number };
+type BannerEnvelope = { data: Banner[] };
 
 const HeroBanner = () => {
+  const [banners,setBanners]=useState<Banner[]>([]);
+  const [active,setActive]=useState(0);
+  useEffect(()=>{void axiosClient.get<BannerEnvelope>('/banners').then(({data})=>setBanners(data.data||[])).catch(()=>{});},[]);
+  useEffect(()=>{if(banners.length<2)return;const timer=window.setInterval(()=>setActive(i=>(i+1)%banners.length),6000);return()=>window.clearInterval(timer);},[banners.length]);
+  if(banners.length){const banner=banners[active%banners.length];return <section className="pt-5 sm:pt-6"><div className="relative flex min-h-[220px] items-end overflow-hidden rounded-3xl bg-[#26304f] shadow-[0_8px_30px_rgba(40,55,90,0.12)] sm:min-h-[280px] lg:min-h-[340px]"><img key={banner.id} src={banner.imageUrl} alt={banner.title} className="absolute inset-0 h-full w-full object-cover"/><div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-900/35 to-transparent"/><div className="relative z-10 max-w-[650px] px-6 py-8 sm:px-10 sm:py-11 lg:px-12"><span className="rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-[10px] font-semibold tracking-wider text-white backdrop-blur-sm">KALA · ƯU ĐÃI DÀNH CHO BẠN</span><h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-[42px]">{banner.title}</h1><Link to="/products" className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#5367C9] shadow transition hover:-translate-y-0.5">Khám phá ngay <ArrowRight size={17}/></Link></div>{banners.length>1&&<div className="absolute bottom-5 right-6 z-10 flex gap-2">{banners.map((item,index)=><button key={item.id} aria-label={`Xem banner ${index+1}`} onClick={()=>setActive(index)} className={`h-1.5 rounded-full transition-all ${index===active?'w-7 bg-white':'w-2 bg-white/55'}`}/>)}</div>}</div></section>}
   return (
     <section className="pt-5 sm:pt-6">
       <div

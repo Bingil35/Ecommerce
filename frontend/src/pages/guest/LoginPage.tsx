@@ -3,7 +3,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react';
-import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Headset, LockKeyhole, Mail, ShieldCheck, Star, Truck } from 'lucide-react';
 
 import { Link, useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/api/axiosClient';
@@ -11,6 +11,7 @@ import logo from '../../assets/logo.png';
 import heroImage from '../../assets/hero_log.png';
 import { useAuth } from '../../context/AuthContext';
 import type { LoginResponse } from '../../services/auth/authTypes';
+import { hasRole, ROLES } from '../../services/auth/roles';
 
 import { AppleIcon, GoogleIcon } from '../../components/icons';
 
@@ -80,7 +81,7 @@ export default function LoginPage() {
         loginData.user,
         rememberMe
       );
-      navigate('/', { replace: true });
+      navigate(hasRole(loginData.user, ROLES.ADMIN) ? '/admin' : '/', { replace: true });
     } catch (error: any) {
       const message =
         error.response?.data?.message ||
@@ -142,25 +143,25 @@ export default function LoginPage() {
             {/* Benefits */}
             <div className="grid grid-cols-4">
               <Benefit
-                icon={<ShieldIcon />}
+                icon={<ShieldCheck size={26} className="shrink-0"/>}
                 title="Sản phẩm"
                 description="chính hãng"
               />
 
               <Benefit
-                icon={<TruckIcon />}
+                icon={<Truck size={26} className="shrink-0"/>}
                 title="Giao hàng"
                 description="nhanh chóng"
               />
 
               <Benefit
-                icon={<HeadphoneIcon />}
+                icon={<Headset size={26} className="shrink-0"/>}
                 title="Hỗ trợ"
                 description="24/7"
               />
 
               <Benefit
-                icon={<StarIcon />}
+                icon={<Star size={26} className="shrink-0"/>}
                 title="Trải nghiệm"
                 description="mua sắm tốt nhất"
               />
@@ -335,9 +336,7 @@ export default function LoginPage() {
                   : 'Đăng nhập'}
 
                 {!isLoading && (
-                  <span className="text-lg">
-                    →
-                  </span>
+                  <ArrowRight size={17}/>
                 )}
               </button>
             </form>
@@ -421,99 +420,5 @@ function Benefit({
         </p>
       </div>
     </div>
-  );
-}
-
-/* =====================================================
-   BENEFIT ICONS
-===================================================== */
-
-function ShieldIcon() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-    >
-      <path d="M12 3 20 6v5c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V6l8-3Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
-function TruckIcon() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-    >
-      <path d="M3 6h11v10H3z" />
-      <path d="M14 10h4l3 3v3h-7z" />
-
-      <circle
-        cx="7"
-        cy="18"
-        r="2"
-      />
-
-      <circle
-        cx="18"
-        cy="18"
-        r="2"
-      />
-    </svg>
-  );
-}
-
-function HeadphoneIcon() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-    >
-      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
-
-      <path d="M4 14h3v5H5a1 1 0 0 1-1-1v-4Z" />
-
-      <path d="M20 14h-3v5h2a1 1 0 0 0 1-1v-4Z" />
-    </svg>
-  );
-}
-
-function StarIcon() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-    >
-      <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
-    </svg>
   );
 }

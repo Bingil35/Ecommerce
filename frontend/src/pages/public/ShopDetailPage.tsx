@@ -1,30 +1,152 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Heart, ShoppingCart, Star, Store, ShieldCheck, Truck, ChevronRight, Minus, Plus } from 'lucide-react';
-import { productApi, formatVnd, productImage, type ProductDetailDto } from '../../services/catalog/productApi';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ChevronRight, Heart, MapPin, MessageCircle, Package, Star, Store } from 'lucide-react';
 import ProductCard from '../../components/customer/home/recommendation/ProductCard';
 import type { HomeProduct } from '../../components/customer/home/recommendation/productData';
+import { categoryApi, productApi, shopApi, type CategoryDto, type PublicShopDto } from '../../services/catalog/productApi';
+import { mediaUrl } from '../../services/api/mediaUrl';
 import { useAuth } from '../../context/AuthContext';
-export default function ProductDetailPage() {
- const { slug='' }=useParams();const navigate=useNavigate();const {isAuthenticated}=useAuth();const [product,setProduct]=useState<ProductDetailDto|null>(null);const [related,setRelated]=useState<HomeProduct[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [imageIndex,setImageIndex]=useState(0);const [selected,setSelected]=useState<Record<string,string>>({});const [quantity,setQuantity]=useState(1);
- useEffect(()=>{let alive=true;setLoading(true);setError('');productApi.detail(slug).then(p=>{if(!alive)return;setProduct(p);setImageIndex(0);productApi.related(p.id).then(items=>{if(alive)setRelated(items)}).catch(()=>{if(alive)setRelated([])});}).catch(()=>{if(alive)setError('Không tìm thấy sản phẩm hoặc sản phẩm hiện không được bán.')}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false}},[slug]);
- const media=useMemo(()=>{if(!product)return[];const items=(product.media||[]).filter(m=>m.url).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)).map(m=>({url:m.url,type:m.type||'IMAGE'}));if(product.thumbnailUrl&&!items.some(m=>m.url===product.thumbnailUrl))items.unshift({url:product.thumbnailUrl,type:'IMAGE'});return items},[product]);
- const chosenVariant=useMemo(()=>product?.variants?.find(v=>(v.selectedOptions||[]).every(o=>selected[o.optionId]===o.optionValueId))||null,[product,selected]);
- const price=chosenVariant?.price??product?.minPrice??product?.price;const stock=chosenVariant?.stockQuantity??product?.stockQuantity??0;const image=chosenVariant?.imageUrl||media[imageIndex]?.url||productImage(product||{thumbnailUrl:null});
- const requireLogin=(action:string)=>{if(!isAuthenticated){navigate('/login',{state:{from:location.pathname,notice:`Đăng nhập để ${action}.`}});return false}return true};
- if(loading)return <div className="min-h-[55vh] bg-[#F7FAFF] px-4 py-20 text-center text-sm text-[#8A93A6]">Đang tải chi tiết sản phẩm...</div>;
- if(error||!product)return <div className="min-h-[55vh] bg-[#F7FAFF] px-4 py-20 text-center"><h1 className="text-xl font-semibold text-[#202642]">Không thể hiển thị sản phẩm</h1><p className="mt-2 text-sm text-[#8A93A6]">{error}</p><button onClick={()=>navigate('/products')} className="mt-5 rounded-xl bg-[#5367C9] px-5 py-2.5 text-sm font-semibold text-white">Tiếp tục mua sắm</button></div>;
- return <main className="min-h-screen bg-[#F7FAFF]"><div className="mx-auto max-w-[1200px] px-4 py-6 sm:py-9"><div className="mb-5 flex items-center gap-2 text-xs text-[#8A93A6]"><button onClick={()=>navigate('/')} className="hover:text-[#5367C9]">Trang chủ</button><ChevronRight size={14}/><button onClick={()=>navigate(`/products?categoryId=${product.categoryId||''}`)} className="hover:text-[#5367C9]">{product.category?.name||'Sản phẩm'}</button><ChevronRight size={14}/><span className="line-clamp-1 text-[#596174]">{product.name}</span></div>
- <section className="grid gap-6 rounded-2xl border border-[#E5EBF6] bg-white p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-9"><div className="min-w-0"><div className="relative aspect-square overflow-hidden rounded-2xl bg-[#F4F6FB]"><img src={image} alt={product.name} className="h-full w-full object-contain"/>{media[imageIndex]?.type==='VIDEO'&&<span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white">Video sản phẩm</span>}</div><div className="mt-3 grid grid-cols-5 gap-2">{media.slice(0,5).map((m,i)=><button key={m.url+i} onClick={()=>setImageIndex(i)} className={`aspect-square overflow-hidden rounded-xl border-2 ${imageIndex===i?'border-[#5367C9]':'border-transparent'} bg-[#F4F6FB]`}><img src={m.url} alt={`Ảnh ${i+1}`} className="h-full w-full object-cover"/></button>)}</div></div>
- <div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#EEF3FF] px-2.5 py-1 text-xs font-semibold text-[#5367C9]">{product.featured?'Sản phẩm nổi bật':'Sản phẩm Kala'}</span><span className="text-xs text-[#8A93A6]">Mã: {product.id.slice(0,8).toUpperCase()}</span></div><h1 className="mt-3 text-xl font-bold leading-8 text-[#202642] sm:text-2xl">{product.name}</h1><div className="mt-3 flex flex-wrap items-center gap-3 text-sm"><span className="flex items-center gap-1 font-medium text-[#E8A832]"><Star size={16} fill="currentColor"/>{Number(product.ratingAverage||0).toFixed(1)}</span><span className="text-[#D7DDE8]">|</span><span className="text-[#667085]">{product.ratingCount||0} đánh giá</span><span className="text-[#D7DDE8]">|</span><span className="text-[#667085]">{stock>0?`Còn ${stock} sản phẩm`:'Tạm hết hàng'}</span></div>
- <div className="mt-5 rounded-2xl bg-[#F5F7FF] p-4"><div className="text-2xl font-bold text-[#5367C9] sm:text-3xl">{formatVnd(price)}</div>{chosenVariant?.comparePrice&&Number(chosenVariant.comparePrice)>Number(price)&&<div className="mt-1 text-sm text-[#9AA2B1] line-through">{formatVnd(chosenVariant.comparePrice)}</div>}{product.minPrice!=null&&product.maxPrice!=null&&Number(product.minPrice)!==Number(product.maxPrice)&&!chosenVariant&&<p className="mt-1 text-xs text-[#8A93A6]">Giá thay đổi theo phân loại sản phẩm</p>}</div>
- {product.options?.map(option=><div key={option.id} className="mt-5"><h2 className="mb-2 text-sm font-semibold text-[#374151]">{option.name}</h2><div className="flex flex-wrap gap-2">{option.values?.map(v=><button key={v.id} onClick={()=>setSelected(prev=>({...prev,[option.id]:v.id}))} className={`rounded-xl border px-3 py-2 text-sm transition ${selected[option.id]===v.id?'border-[#5367C9] bg-[#EEF3FF] text-[#4659B8]':'border-[#E1E7F2] text-[#596174] hover:border-[#B8C4EA]'}`}>{v.value}</button>)}</div></div>)}
- <div className="mt-5 flex items-center gap-3"><span className="text-sm text-[#667085]">Số lượng</span><div className="flex h-10 items-center rounded-xl border border-[#E1E7F2]"><button aria-label="Giảm số lượng" onClick={()=>setQuantity(q=>Math.max(1,q-1))} className="px-3 text-[#667085]"><Minus size={15}/></button><span className="min-w-7 text-center text-sm">{quantity}</span><button aria-label="Tăng số lượng" disabled={quantity>=stock} onClick={()=>setQuantity(q=>Math.min(stock,q+1))} className="px-3 text-[#667085] disabled:opacity-30"><Plus size={15}/></button></div><span className="text-xs text-[#8A93A6]">{stock>0?`Còn ${stock} sản phẩm`:'Hết hàng'}</span></div>
- <div className="mt-6 grid gap-3 sm:grid-cols-2"><button disabled={stock<=0} onClick={()=>{if(requireLogin('thêm sản phẩm vào giỏ hàng'))window.alert('API giỏ hàng chưa nằm trong phạm vi SCRUM 64–66.')}} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#5367C9] font-semibold text-[#5367C9] transition hover:bg-[#F4F6FF] disabled:cursor-not-allowed disabled:opacity-40"><ShoppingCart size={18}/> Thêm vào giỏ</button><button onClick={()=>{if(requireLogin('thêm sản phẩm vào yêu thích'))window.alert('API yêu thích sẽ được kết nối khi triển khai chức năng wishlist.')}} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#5367C9] font-semibold text-white transition hover:bg-[#4659B8]"><Heart size={18}/> Yêu thích</button></div>
- <div className="mt-6 grid gap-3 border-t border-[#EEF1F6] pt-5 text-xs text-[#667085] sm:grid-cols-2"><p className="flex items-center gap-2"><ShieldCheck size={17} className="text-[#5367C9]"/> Thông tin sản phẩm minh bạch</p><p className="flex items-center gap-2"><Truck size={17} className="text-[#5367C9]"/> Thông tin giao hàng ở bước thanh toán</p></div>
- {product.shop&&<button onClick={()=>product.shop?.slug&&navigate(`/shop/${product.shop.slug}`)} className="mt-6 flex w-full items-center gap-3 rounded-2xl border border-[#E5EBF6] p-3 text-left hover:bg-[#FAFBFF]"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#EEF3FF]">{product.shop.logoUrl?<img src={product.shop.logoUrl} alt={product.shop.name} className="h-full w-full object-cover"/>:<Store size={20} className="text-[#5367C9]"/>}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-[#252A3A]">{product.shop.name}</p><p className="mt-1 text-xs text-[#8A93A6]">{Number(product.shop.ratingAverage||0).toFixed(1)} ★ · {product.shop.followersCount||0} người theo dõi</p></div><ChevronRight size={18} className="text-[#98A1B2]"/></button>}
- </div></section>
- <section className="mt-6 rounded-2xl border border-[#E5EBF6] bg-white p-5 sm:p-7"><h2 className="text-lg font-bold text-[#202642]">Mô tả sản phẩm</h2><p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#596174]">{product.description||'Sản phẩm chưa có mô tả.'}</p></section>
- {related.length>0&&<section className="mt-8 pb-8"><h2 className="mb-4 text-xl font-bold text-[#202642]">Sản phẩm liên quan</h2><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{related.slice(0,6).map(p=><ProductCard key={p.id} product={p}/>)}</div></section>}
- </div></main>;
+import axiosClient from '../../services/api/axiosClient';
+
+type ProductTab = 'all' | 'featured' | 'best_selling' | 'categories';
+
+export default function ShopDetailPage() {
+  const { slug = '' } = useParams();
+  const navigate=useNavigate();const {isAuthenticated}=useAuth();
+  const [shop, setShop] = useState<PublicShopDto | null>(null);
+  const [products, setProducts] = useState<HomeProduct[]>([]);
+  const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [tab, setTab] = useState<ProductTab>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [following,setFollowing]=useState(false);const [followBusy,setFollowBusy]=useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    setShop(null);
+    setProducts([]);
+    shopApi.getBySlug(slug)
+      .then(async shopInfo => {
+        if (!active) return;
+        setShop(shopInfo);
+        if(isAuthenticated)void axiosClient.get<{data:{following:boolean}}>(`/customer/shops/${shopInfo.id}/follow`).then(({data})=>{if(active)setFollowing(Boolean(data.data.following));}).catch(()=>{});else setFollowing(false);
+        const [items, categories] = await Promise.all([
+          productApi.list({ shopId: shopInfo.id }),
+          categoryApi.list().catch(() => []),
+        ]);
+        if (active) { setProducts(items); setAllCategories(categories); }
+      })
+      .catch(() => {
+        if (active) setError('Không tìm thấy cửa hàng hoặc cửa hàng hiện không hoạt động.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [slug,isAuthenticated]);
+
+  const toggleFollow=async()=>{if(!shop)return;if(!isAuthenticated){navigate('/login',{state:{from:`/shop/${slug}`,notice:'Đăng nhập để theo dõi cửa hàng.'}});return;}setFollowBusy(true);try{const {data}=following?await axiosClient.delete<{data:{following:boolean}}>(`/customer/shops/${shop.id}/follow`):await axiosClient.post<{data:{following:boolean}}>(`/customer/shops/${shop.id}/follow`);setFollowing(Boolean(data.data.following));setShop(current=>current?{...current,followersCount:Math.max(0,Number(current.followersCount||0)+(data.data.following?1:-1))}:current);}catch(e){setError('Không thể cập nhật theo dõi cửa hàng. Vui lòng thử lại.');}finally{setFollowBusy(false);}};
+
+  const shopCategories = useMemo(() => {
+    const byId = new Map(allCategories.map(category => [category.id, category]));
+    const rootIds = new Set<string>();
+    products.forEach(product => {
+      let category = product.categoryId ? byId.get(product.categoryId) : undefined;
+      const visited = new Set<string>();
+      while (category?.parentId && !visited.has(category.id)) {
+        visited.add(category.id);
+        category = byId.get(category.parentId);
+      }
+      if (category) rootIds.add(category.id);
+    });
+    return allCategories.filter(category => rootIds.has(category.id) && !category.parentId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }, [allCategories, products]);
+
+  const categoryProductCounts = useMemo(() => {
+    const byId = new Map(allCategories.map(category => [category.id, category]));
+    const counts = new Map<string, number>();
+    products.forEach(product => {
+      let category = product.categoryId ? byId.get(product.categoryId) : undefined;
+      const visited = new Set<string>();
+      while (category?.parentId && !visited.has(category.id)) {
+        visited.add(category.id);
+        category = byId.get(category.parentId);
+      }
+      if (category) counts.set(category.id, (counts.get(category.id) ?? 0) + 1);
+    });
+    return counts;
+  }, [allCategories, products]);
+
+  const visibleProducts = useMemo(() => {
+    let filtered = products;
+    if (tab === 'featured') filtered = filtered.filter(product => Boolean(product.featured));
+    if (tab === 'categories' && selectedCategory) {
+      const byId = new Map(allCategories.map(category => [category.id, category]));
+      filtered = filtered.filter(product => {
+        let category = product.categoryId ? byId.get(product.categoryId) : undefined;
+        const visited = new Set<string>();
+        while (category && category.id !== selectedCategory && category.parentId && !visited.has(category.id)) {
+          visited.add(category.id);
+          category = byId.get(category.parentId);
+        }
+        return category?.id === selectedCategory;
+      });
+    }
+    if (tab === 'best_selling') return filtered.filter(product => Number(product.soldQuantity ?? 0) > 0)
+      .sort((a, b) => Number(b.soldQuantity ?? 0) - Number(a.soldQuantity ?? 0));
+    return filtered;
+  }, [products, tab, selectedCategory, allCategories]);
+
+  if (loading) return <main className="min-h-[65vh] bg-[#F7F9FD] px-4 py-12"><div className="mx-auto max-w-[1200px] animate-pulse"><div className="h-56 rounded-3xl bg-[#E9EDF5]"/><div className="mt-5 h-28 rounded-2xl bg-white"/><div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">{Array.from({ length: 6 }, (_, i) => <div key={i} className="aspect-[.72] rounded-2xl bg-white"/>)}</div></div></main>;
+
+  if (error || !shop) return <main className="grid min-h-[60vh] place-items-center bg-[#F7F9FD] px-4"><div className="max-w-md rounded-2xl border border-[#E7EBF3] bg-white p-8 text-center"><Store size={34} className="mx-auto text-[#7A86C9]"/><h1 className="mt-4 text-xl font-bold text-[#202642]">Không thể hiển thị cửa hàng</h1><p className="mt-2 text-sm text-[#7A8498]">{error || 'Cửa hàng không tồn tại.'}</p><Link to="/products" className="mt-5 inline-flex rounded-xl bg-[#5367C9] px-5 py-2.5 text-sm font-semibold text-white">Tiếp tục mua sắm</Link></div></main>;
+
+  const tabs: { id: ProductTab; label: string; count: number }[] = [
+    { id: 'all', label: 'Tất cả sản phẩm', count: products.length },
+    { id: 'featured', label: 'Nổi bật', count: products.filter(product => product.featured).length },
+    { id: 'best_selling', label: 'Bán chạy', count: products.filter(product => Number(product.soldQuantity ?? 0) > 0).length },
+    { id: 'categories', label: 'Danh mục', count: shopCategories.length },
+  ];
+
+  return <main className="min-h-screen bg-[#F7F9FD] pb-12">
+    <div className="mx-auto max-w-[1200px] px-4 pt-5">
+      <nav aria-label="Đường dẫn" className="mb-4 flex items-center gap-2 text-xs text-[#8791A4]"><Link to="/" className="hover:text-[#5367C9]">Trang chủ</Link><ChevronRight size={14}/><span className="font-medium text-[#47516A]">{shop.shopName}</span></nav>
+      <section className="overflow-hidden rounded-3xl border border-[#E5EAF3] bg-white shadow-[0_8px_28px_rgba(53,69,112,0.06)]">
+        <div className="relative h-44 bg-gradient-to-r from-[#293A75] via-[#566CC3] to-[#A8B7F0] sm:h-60">
+          {shop.bannerUrl && <img src={mediaUrl(shop.bannerUrl)} alt="" className="h-full w-full object-cover"/>}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#202D5A]/55 to-transparent"/>
+          <div className="absolute bottom-4 left-5 text-white sm:bottom-6 sm:left-8"><p className="text-xs font-semibold uppercase tracking-[.18em] text-white/80">Gian hàng Kala</p><h1 className="mt-1 text-2xl font-bold sm:text-3xl">{shop.shopName}</h1></div>
+        </div>
+        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:px-8 sm:py-6">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-[#F0F3FF] shadow-md sm:h-28 sm:w-28">
+            {shop.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt={shop.shopName} className="h-full w-full object-cover"/> : <Store size={35} className="text-[#596BD0]"/>}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-[#202642] sm:text-xl">{shop.shopName}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#6F7A90]">
+              <span className="inline-flex items-center gap-1.5"><Star size={15} fill="currentColor" className="text-[#E8A832]"/>{Number(shop.ratingAverage ?? 0).toFixed(1)} <span className="text-xs">({shop.ratingCount ?? 0} đánh giá)</span></span>
+              <span>{shop.followersCount ?? 0} người theo dõi</span>
+              <span className="inline-flex items-center gap-1.5"><Package size={15}/>{products.length} sản phẩm</span>
+            </div>
+            {shop.address && <p className="mt-2 flex items-start gap-1.5 text-xs text-[#8993A6]"><MapPin size={14} className="mt-0.5 shrink-0"/>{shop.address}</p>}
+          </div>
+          <div className="flex flex-wrap gap-2"><button type="button" disabled={followBusy} onClick={()=>void toggleFollow()} className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition disabled:opacity-60 ${following?'border-rose-200 bg-rose-50 text-rose-600':'border-[#E1E6F1] bg-white text-[#5866B7] hover:bg-[#F5F6FF]'}`}><Heart size={16} fill={following?'currentColor':'none'}/>{following?'Đang theo dõi':'Theo dõi shop'}</button><Link to={`/chat?shopId=${encodeURIComponent(shop.id)}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 text-sm font-semibold text-white transition hover:bg-[#4659B8]"><MessageCircle size={16}/>Chat với shop</Link></div>
+        </div>
+      </section>
+
+      <section className="mt-7">
+        <div className="rounded-2xl border border-[#E7EBF3] bg-white p-3 sm:p-4">
+          <div className="flex gap-2 overflow-x-auto pb-1">{tabs.map(item => <button key={item.id} type="button" onClick={() => { setTab(item.id); setSelectedCategory(null); }} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === item.id ? 'bg-[#5367C9] text-white' : 'bg-[#F3F5FA] text-[#697386] hover:bg-[#E9EDFA]'}`}>{item.label}<span className={`ml-1.5 text-xs ${tab === item.id ? 'text-white/75' : 'text-[#98A1B2]'}`}>{item.count}</span></button>)}</div>
+          {tab === 'categories' && <div className="mt-3 flex flex-wrap gap-2 border-t border-[#EEF1F6] pt-3">
+            <button type="button" onClick={() => setSelectedCategory(null)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${selectedCategory === null ? 'border-[#5367C9] bg-[#F1F3FF] text-[#5367C9]' : 'border-[#E5EAF3] text-[#697386]'}`}>Tất cả danh mục</button>
+            {shopCategories.map(category => <button key={category.id} type="button" onClick={() => setSelectedCategory(category.id)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${selectedCategory === category.id ? 'border-[#5367C9] bg-[#F1F3FF] text-[#5367C9]' : 'border-[#E5EAF3] text-[#697386]'}`}>{category.name}<span className="ml-1.5 opacity-60">{categoryProductCounts.get(category.id) ?? 0}</span></button>)}
+          </div>}
+        </div>
+        <div className="mb-4 mt-5 flex items-center justify-between"><h2 className="text-lg font-bold text-[#202642]">Sản phẩm của cửa hàng</h2><span className="text-sm text-[#8791A4]">{visibleProducts.length} sản phẩm</span></div>
+        {visibleProducts.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">{visibleProducts.map(product => <ProductCard key={product.id} product={product}/>)}</div> : <div className="rounded-2xl border border-[#E7EBF3] bg-white px-6 py-16 text-center"><Package size={32} className="mx-auto text-[#A7B0C1]"/><p className="mt-3 font-semibold text-[#35405A]">Không có sản phẩm</p><p className="mt-1 text-sm text-[#7A8498]">{tab === 'best_selling' ? 'Shop chưa có sản phẩm đã phát sinh lượt bán.' : tab === 'categories' && selectedCategory ? 'Danh mục này hiện chưa có sản phẩm.' : 'Shop chưa có sản phẩm phù hợp.'}</p></div>}
+      </section>
+    </div>
+  </main>;
 }

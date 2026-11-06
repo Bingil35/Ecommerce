@@ -2,22 +2,29 @@ package com.example.backend.service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.ToIntFunction;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.backend.dto.response.ProductCardResponse;
 import com.example.backend.dto.response.ProductDetailResponse;
+import com.example.backend.entity.CategoryStatus;
 import com.example.backend.entity.Product;
 import com.example.backend.entity.ProductMedia;
 import com.example.backend.entity.ProductMediaType;
 import com.example.backend.entity.ProductStatus;
 import com.example.backend.entity.ProductVariant;
+import com.example.backend.entity.Inventory;
 import com.example.backend.entity.Shop;
 import com.example.backend.entity.ShopStatus;
 import com.example.backend.exception.ResourceNotFoundException;
@@ -75,7 +82,10 @@ public class ProductCatalogService {
             if (!q.isBlank() && !contains(p.getName(), q) && !contains(p.getSlug(), q) && !contains(p.getDescription(), q)) continue;
             if (featured != null && !featured.equals(Boolean.TRUE.equals(p.getFeatured()))) continue;
             if (!isPublicShop(p.getShopId())) continue;
+            if (!hasPublicCategory(p)) continue;
             ProductMetrics metrics = metrics(p.getId());
+            // Sản phẩm không có biến thể ACTIVE không được hiển thị. Hết hàng thì vẫn hiển thị.
+            if (metrics.variantCount() == 0) continue;
             if (minPrice != null && (metrics.maxPrice == null || metrics.maxPrice.compareTo(minPrice) < 0)) continue;
             if (maxPrice != null && (metrics.minPrice == null || metrics.minPrice.compareTo(maxPrice) > 0)) continue;
             result.add(toCard(p, metrics));
@@ -106,6 +116,9 @@ public class ProductCatalogService {
         Shop shop = shops.findById(p.getShopId())
                 .filter(s -> s.getStatus() == ShopStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."));
+        if (!hasPublicCategory(p)) {
+            throw new ResourceNotFoundException("Không tìm thấy sản phẩm.");
+        }
 
         List<ProductDetailResponse.Media> mediaResponse = media.findByProductIdOrderBySortOrderAsc(id)
                 .stream().map(ProductDetailResponse.Media::new).toList();
@@ -124,6 +137,10 @@ public class ProductCatalogService {
                             .map(ProductDetailResponse.SelectedOption::new).toList();
                     return new ProductDetailResponse.Variant(v, availableStock(v.getId()), selected);
                 }).toList();
+        // Không có biến thể ACTIVE thì sản phẩm không hiển thị công khai.
+        if (variantResponse.isEmpty()) {
+            throw new ResourceNotFoundException("Không tìm thấy sản phẩm.");
+        }
         List<ProductDetailResponse.Tag> tagResponse = productTagMappings.findAllByProductId(id).stream()
                 .map(mapping -> productTags.findById(mapping.getTagId()).orElse(null))
                 .filter(Objects::nonNull)
@@ -145,8 +162,9 @@ public class ProductCatalogService {
                 : products.findByCategoryIdAndStatusOrderByCreatedAtDesc(current.getCategory().getId(), ProductStatus.ACTIVE);
         List<ProductCardResponse> result = new ArrayList<>();
         for (Product p : candidates) {
-            if (p.getId().equals(id) || !isPublicShop(p.getShopId())) continue;
+            if (p.getId().equals(id) || !isPublicShop(p.getShopId()) || !hasPublicCategory(p)) continue;
             ProductMetrics m = metrics(p.getId());
+            if (m.variantCount() == 0) continue;
             result.add(toCard(p, m));
             if (result.size() >= safeLimit) break;
         }
@@ -161,7 +179,66 @@ public class ProductCatalogService {
         return related(current.getId(), limit);
     }
 
-    /** Maps a product returned by public search/filter endpoints to the same card contract as the catalog API. */
+    /**
+     * Builds catalog cards for many products with a fixed number of queries (variants, stock,
+     * fallback media), instead of several queries per product. Same price, stock and thumbnail
+     * rules as the single-product path. The result keeps the order of the input. Callers are
+     * responsible for only passing products that are visible.
+     */
+    @Transactional(readOnly = true)
+    public List<ProductCardResponse> toCards(Collection<Product> source) {
+        if (source == null || source.isEmpty()) return List.of();
+        List<UUID> productIds = source.stream().map(Product::getId).toList();
+
+        Map<UUID, List<ProductVariant>> variantsByProduct = new HashMap<>();
+        List<UUID> variantIds = new ArrayList<>();
+        for (ProductVariant v : variants.findByProductIdInAndStatusOrderByCreatedAtAsc(productIds, ProductStatus.ACTIVE)) {
+            variantsByProduct.computeIfAbsent(v.getProduct().getId(), k -> new ArrayList<>()).add(v);
+            variantIds.add(v.getId());
+        }
+
+        Map<UUID, Integer> freeStock = new HashMap<>();
+        Map<UUID, Integer> soldQuantity = new HashMap<>();
+        if (!variantIds.isEmpty()) {
+            for (Inventory i : inventories.findByVariantIdIn(variantIds)) {
+                int quantity = i.getQuantity() == null ? 0 : i.getQuantity();
+                int reserved = i.getReservedQuantity() == null ? 0 : i.getReservedQuantity();
+                freeStock.putIfAbsent(i.getVariant().getId(), Math.max(0, quantity - reserved));
+                soldQuantity.merge(i.getVariant().getId(), i.getSoldQuantity() == null ? 0 : i.getSoldQuantity(), Integer::sum);
+            }
+        }
+
+        List<UUID> needFallback = source.stream()
+                .filter(p -> p.getThumbnailUrl() == null || p.getThumbnailUrl().isBlank())
+                .map(Product::getId).toList();
+        Map<UUID, String> fallbackThumbnail = new HashMap<>();
+        if (!needFallback.isEmpty()) {
+            for (ProductMedia m : media.findByProductIdInOrderBySortOrderAsc(needFallback)) {
+                if (m.getSortOrder() != null && m.getSortOrder() == 1
+                        && m.getMediaType() == ProductMediaType.IMAGE
+                        && m.getUrl() != null && !m.getUrl().isBlank()) {
+                    fallbackThumbnail.putIfAbsent(m.getProduct().getId(), m.getUrl());
+                }
+            }
+        }
+
+        Map<UUID, ProductCardResponse> byId = new LinkedHashMap<>();
+        for (Product p : source) {
+            ProductMetrics metrics = metricsOf(variantsByProduct.getOrDefault(p.getId(), List.of()),
+                    variantId -> freeStock.getOrDefault(variantId, 0),
+                    variantId -> soldQuantity.getOrDefault(variantId, 0));
+            String thumbnail = p.getThumbnailUrl() == null || p.getThumbnailUrl().isBlank()
+                    ? fallbackThumbnail.get(p.getId()) : p.getThumbnailUrl();
+            byId.put(p.getId(), new ProductCardResponse(p, metrics.minPrice, metrics.maxPrice,
+                    metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail));
+        }
+        return source.stream().map(p -> byId.get(p.getId())).toList();
+    }
+
+    /**
+     * Builds a public catalog card for a single product (used by search/filter controllers
+     * through a method reference). Callers are responsible for only passing visible products.
+     */
     @Transactional(readOnly = true)
     public ProductCardResponse toPublicCard(Product product) {
         return toCard(product, metrics(product.getId()));
@@ -178,7 +255,12 @@ public class ProductCatalogService {
                     .findFirst().orElse(null);
         }
         return new ProductCardResponse(product, metrics.minPrice, metrics.maxPrice,
-                metrics.representativeComparePrice, metrics.stock, thumbnail);
+                metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail);
+    }
+
+    /** Danh mục phải tồn tại và đang ACTIVE (cùng quy tắc với PublicProductVisibility). */
+    private boolean hasPublicCategory(Product p) {
+        return p.getCategory() != null && p.getCategory().getStatus() == CategoryStatus.ACTIVE;
     }
 
     private boolean isPublicShop(UUID shopId) {
@@ -192,9 +274,20 @@ public class ProductCatalogService {
     }
     private ProductMetrics metrics(UUID productId) {
         List<ProductVariant> active = variants.findByProductIdAndStatusOrderByCreatedAtAsc(productId, ProductStatus.ACTIVE);
+        Map<UUID, Inventory> inventoryByVariant = new HashMap<>();
+        if (!active.isEmpty()) {
+            inventories.findByVariantIdIn(active.stream().map(ProductVariant::getId).toList())
+                    .forEach(inventory -> inventoryByVariant.putIfAbsent(inventory.getVariant().getId(), inventory));
+        }
+        return metricsOf(active,
+                variantId -> inventoryByVariant.containsKey(variantId)
+                        ? Math.max(0, safe(inventoryByVariant.get(variantId).getQuantity()) - safe(inventoryByVariant.get(variantId).getReservedQuantity())) : 0,
+                variantId -> safe(inventoryByVariant.containsKey(variantId) ? inventoryByVariant.get(variantId).getSoldQuantity() : null));
+    }
+    private ProductMetrics metricsOf(List<ProductVariant> active, ToIntFunction<UUID> stockOf, ToIntFunction<UUID> soldOf) {
         BigDecimal min = null, max = null, representativeComparePrice = null;
         UUID representativeVariantId = null;
-        int stock = 0;
+        int stock = 0, sold = 0;
         for (ProductVariant v : active) {
             if (v.getPrice() != null) {
                 if (min == null || v.getPrice().compareTo(min) < 0
@@ -206,19 +299,23 @@ public class ProductCatalogService {
                 }
                 if (max == null || v.getPrice().compareTo(max) > 0) max=v.getPrice();
             }
-            stock += availableStock(v.getId());
+            stock += stockOf.applyAsInt(v.getId());
+            sold += soldOf.applyAsInt(v.getId());
         }
-        return new ProductMetrics(min,max,representativeComparePrice,stock);
+        return new ProductMetrics(min,max,representativeComparePrice,stock,sold,active.size());
     }
+    private int safe(Integer value) { return value == null ? 0 : value; }
     private Comparator<ProductCardResponse> comparator(String sortBy) {
         if (sortBy == null || sortBy.isBlank() || sortBy.equalsIgnoreCase("newest")) return null; // repository defaults newest first
         return switch (sortBy.toLowerCase(Locale.ROOT)) {
             case "price_asc" -> Comparator.comparing(ProductCardResponse::getMinPrice, Comparator.nullsLast(BigDecimal::compareTo));
             case "price_desc" -> Comparator.comparing(ProductCardResponse::getMaxPrice, Comparator.nullsFirst(BigDecimal::compareTo)).reversed();
             case "rating_desc" -> Comparator.comparing(ProductCardResponse::getRatingAverage, Comparator.nullsFirst(BigDecimal::compareTo)).reversed();
+            case "sales_desc" -> Comparator.comparing(ProductCardResponse::getSoldQuantity, Comparator.nullsFirst(Integer::compareTo)).reversed();
             case "name_asc" -> Comparator.comparing(ProductCardResponse::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
             default -> throw new IllegalArgumentException("sortBy chỉ nhận newest, price_asc, price_desc, rating_desc hoặc name_asc.");
         };
     }
-    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, BigDecimal representativeComparePrice, Integer stock) {}
+
+    private record ProductMetrics(BigDecimal minPrice, BigDecimal maxPrice, BigDecimal representativeComparePrice, Integer stock, Integer soldQuantity ,int variantCount) {}
 }

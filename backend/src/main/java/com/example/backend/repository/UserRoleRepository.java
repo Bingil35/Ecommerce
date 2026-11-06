@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
+    @Query("select ur.user.id from UserRole ur join ur.role r where r.name=:roleName")
+    List<UUID> findUserIdsByRoleName(@Param("roleName") String roleName);
     List<UserRole> findAllByUser_IdOrderByRole_NameAsc(UUID userId);
     @Query("""
     SELECT DISTINCT r.name

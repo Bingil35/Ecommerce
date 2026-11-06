@@ -2,18 +2,27 @@ package com.example.backend.service;
 
 import com.example.backend.dto.request.CreateProductRequest;
 import com.example.backend.dto.request.UpdateProductRequest;
+import com.example.backend.dto.response.ProductSummary;
 import com.example.backend.entity.Category;
+import com.example.backend.entity.Inventory;
+import com.example.backend.entity.ProductVariant;
 import com.example.backend.entity.Product;
 import com.example.backend.entity.ProductStatus;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.repository.CategoryRepository;
+import com.example.backend.repository.InventoryRepository;
+import com.example.backend.repository.ProductVariantRepository;
 import com.example.backend.repository.ProductRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -21,13 +30,25 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final WishlistService wishlistService;
+    private final ProductVariantRepository variantRepository;
+    private final InventoryRepository inventoryRepository;
+    private final ProductApprovalPolicy approvalPolicy;
 
     public ProductService(
             ProductRepository productRepository,
-            CategoryRepository categoryRepository
+            CategoryRepository categoryRepository,
+            WishlistService wishlistService,
+            ProductVariantRepository variantRepository,
+            InventoryRepository inventoryRepository,
+            ProductApprovalPolicy approvalPolicy
     ) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+        this.wishlistService = wishlistService;
+        this.variantRepository = variantRepository;
+        this.inventoryRepository = inventoryRepository;
+        this.approvalPolicy = approvalPolicy;
     }
 
     // =========================
@@ -62,53 +83,112 @@ public class ProductService {
         product.setBrandId(request.getBrandId());
         product.setThumbnailUrl(request.getThumbnailUrl());
         product.setFeatured(request.getFeatured());
-        product.setStatus(ProductStatus.ACTIVE);
+        // Luôn PENDING: Shop Owner không thể tự tạo sản phẩm ACTIVE/REJECTED.
+        product.setStatus(ProductStatus.PENDING);
 
         return productRepository.save(product);
     }
 
     // =========================
-    // GET ALL BY SHOP
+    // SUMMARY (GIÁ / TỒN KHO) - dùng cho shop owner
     // =========================
 
-    public List<Product> getProductsByShop(UUID shopId) {
+    /**
+     * Tính tóm tắt cho nhiều sản phẩm bằng đúng 2 truy vấn
+     * (variants + inventories), tránh N+1.
+     * Sản phẩm chưa có variant nhận ProductSummary.EMPTY.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, ProductSummary> getSummaries(Collection<UUID> productIds) {
 
-        if (shopId == null) {
-            throw new IllegalArgumentException(
-                    "Shop ID is required"
+        Map<UUID, ProductSummary> result = new HashMap<>();
+
+        if (productIds == null || productIds.isEmpty()) {
+            return result;
+        }
+
+        List<ProductVariant> variants =
+                variantRepository.findByProductIdIn(productIds);
+
+        Map<UUID, Integer> quantityByVariant = new HashMap<>();
+        if (!variants.isEmpty()) {
+            List<UUID> variantIds = variants.stream()
+                    .map(ProductVariant::getId)
+                    .toList();
+
+            for (Inventory inventory :
+                    inventoryRepository.findByVariantIdIn(variantIds)) {
+                // Tồn khả dụng = quantity - reserved (không âm).
+                int quantity = inventory.getQuantity() == null ? 0 : inventory.getQuantity();
+                int reserved = inventory.getReservedQuantity() == null ? 0 : inventory.getReservedQuantity();
+                quantityByVariant.merge(
+                        inventory.getVariant().getId(),
+                        Math.max(0, quantity - reserved),
+                        Integer::sum
+                );
+            }
+        }
+
+        Map<UUID, int[]> counts = new HashMap<>();
+        Map<UUID, BigDecimal> minPrices = new HashMap<>();
+        Map<UUID, BigDecimal> maxPrices = new HashMap<>();
+        Map<UUID, ProductVariant> firstVariants = new HashMap<>();
+
+        for (ProductVariant v : variants) {
+
+            UUID productId = v.getProduct().getId();
+
+            // counts[0] = variantCount, counts[1] = totalStock
+            int[] c = counts.computeIfAbsent(productId, k -> new int[2]);
+            c[0]++;
+            firstVariants.merge(productId, v, ProductService::earlierVariant);
+
+            if (v.getStatus() != ProductStatus.ACTIVE) {
+                continue;
+            }
+
+            c[1] += quantityByVariant.getOrDefault(v.getId(), 0);
+
+            BigDecimal price = v.getPrice();
+            if (price != null) {
+                minPrices.merge(productId, price, BigDecimal::min);
+                maxPrices.merge(productId, price, BigDecimal::max);
+            }
+        }
+
+        for (UUID productId : productIds) {
+            int[] c = counts.get(productId);
+            result.put(
+                    productId,
+                    c == null
+                            ? ProductSummary.EMPTY
+                            : new ProductSummary(
+                            c[0],
+                            minPrices.get(productId),
+                            maxPrices.get(productId),
+                            c[1],
+                            firstVariants.get(productId).getSku()
+                    )
             );
         }
 
-        return productRepository
-                .findByShopIdOrderByCreatedAtDesc(shopId);
+        return result;
     }
 
-    // =========================
-    // GET BY SHOP + STATUS
-    // =========================
-
-    public List<Product> getProductsByShopAndStatus(
-            UUID shopId,
-            ProductStatus status
-    ) {
-
-        if (shopId == null) {
-            throw new IllegalArgumentException(
-                    "Shop ID is required"
-            );
+    private static ProductVariant earlierVariant(ProductVariant a, ProductVariant b) {
+        if (a.getCreatedAt() == null) {
+            return b;
         }
-
-        if (status == null) {
-            throw new IllegalArgumentException(
-                    "Product status is required"
-            );
+        if (b.getCreatedAt() == null) {
+            return a;
         }
+        return b.getCreatedAt().isBefore(a.getCreatedAt()) ? b : a;
+    }
 
-        return productRepository
-                .findByShopIdAndStatusOrderByCreatedAtDesc(
-                        shopId,
-                        status
-                );
+    @Transactional(readOnly = true)
+    public ProductSummary getSummary(UUID productId) {
+        return getSummaries(List.of(productId))
+                .getOrDefault(productId, ProductSummary.EMPTY);
     }
 
     // =========================
@@ -162,6 +242,9 @@ public class ProductService {
 
         validateUpdateRequest(request);
 
+        // Có thay đổi ở nội dung cần kiểm duyệt lại hay không.
+        boolean contentChanged = false;
+
         if (request.getCategoryId() != null) {
 
             Category category = categoryRepository.findById(
@@ -171,6 +254,14 @@ public class ProductService {
                             "Category not found"
                     )
             );
+
+            UUID currentCategoryId = product.getCategory() == null
+                    ? null
+                    : product.getCategory().getId();
+
+            if (!category.getId().equals(currentCategoryId)) {
+                contentChanged = true;
+            }
 
             product.setCategory(category);
         }
@@ -193,23 +284,44 @@ public class ProductService {
 
                 product.setName(newName);
                 product.setSlug(newSlug);
+                contentChanged = true;
             }
         }
 
-        if (request.getDescription() != null) product.setDescription(request.getDescription());
-        if (request.getBrandId() != null) product.setBrandId(request.getBrandId());
-        if (request.getThumbnailUrl() != null) product.setThumbnailUrl(request.getThumbnailUrl());
-        if (request.getFeatured() != null) product.setFeatured(request.getFeatured());
+        if (request.getDescription() != null) {
+            if (!java.util.Objects.equals(
+                    product.getDescription(), request.getDescription())) {
+                contentChanged = true;
+            }
+            product.setDescription(request.getDescription());
+        }
+
+        if (request.getBrandId() != null) {
+            if (!request.getBrandId().equals(product.getBrandId())) {
+                contentChanged = true;
+            }
+            product.setBrandId(request.getBrandId());
+        }
+
+        if (request.getThumbnailUrl() != null) {
+            if (!java.util.Objects.equals(
+                    product.getThumbnailUrl(), request.getThumbnailUrl())) {
+                contentChanged = true;
+            }
+            product.setThumbnailUrl(request.getThumbnailUrl());
+        }
+
+        // featured là thông tin vận hành, không cần duyệt lại.
+        if (request.getFeatured() != null) {
+            product.setFeatured(request.getFeatured());
+        }
 
         /*
-         * Shop Owner có thể chủ động thay đổi status.
+         * Trạng thái KHÔNG được đổi qua API này (request không còn field status).
+         * Sửa nội dung quan trọng: ACTIVE/INACTIVE -> PENDING; PENDING/REJECTED giữ nguyên.
          */
-        if (request.getStatus() != null) {
-
-            ProductStatus requestedStatus =
-                    request.getStatus();
-
-            product.setStatus(requestedStatus);
+        if (contentChanged) {
+            approvalPolicy.markContentChanged(product);
         }
 
         return productRepository.save(product);
@@ -225,12 +337,16 @@ public class ProductService {
         Product product = getProductById(id);
 
         /*
-         * Hiện tại chưa kiểm tra Order/OrderDetail
-         * vì Order Management chưa được triển khai.
-         *
-         * Khi triển khai Order Management sẽ bổ sung
-         * business rule kiểm tra lịch sử/đơn hàng đang xử lý.
+         * Việc kiểm tra đơn hàng/đánh giá (ProductHistoryGuard) và dọn dữ liệu liên quan
+         * do ProductManagementService.deleteProduct thực hiện TRƯỚC khi gọi method này.
+         * Không gọi trực tiếp method này từ controller.
          */
+
+        /*
+         * Xóa sản phẩm khỏi mọi danh sách yêu thích, nếu không sẽ vi phạm khóa ngoại.
+         * Wishlist không phải dữ liệu đơn hàng nên việc xóa này là an toàn.
+         */
+        wishlistService.removeProductFromAllWishlists(id);
 
         productRepository.delete(product);
     }

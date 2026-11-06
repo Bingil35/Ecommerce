@@ -58,16 +58,9 @@ public final class ProductSpecifications {
 
             List<Predicate> predicates = new ArrayList<>();
 
-            // Không hiển thị sản phẩm INACTIVE
-            predicates.add(cb.equal(root.get("status"), ProductStatus.ACTIVE));
-
-            // Only products belonging to active shops are visible to guests/customers.
-            Subquery<UUID> activeShop = query.subquery(UUID.class);
-            Root<Shop> shopRoot = activeShop.from(Shop.class);
-            activeShop.select(shopRoot.get("id"))
-                    .where(cb.equal(shopRoot.get("id"), root.get("shopId")),
-                           cb.equal(shopRoot.get("status"), ShopStatus.ACTIVE));
-            predicates.add(cb.exists(activeShop));
+            // Điều kiện hiển thị công khai dùng chung: ACTIVE + Shop ACTIVE + Category ACTIVE
+            // + có ít nhất một biến thể ACTIVE (hết hàng vẫn hiển thị).
+            predicates.addAll(PublicProductVisibility.predicates(root, query, cb));
 
             // Mỗi token phải xuất hiện ở ít nhất một field
             for (String token : tokens) {
@@ -122,8 +115,8 @@ public final class ProductSpecifications {
                     Root<ProductVariant> variant = minPrice.from(ProductVariant.class);
                     minPrice.select(cb.min(variant.get("price")))
                             .where(cb.equal(variant.get("product").get("id"), root.get("id")),
-                                   cb.equal(variant.get("status"), ProductStatus.ACTIVE),
-                                   cb.isNotNull(variant.get("price")));
+                                    cb.equal(variant.get("status"), ProductStatus.ACTIVE),
+                                    cb.isNotNull(variant.get("price")));
                     query.orderBy(sortKey.equals("price_asc")
                             ? cb.asc(minPrice) : cb.desc(minPrice), cb.asc(root.get("id")));
                 }

@@ -23,11 +23,21 @@ public class LocalStorageService {
                 .normalize();
     }
 
+    /**
+     * @param extension phần mở rộng do server xác định từ nội dung file (không có dấu chấm),
+     *                  không bao giờ lấy từ tên file client gửi.
+     */
     public String storeProductMedia(
             UUID productId,
-            MultipartFile file
+            MultipartFile file,
+            String extension
     ) {
         validateFile(file);
+
+        // Chỉ nhận phần mở rộng an toàn do MediaFileInspector xác định.
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")) {
+            throw new IllegalArgumentException("Invalid file extension");
+        }
 
         try {
             Path productDirectory = uploadRoot
@@ -37,12 +47,8 @@ public class LocalStorageService {
 
             Files.createDirectories(productDirectory);
 
-            String extension = getFileExtension(
-                    file.getOriginalFilename()
-            );
-
             String filename =
-                    UUID.randomUUID() + extension;
+                    UUID.randomUUID() + "." + extension;
 
             Path targetPath = productDirectory
                     .resolve(filename)
@@ -66,6 +72,100 @@ public class LocalStorageService {
                     "Failed to store file",
                     exception
             );
+        }
+    }
+
+    public String storeShopImage(UUID shopId, MultipartFile file, String extension, String imageKind) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")
+                || !java.util.Set.of("logo", "banner").contains(imageKind)) {
+            throw new IllegalArgumentException("Invalid shop image");
+        }
+        try {
+            Path directory = uploadRoot.resolve("shops").resolve(shopId.toString()).normalize();
+            Files.createDirectories(directory);
+            String filename = imageKind + "-" + UUID.randomUUID() + "." + extension;
+            Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target);
+            return "/uploads/shops/" + shopId + "/" + filename;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to store shop image", exception);
+        }
+    }
+
+    public String storeSystemBannerImage(MultipartFile file, String extension) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid banner image extension");
+        try {
+            Path directory = uploadRoot.resolve("banners").normalize(); Files.createDirectories(directory);
+            String filename = UUID.randomUUID() + "." + extension; Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target); return "/uploads/banners/" + filename;
+        } catch (IOException exception) { throw new IllegalStateException("Failed to store banner image", exception); }
+    }
+
+    public String storeChatMedia(UUID conversationId, MultipartFile file, String extension) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid chat media extension");
+        try {
+            Path directory = uploadRoot.resolve("chat").resolve(conversationId.toString()).normalize();
+            Files.createDirectories(directory);
+            String filename = UUID.randomUUID() + "." + extension;
+            Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target);
+            return "/uploads/chat/" + conversationId + "/" + filename;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to store chat media", exception);
+        }
+    }
+
+    /**
+     * Sao chép một file media sang thư mục của sản phẩm khác.
+     * Trả về URL mới, hoặc null nếu file nguồn không tồn tại / không phải file nội bộ.
+     */
+    public String copyProductMedia(UUID targetProductId, String sourceUrl) {
+
+        if (sourceUrl == null || !sourceUrl.startsWith("/uploads/")) {
+            return null;
+        }
+
+        try {
+            Path source = Paths.get(sourceUrl.substring(1))
+                    .toAbsolutePath()
+                    .normalize();
+
+            if (!source.startsWith(uploadRoot)) {
+                throw new IllegalArgumentException("Invalid file path");
+            }
+
+            if (!Files.isRegularFile(source)) {
+                return null;
+            }
+
+            Path directory = uploadRoot
+                    .resolve("products")
+                    .resolve(targetProductId.toString())
+                    .normalize();
+
+            Files.createDirectories(directory);
+
+            String filename = UUID.randomUUID()
+                    + getFileExtension(source.getFileName().toString());
+
+            Path target = directory.resolve(filename).normalize();
+
+            if (!target.startsWith(directory)) {
+                throw new IllegalArgumentException("Invalid file path");
+            }
+
+            Files.copy(source, target);
+
+            return "/uploads/products/" + targetProductId + "/" + filename;
+
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to copy file", exception);
         }
     }
 
