@@ -9,6 +9,8 @@ import com.example.backend.entity.CouponStatus;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.repository.CouponRepository;
 import com.example.backend.service.ShopService;
+import com.example.backend.service.NotificationService;
+import com.example.backend.entity.NotificationType;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
@@ -19,7 +21,8 @@ import org.springframework.web.bind.annotation.*;
 public class ShopOwnerCouponController {
     private final CouponRepository coupons;
     private final ShopService shops;
-    public ShopOwnerCouponController(CouponRepository coupons, ShopService shops) { this.coupons = coupons; this.shops = shops; }
+    private final NotificationService notifications;
+    public ShopOwnerCouponController(CouponRepository coupons, ShopService shops, NotificationService notifications) { this.coupons = coupons; this.shops = shops; this.notifications=notifications; }
 
     @GetMapping
     public ApiResponse<List<ShopCouponResponse>> list(Authentication auth) {
@@ -31,15 +34,20 @@ public class ShopOwnerCouponController {
     public ApiResponse<ShopCouponResponse> create(Authentication auth, @RequestBody ShopCouponRequest request) {
         Coupon coupon = new Coupon(); coupon.setShop(shops.getMyShop(auth.getName())); apply(coupon, request);
         coupon.setScope(CouponScope.SHOP); coupon.setUsedCount(0);
-        return ApiResponse.success("Tạo khuyến mãi thành công.", ShopCouponResponse.from(coupons.save(coupon)));
+        coupon=coupons.save(coupon);
+        if(coupon.getStatus()==CouponStatus.ACTIVE)notifications.notifyShopFollowers(coupon.getShop().getId(),"Ưu đãi mới từ cửa hàng","Cửa hàng "+coupon.getShop().getShopName()+" vừa phát hành mã "+coupon.getCode()+".",NotificationType.PROMOTION,coupon.getId());
+        return ApiResponse.success("Tạo khuyến mãi thành công.", ShopCouponResponse.from(coupon));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<ShopCouponResponse> update(Authentication auth, @PathVariable UUID id, @RequestBody ShopCouponRequest request) {
         var shop = shops.getMyShop(auth.getName());
         Coupon coupon = coupons.findById(id).filter(c -> c.getShop() != null && c.getShop().getId().equals(shop.getId())).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khuyến mãi."));
+        boolean wasInactive=coupon.getStatus()!=CouponStatus.ACTIVE;
         apply(coupon, request);
-        return ApiResponse.success("Cập nhật khuyến mãi thành công.", ShopCouponResponse.from(coupons.save(coupon)));
+        coupon=coupons.save(coupon);
+        if(wasInactive&&coupon.getStatus()==CouponStatus.ACTIVE)notifications.notifyShopFollowers(shop.getId(),"Ưu đãi mới từ cửa hàng","Cửa hàng "+shop.getShopName()+" vừa kích hoạt mã "+coupon.getCode()+".",NotificationType.PROMOTION,coupon.getId());
+        return ApiResponse.success("Cập nhật khuyến mãi thành công.", ShopCouponResponse.from(coupon));
     }
 
     private void apply(Coupon coupon, ShopCouponRequest r) {

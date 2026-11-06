@@ -13,6 +13,7 @@ public class SubmitProductRequest {
     private List<OptionInput> options;
     private List<VariantInput> variants;
     private Integer thumbnailIndex;
+    private List<UUID> tagIds;
     public UUID getCategoryId(){return categoryId;}
     public void setCategoryId(UUID v){categoryId=v;}
     public UUID getBrandId(){return brandId;}
@@ -27,6 +28,8 @@ public class SubmitProductRequest {
     public void setVariants(List<VariantInput> v){variants=v;}
     public Integer getThumbnailIndex(){return thumbnailIndex;}
     public void setThumbnailIndex(Integer v){thumbnailIndex=v;}
+    public List<UUID> getTagIds(){return tagIds;}
+    public void setTagIds(List<UUID> v){tagIds=v;}
     public static class OptionInput {
         private String name;
         private List<String> values;

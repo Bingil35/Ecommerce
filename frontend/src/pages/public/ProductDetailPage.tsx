@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import axiosClient from '../../services/api/axiosClient';
 import { AnimatePresence } from 'framer-motion';
 import ToastNotice from '../../components/customer/common/ToastNotice';
 import ProductReviews from '../../components/customer/product/ProductReviews';
@@ -24,7 +25,7 @@ import {
 
   formatVnd, productApi, productImage,
 
-  type ProductDetailDto,
+  categoryApi, type CategoryDto, type ProductDetailDto,
 
 } from '../../services/catalog/productApi';
 
@@ -60,6 +61,13 @@ const { addToCart } = useCart();
   const [shopProducts, setShopProducts] = useState<import('../../services/catalog/productApi').ProductCardDto[]>([]);
 
   const [relatedProducts, setRelatedProducts] = useState<import('../../services/catalog/productApi').ProductCardDto[]>([]);
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void categoryApi.list().then(items => { if (active) setCategories(items); }).catch(() => { if (active) setCategories([]); });
+    return () => { active = false; };
+  }, []);
 
 
 
@@ -82,6 +90,7 @@ const { addToCart } = useCart();
         if (!active) return;
 
         setProduct(data);
+        if(isAuthenticated)void axiosClient.post(`/customer/recently-viewed/${data.id}`).catch(()=>{});
 
         const firstImage = data.media?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url;
 
@@ -107,7 +116,7 @@ const { addToCart } = useCart();
 
     return () => { active = false; };
 
-  }, [slug]);
+  }, [slug,isAuthenticated]);
 
 
 
@@ -158,6 +167,24 @@ const { addToCart } = useCart();
     [product],
 
   );
+
+  const categoryTrail = useMemo(() => {
+    if (!product) return [];
+    const byId = new Map(categories.map(category => [category.id, category]));
+    const currentId = product.categoryId || product.category?.id;
+    const trail: CategoryDto[] = [];
+    const visited = new Set<string>();
+    let current = currentId ? byId.get(currentId) : undefined;
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      trail.unshift(current);
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    if (!trail.length && product.category) {
+      trail.push({ id: product.category.id, name: product.category.name, slug: product.category.slug || '' });
+    }
+    return trail;
+  }, [categories, product]);
 
   const selectedVariant = useMemo(() => {
 
@@ -429,7 +456,7 @@ const { addToCart } = useCart();
 
           <Link to="/" className="hover:text-[#5367C9]">Trang chủ</Link><ChevronRight size={14}/>
 
-          {product.category && <><Link to={`/products?categoryId=${product.category.id}&category=${encodeURIComponent(product.category.name)}`} className="hover:text-[#5367C9]">{product.category.name}</Link><ChevronRight size={14}/></>}
+          {categoryTrail.map(category => <span key={category.id} className="inline-flex items-center gap-2"><Link to={`/products?categoryId=${category.id}&category=${encodeURIComponent(category.name)}`} className="hover:text-[#5367C9]">{category.name}</Link><ChevronRight size={14}/></span>)}
 
           <span className="line-clamp-1 max-w-[60%] text-[#4C5570]">{product.name}</span>
 

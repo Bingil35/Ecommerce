@@ -27,6 +27,7 @@ import { BECOME_SELLER_ENTRY } from '../../../routes/BecomeSellerGuard';
 import { useCart } from '../../../context/CartContext';
 import { useWishlist } from '../../../context/WishlistContext';
 import { useChatUnread } from '../../../hooks/useChatUnread';
+import NotificationBell from '../../notifications/NotificationBell';
 
 import logo from '../../../assets/logo.png';
 
@@ -170,6 +171,8 @@ const CustomerHeader = () => {
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
 
+            {!isShopOwner(user) && <NotificationBell audience="customer" authenticated={isAuthenticated}/>}
+
             {isAuthenticated && !isShopOwner(user) && <button type="button" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/chat')} className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-white hover:text-[#171B7A] sm:h-10 sm:w-10"><MessageCircle size={20} strokeWidth={1.8}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>}
 
             {/* Cart */}
@@ -285,9 +288,6 @@ const CustomerHeader = () => {
                       <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/addresses'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
                         <MapPin size={17} strokeWidth={1.8} /><span>Địa chỉ của tôi</span>
                       </button>
-                      <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
-                        <Settings size={17} strokeWidth={1.8} /><span>Cài đặt</span>
-                      </button>
                     </div>
                     <div className="border-t border-[#EEF1F6] p-1.5">
                       <button
@@ -303,6 +303,11 @@ const CustomerHeader = () => {
                         className="flex w-full items-center gap-3 rounded-xl border border-[#CFE0FB] bg-[#F1F6FF] px-3 py-2.5 text-left text-sm font-medium text-[#2F6BEA] transition-colors hover:bg-[#E6EFFF]"
                       >
                         <Store size={17} strokeWidth={1.8} /><span>{isShopOwner(user) ? 'Kênh người bán' : 'Mở gian hàng'}</span>
+                      </button>
+                    </div>
+                    <div className="border-t border-[#EEF1F6] p-1.5">
+                      <button type="button" onClick={() => { setIsAccountOpen(false); navigate('/account/settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#4B5563] transition-colors hover:bg-[#F5F7FC] hover:text-[#171B7A]">
+                        <Settings size={17} strokeWidth={1.8} /><span>Cài đặt</span>
                       </button>
                     </div>
                     <div className="border-t border-[#EEF1F6] p-1.5">

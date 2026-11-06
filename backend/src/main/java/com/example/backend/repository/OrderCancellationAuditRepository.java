@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.example.backend.entity.OrderCancellationAudit;
 
 public interface OrderCancellationAuditRepository extends JpaRepository<OrderCancellationAudit, UUID> {
+    List<OrderCancellationAudit> findTop100ByOrderByCreatedAtDesc();
     long countByUser_IdAndCreatedAtGreaterThanEqual(UUID userId, OffsetDateTime from);
     boolean existsByEventKey(String eventKey);
     java.util.Optional<OrderCancellationAudit> findFirstByUser_IdOrderByCreatedAtDesc(UUID userId);
