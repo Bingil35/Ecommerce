@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Admin review endpoints for coupon-only restrictions.
@@ -29,6 +30,7 @@ public class AdminCouponRestrictionController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<CouponRestrictionItem>>> getPendingReviews() {
         List<CouponRestrictionItem> items = userRepository.findByCouponRestrictedTrueOrderByCouponRestrictedAtAsc()
                 .stream().map(user -> {
@@ -49,6 +51,18 @@ public class AdminCouponRestrictionController {
                 })
                 .toList();
         return ResponseEntity.ok(ApiResponse.success("Danh sách tài khoản đang bị hạn chế coupon.", items));
+    }
+
+    @GetMapping("/audits")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<List<CouponAbuseAuditItem>>> getRecentAudits() {
+        List<CouponAbuseAuditItem> items = auditRepository.findTop100ByOrderByCreatedAtDesc().stream().map(a ->
+                new CouponAbuseAuditItem(a.getId(), a.getUser().getId(), a.getUser().getFullName(), a.getUser().getEmail(),
+                        a.getOrder().getOrderCode(), a.getCoupon() == null ? null : a.getCoupon().getCode(),
+                        a.getCouponDiscountRetained(), a.getRiskScore(), a.getRiskLevel().name(), a.getWeeklyEventCount(),
+                        a.getMonthlyEventCount(), a.getMinutesToCancel(), a.getRetainedDiscount7d(), a.getRetainedDiscount30d(),
+                        a.getCancellationReason(), a.getCreatedAt())).toList();
+        return ResponseEntity.ok(ApiResponse.success("Lịch sử đánh giá rủi ro voucher.", items));
     }
 
     @PutMapping("/{userId}/release")
@@ -79,4 +93,10 @@ public class AdminCouponRestrictionController {
             java.math.BigDecimal retainedDiscount7d, java.math.BigDecimal retainedDiscount30d,
             java.math.BigDecimal latestRetainedDiscount, String latestCancellationReason,
             UUID latestOrderId) {}
+
+    public record CouponAbuseAuditItem(UUID id, UUID userId, String fullName, String email, String orderCode,
+            String couponCode, java.math.BigDecimal retainedDiscount, Integer riskScore, String riskLevel,
+            Integer weeklyEventCount, Integer monthlyEventCount, Long minutesToCancel,
+            java.math.BigDecimal retainedDiscount7d, java.math.BigDecimal retainedDiscount30d,
+            String cancellationReason, OffsetDateTime createdAt) {}
 }

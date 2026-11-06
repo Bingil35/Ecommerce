@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ChevronRight, MapPin, MessageCircle, Package, Star, Store } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ChevronRight, Heart, MapPin, MessageCircle, Package, Star, Store } from 'lucide-react';
 import ProductCard from '../../components/customer/home/recommendation/ProductCard';
 import type { HomeProduct } from '../../components/customer/home/recommendation/productData';
 import { categoryApi, productApi, shopApi, type CategoryDto, type PublicShopDto } from '../../services/catalog/productApi';
 import { mediaUrl } from '../../services/api/mediaUrl';
+import { useAuth } from '../../context/AuthContext';
+import axiosClient from '../../services/api/axiosClient';
 
 type ProductTab = 'all' | 'featured' | 'best_selling' | 'categories';
 
 export default function ShopDetailPage() {
   const { slug = '' } = useParams();
+  const navigate=useNavigate();const {isAuthenticated}=useAuth();
   const [shop, setShop] = useState<PublicShopDto | null>(null);
   const [products, setProducts] = useState<HomeProduct[]>([]);
   const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
@@ -17,6 +20,7 @@ export default function ShopDetailPage() {
   const [error, setError] = useState('');
   const [tab, setTab] = useState<ProductTab>('all');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [following,setFollowing]=useState(false);const [followBusy,setFollowBusy]=useState(false);
 
   useEffect(() => {
     let active = true;
@@ -28,6 +32,7 @@ export default function ShopDetailPage() {
       .then(async shopInfo => {
         if (!active) return;
         setShop(shopInfo);
+        if(isAuthenticated)void axiosClient.get<{data:{following:boolean}}>(`/customer/shops/${shopInfo.id}/follow`).then(({data})=>{if(active)setFollowing(Boolean(data.data.following));}).catch(()=>{});else setFollowing(false);
         const [items, categories] = await Promise.all([
           productApi.list({ shopId: shopInfo.id }),
           categoryApi.list().catch(() => []),
@@ -39,7 +44,9 @@ export default function ShopDetailPage() {
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [slug]);
+  }, [slug,isAuthenticated]);
+
+  const toggleFollow=async()=>{if(!shop)return;if(!isAuthenticated){navigate('/login',{state:{from:`/shop/${slug}`,notice:'Đăng nhập để theo dõi cửa hàng.'}});return;}setFollowBusy(true);try{const {data}=following?await axiosClient.delete<{data:{following:boolean}}>(`/customer/shops/${shop.id}/follow`):await axiosClient.post<{data:{following:boolean}}>(`/customer/shops/${shop.id}/follow`);setFollowing(Boolean(data.data.following));setShop(current=>current?{...current,followersCount:Math.max(0,Number(current.followersCount||0)+(data.data.following?1:-1))}:current);}catch(e){setError('Không thể cập nhật theo dõi cửa hàng. Vui lòng thử lại.');}finally{setFollowBusy(false);}};
 
   const shopCategories = useMemo(() => {
     const byId = new Map(allCategories.map(category => [category.id, category]));
@@ -125,7 +132,7 @@ export default function ShopDetailPage() {
             </div>
             {shop.address && <p className="mt-2 flex items-start gap-1.5 text-xs text-[#8993A6]"><MapPin size={14} className="mt-0.5 shrink-0"/>{shop.address}</p>}
           </div>
-          <Link to={`/chat?shopId=${encodeURIComponent(shop.id)}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 text-sm font-semibold text-white transition hover:bg-[#4659B8]"><MessageCircle size={16}/>Chat với shop</Link>
+          <div className="flex flex-wrap gap-2"><button type="button" disabled={followBusy} onClick={()=>void toggleFollow()} className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition disabled:opacity-60 ${following?'border-rose-200 bg-rose-50 text-rose-600':'border-[#E1E6F1] bg-white text-[#5866B7] hover:bg-[#F5F6FF]'}`}><Heart size={16} fill={following?'currentColor':'none'}/>{following?'Đang theo dõi':'Theo dõi shop'}</button><Link to={`/chat?shopId=${encodeURIComponent(shop.id)}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 text-sm font-semibold text-white transition hover:bg-[#4659B8]"><MessageCircle size={16}/>Chat với shop</Link></div>
         </div>
       </section>
 

@@ -44,15 +44,18 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final ProductVariantRepository variantRepository;
+    private final NotificationService notificationService;
     private final int defaultLowStockThreshold;
 
     public InventoryService(
             InventoryRepository inventoryRepository,
             ProductVariantRepository variantRepository,
+            NotificationService notificationService,
             @Value("${app.inventory.low-stock-threshold:10}") int defaultLowStockThreshold
     ) {
         this.inventoryRepository = inventoryRepository;
         this.variantRepository = variantRepository;
+        this.notificationService = notificationService;
         this.defaultLowStockThreshold = defaultLowStockThreshold;
     }
 
@@ -112,6 +115,7 @@ public class InventoryService {
 
         ProductVariant variant = lockVariant(variantId);
         Inventory inventory = lockOrCreate(variant);
+        boolean wasLow = toResponse(variant, inventory).lowStock();
 
         int before = value(inventory.getQuantity());
         long after = (long) before + quantity;
@@ -122,6 +126,7 @@ public class InventoryService {
 
         inventory.setQuantity((int) after);
         inventoryRepository.save(inventory);
+        notifyLowStockTransition(variant, inventory, wasLow);
 
         audit("STOCK_IN", variant, before, (int) after, cleanedNote);
 
@@ -145,6 +150,7 @@ public class InventoryService {
 
         ProductVariant variant = lockVariant(variantId);
         Inventory inventory = lockOrCreate(variant);
+        boolean wasLow = toResponse(variant, inventory).lowStock();
 
         int before = value(inventory.getQuantity());
         int reserved = value(inventory.getReservedQuantity());
@@ -175,6 +181,7 @@ public class InventoryService {
 
         inventory.setQuantity(after);
         inventoryRepository.save(inventory);
+        notifyLowStockTransition(variant, inventory, wasLow);
 
         audit("ADJUSTMENT", variant, before, after, cleanedReason);
 
@@ -195,9 +202,11 @@ public class InventoryService {
 
         ProductVariant variant = lockVariant(variantId);
         Inventory inventory = lockOrCreate(variant);
+        boolean wasLow = toResponse(variant, inventory).lowStock();
 
         inventory.setLowStockThreshold(threshold == null ? 0 : threshold);
         inventoryRepository.save(inventory);
+        notifyLowStockTransition(variant, inventory, wasLow);
 
         return toResponse(variant, inventory);
     }
@@ -271,6 +280,15 @@ public class InventoryService {
                 after - before,
                 currentActor(),
                 note == null ? "" : note.replaceAll("[\\r\\n]+", " "));
+    }
+
+    private void notifyLowStockTransition(ProductVariant variant, Inventory inventory, boolean wasLow) {
+        InventoryResponse current = toResponse(variant, inventory);
+        if (wasLow || !current.lowStock()) return;
+        UUID shopId = variant.getProduct().getShopId();
+        String message = current.productName() + " còn " + current.availableQuantity() + " sản phẩm khả dụng (ngưỡng " + current.effectiveLowStockThreshold() + ").";
+        notificationService.notifyShopOwner(shopId, "Cảnh báo tồn kho thấp", message, com.example.backend.entity.NotificationType.SYSTEM, variant.getId());
+        notificationService.notifyRole("ADMIN", "Cảnh báo tồn kho trên sàn", message, com.example.backend.entity.NotificationType.SYSTEM, variant.getId());
     }
 
     private static int value(Integer number) {

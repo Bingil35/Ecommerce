@@ -12,17 +12,23 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.example.backend.entity.Category;
+import com.example.backend.entity.CategoryStatus;
+import com.example.backend.repository.CategoryRepository;
 
 @RestController
 @RequestMapping("/api/admin/categories")
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final CategoryRepository categoryRepository;
 
     public CategoryController(
-            CategoryService categoryService
+            CategoryService categoryService,
+            CategoryRepository categoryRepository
     ) {
         this.categoryService = categoryService;
+        this.categoryRepository = categoryRepository;
     }
 
     @PostMapping
@@ -103,4 +109,13 @@ public class CategoryController {
                 )
         );
     }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<CategoryResponse>> updateStatus(@PathVariable UUID id, @RequestBody CategoryStatusRequest request) {
+        Category category = categoryRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy danh mục."));
+        category.setStatus(CategoryStatus.valueOf(request.status()));
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật trạng thái danh mục.", new CategoryResponse(categoryRepository.save(category))));
+    }
+
+    public record CategoryStatusRequest(String status) {}
 }

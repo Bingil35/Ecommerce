@@ -11,6 +11,7 @@ import logo from '../../assets/logo.png';
 import heroImage from '../../assets/hero_log.png';
 import { useAuth } from '../../context/AuthContext';
 import type { LoginResponse } from '../../services/auth/authTypes';
+import { hasRole, ROLES } from '../../services/auth/roles';
 
 import { AppleIcon, GoogleIcon } from '../../components/icons';
 
@@ -80,7 +81,7 @@ export default function LoginPage() {
         loginData.user,
         rememberMe
       );
-      navigate('/', { replace: true });
+      navigate(hasRole(loginData.user, ROLES.ADMIN) ? '/admin' : '/', { replace: true });
     } catch (error: any) {
       const message =
         error.response?.data?.message ||

@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecificationExecutor<Order> {
+    @Query("select coalesce(sum(o.totalAmount), 0) from Order o")
+    java.math.BigDecimal sumTotalAmount();
     List<Order> findByUser_IdOrderByCreatedAtDesc(UUID userId);
     Optional<Order> findByIdAndUser_Id(UUID id, UUID userId);
 

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, ClipboardList, Home, LogOut, MessageCircle, Package, Settings, Star, Store, Tag, Truck, Warehouse } from 'lucide-react';
+import { ChevronDown, ClipboardList, Home, LogOut, MessageCircle, Package, Settings, Star, Store, Tag, Truck, Warehouse } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { shopApi } from '../services/shop/shopApi';
 import type { ShopResponse } from '../services/shop/shopTypes';
 import { mediaUrl } from '../services/api/mediaUrl';
 import { useChatUnread } from '../hooks/useChatUnread';
+import NotificationBell from '../components/notifications/NotificationBell';
 
 const items = [
   { to: '/seller', text: 'Trang chủ', icon: Home },
@@ -47,7 +48,7 @@ export default function ShopOwnerLayout() {
         <span className="kso-logo">Kala°</span>
         <div className="kso-right">
           <button type="button" className="kso-icon-btn relative" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/seller/chat')}><MessageCircle size={20}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>
-          <button type="button" className="kso-icon-btn" aria-label="Thông báo"><Bell size={20}/></button>
+          <NotificationBell audience="shop-owner"/>
           <div className="kso-account" ref={accountRef}>
             <button type="button" className="kso-account-btn" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               <span className="kso-avatar">{shop?.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt="" className="h-full w-full rounded-full object-cover"/> : <Store size={18}/>}</span>

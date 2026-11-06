@@ -4,6 +4,7 @@ import PublicRoutes from './PublicRoutes';
 import CustomerRoutes from './CustomerRoutes';
 import SellerRoutes from './SellerRoutes';
 import ShopOwnerRoutes from './ShopOwnerRoutes';
+import AdminRoutes from './AdminRoutes';
 
 const AppRoutes = () => {
   return (
@@ -12,6 +13,7 @@ const AppRoutes = () => {
       <CustomerRoutes />
       <SellerRoutes />
       <ShopOwnerRoutes />
+      <AdminRoutes />
     </BrowserRouter>
   );
 };

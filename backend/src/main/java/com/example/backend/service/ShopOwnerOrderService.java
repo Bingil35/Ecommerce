@@ -23,8 +23,10 @@ import org.springframework.data.jpa.domain.Specification;
 public class ShopOwnerOrderService {
     private static final Set<OrderStatus> FORWARD = Set.of(OrderStatus.CONFIRMED);
     private final UserRepository users; private final SubOrderRepository subOrders; private final OrderStatusHistoryRepository histories; private final OrderRepository orders; private final OrderDetailRepository orderDetails;
-    public ShopOwnerOrderService(UserRepository users, SubOrderRepository subOrders, OrderStatusHistoryRepository histories, OrderRepository orders, OrderDetailRepository orderDetails) {
+    private final NotificationService notificationService;
+    public ShopOwnerOrderService(UserRepository users, SubOrderRepository subOrders, OrderStatusHistoryRepository histories, OrderRepository orders, OrderDetailRepository orderDetails, NotificationService notificationService) {
         this.users=users; this.subOrders=subOrders; this.histories=histories; this.orders=orders; this.orderDetails=orderDetails;
+        this.notificationService=notificationService;
     }
     @Transactional(readOnly = true)
     public PageResponse<ShopOwnerOrderResponse> list(String email, OrderStatus status, String keyword, int page, int size) {
@@ -76,5 +78,6 @@ public class ShopOwnerOrderService {
         OrderStatusHistory history=new OrderStatusHistory(); history.setSubOrder(sub); history.setOldStatus(current);
         history.setNewStatus(actualNext); history.setChangedBy(owner); history.setNote(note==null||note.isBlank()?"Shop confirmed the order; shipment is in progress.":note.trim().substring(0,Math.min(500,note.trim().length())));
         histories.save(history);
+        notificationService.notifyUser(sub.getOrder().getUser().getId(), "Đơn hàng đang được giao", "Cửa hàng đã xác nhận đơn " + sub.getOrder().getOrderCode() + ".", NotificationType.ORDER, sub.getOrder().getId());
     }
 }

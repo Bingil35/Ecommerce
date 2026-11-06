@@ -5,6 +5,8 @@ import com.example.backend.entity.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.backend.repository.ProductTagRepository;
+import com.example.backend.repository.ProductTagMappingRepository;
 import java.util.*;
 
 /** Final-submit orchestrator; all database changes share one transaction. */
@@ -13,9 +15,12 @@ public class ProductSubmissionService {
     private final ProductService products;
     private final ProductVariantService variants;
     private final ProductMediaService media;
+    private final ProductTagRepository tags;
+    private final ProductTagMappingRepository tagMappings;
     public ProductSubmissionService(ProductService products, ProductVariantService variants,
-                                    ProductMediaService media) {
-        this.products=products; this.variants=variants; this.media=media;
+                                    ProductMediaService media, ProductTagRepository tags,
+                                    ProductTagMappingRepository tagMappings) {
+        this.products=products; this.variants=variants; this.media=media; this.tags=tags; this.tagMappings=tagMappings;
     }
 
     @Transactional
@@ -38,6 +43,11 @@ public class ProductSubmissionService {
         productRequest.setDescription(form.getDescription());
         productRequest.setFeatured(false);
         Product product=products.createProduct(productRequest);
+        List<UUID> tagIds=form.getTagIds()==null?List.of():form.getTagIds().stream().filter(Objects::nonNull).distinct().toList();
+        if(tagIds.size()>10)throw new IllegalArgumentException("Maximum 10 product tags");
+        List<ProductTag> selectedTags=tags.findAllById(tagIds);
+        if(selectedTags.size()!=tagIds.size())throw new IllegalArgumentException("One or more product tags do not exist");
+        selectedTags.forEach(tag->tagMappings.save(new ProductTagMapping(product.getId(),tag.getId())));
         List<Map<String,UUID>> optionIds=new ArrayList<>();
         if (form.getOptions()!=null) {
             if (form.getOptions().size()>10) throw new IllegalArgumentException("Too many options");

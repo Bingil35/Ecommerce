@@ -11,27 +11,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.example.backend.entity.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.backend.dto.response.CancelSubOrderResponse;
-import com.example.backend.entity.CancellationRiskLevel;
-import com.example.backend.entity.Coupon;
-import com.example.backend.entity.CouponRedemption;
-import com.example.backend.entity.CouponScope;
-import com.example.backend.entity.Inventory;
-import com.example.backend.entity.Order;
-import com.example.backend.entity.OrderCancellationAudit;
-import com.example.backend.entity.OrderCouponAllocation;
-import com.example.backend.entity.OrderDetail;
-import com.example.backend.entity.OrderStatus;
-import com.example.backend.entity.OrderStatusHistory;
-import com.example.backend.entity.PaymentStatus;
-import com.example.backend.entity.ProductVariant;
-import com.example.backend.entity.SubOrder;
-import com.example.backend.entity.User;
-import com.example.backend.entity.UserStatus;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.repository.CouponRedemptionRepository;
 import com.example.backend.repository.CouponRepository;
@@ -56,16 +41,19 @@ public class OrderCancellationService {
     private final CouponRedemptionRepository redemptionRepository;
     private final OrderCouponAllocationRepository allocationRepository;
     private final OrderCancellationAuditRepository auditRepository;
+    private final NotificationService notificationService;
 
     public OrderCancellationService(UserRepository userRepository, OrderRepository orderRepository,
             SubOrderRepository subOrderRepository, OrderDetailRepository orderDetailRepository,
             InventoryRepository inventoryRepository, OrderStatusHistoryRepository historyRepository,
             CouponRepository couponRepository, CouponRedemptionRepository redemptionRepository,
-            OrderCouponAllocationRepository allocationRepository, OrderCancellationAuditRepository auditRepository) {
+            OrderCouponAllocationRepository allocationRepository, OrderCancellationAuditRepository auditRepository,
+            NotificationService notificationService) {
         this.userRepository = userRepository; this.orderRepository = orderRepository; this.subOrderRepository = subOrderRepository;
         this.orderDetailRepository = orderDetailRepository; this.inventoryRepository = inventoryRepository;
         this.historyRepository = historyRepository; this.couponRepository = couponRepository;
         this.redemptionRepository = redemptionRepository; this.allocationRepository = allocationRepository; this.auditRepository = auditRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -108,6 +96,8 @@ public class OrderCancellationService {
             allocationRepository.deleteByOrder_Id(order.getId());
             if (platformCoupon != null) zeroOutRetainedAudit(order.getId(), platformCoupon.getId());
             order.setSubtotal(ZERO); order.setDiscountAmount(ZERO); order.setTotalAmount(ZERO); orderRepository.save(order);
+            notificationService.notifyUser(customer.getId(), "Đơn hàng đã được hủy", "Đơn hàng " + order.getOrderCode() + " đã được hủy theo yêu cầu của bạn.", NotificationType.ORDER, order.getId());
+            for (SubOrder sibling : siblings) notificationService.notifyShopOwner(sibling.getShop().getId(), "Đơn hàng bị hủy", "Đơn hàng " + order.getOrderCode() + " đã bị khách hủy.", NotificationType.ORDER, order.getId());
             return new CancelSubOrderResponse(order.getId(), target.getId(), target.getStatus(), order.getTotalAmount(),
                     "Điều kiện coupon toàn sàn không còn được đáp ứng; toàn bộ đơn hàng đã bị hủy và tồn kho được hoàn lại.");
         }
@@ -136,6 +126,8 @@ public class OrderCancellationService {
         }
 
         recalculateOrder(order, siblings);
+        notificationService.notifyUser(customer.getId(), "Đơn hàng đã được hủy", "Một phần đơn hàng " + order.getOrderCode() + " đã được hủy theo yêu cầu của bạn.", NotificationType.ORDER, order.getId());
+        notificationService.notifyShopOwner(target.getShop().getId(), "Đơn hàng bị hủy", "Khách đã hủy một phần đơn " + order.getOrderCode() + ".", NotificationType.ORDER, order.getId());
         return new CancelSubOrderResponse(order.getId(), target.getId(), target.getStatus(), order.getTotalAmount(),
                 "Đã hủy đơn con, hoàn lại tồn kho và cập nhật lại tổng tiền đơn hàng.");
     }
@@ -243,6 +235,13 @@ public class OrderCancellationService {
         audit.setRetainedDiscount30d(retained30d); audit.setRiskScore(score); audit.setRiskLevel(level);
         audit.setEventKey(eventKey);
         auditRepository.save(audit);
+
+        if (score >= 20) {
+            notificationService.notifyRole("ADMIN", "Cảnh báo rủi ro voucher",
+                    customer.getFullName() + " (" + customer.getEmail() + ") có điểm rủi ro " + score
+                            + ", hủy " + monthlyCount + " đơn trong 30 ngày và giữ lại " + retained30d.toPlainString() + " ₫ ưu đãi.",
+                    NotificationType.SYSTEM, audit.getId());
+        }
 
         // Only the high-risk threshold restricts coupon use. Login and regular-price checkout remain available.
         if (score >= 35 && !customer.isCouponRestricted()) {

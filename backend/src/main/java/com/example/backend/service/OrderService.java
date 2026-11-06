@@ -32,6 +32,7 @@ public class OrderService {
     private final CouponRepository couponRepository;
     private final CouponRedemptionRepository couponRedemptionRepository;
     private final OrderCouponAllocationRepository couponAllocationRepository;
+    private final NotificationService notificationService;
 
     public OrderService(UserRepository userRepository, CartRepository cartRepository,
             CartDetailRepository cartDetailRepository, UserAddressRepository userAddressRepository,
@@ -40,7 +41,7 @@ public class OrderService {
             OrderAddressRepository orderAddressRepository, OrderDetailRepository orderDetailRepository,
             OrderStatusHistoryRepository orderStatusHistoryRepository, ShopRepository shopRepository,
             CouponRepository couponRepository, CouponRedemptionRepository couponRedemptionRepository,
-            OrderCouponAllocationRepository couponAllocationRepository) {
+            OrderCouponAllocationRepository couponAllocationRepository, NotificationService notificationService) {
         this.userRepository = userRepository; this.cartRepository = cartRepository;
         this.cartDetailRepository = cartDetailRepository; this.userAddressRepository = userAddressRepository;
         this.inventoryRepository = inventoryRepository; this.paymentRepository = paymentRepository;
@@ -49,6 +50,7 @@ public class OrderService {
         this.orderStatusHistoryRepository = orderStatusHistoryRepository; this.shopRepository = shopRepository;
         this.couponRepository = couponRepository; this.couponRedemptionRepository = couponRedemptionRepository;
         this.couponAllocationRepository = couponAllocationRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -243,6 +245,9 @@ public class OrderService {
         orderDiscount = money(orderDiscount); order.setSubtotal(orderSubtotal); order.setDiscountAmount(orderDiscount); order.setTotalAmount(money(orderSubtotal.subtract(orderDiscount)));
         order = orderRepository.save(order);
         cartDetailRepository.deleteAll(selectedLines); cart.touch();
+        notificationService.notifyUser(customer.getId(), "Đặt hàng thành công", "Đơn hàng " + order.getOrderCode() + " đã được ghi nhận.", NotificationType.ORDER, order.getId());
+        notificationService.notifyRole("ADMIN", "Có đơn hàng mới", "Đơn hàng " + order.getOrderCode() + " vừa được tạo.", NotificationType.ORDER, order.getId());
+        for (UUID shopId : linesByShop.keySet()) notificationService.notifyShopOwner(shopId, "Đơn hàng mới", "Bạn vừa nhận đơn " + order.getOrderCode() + ".", NotificationType.ORDER, order.getId());
         return new PlacedOrderResponse(order.getId(), order.getOrderCode(), payment.getPaymentMethod(), order.getPaymentStatus(),
                 order.getSubtotal(), order.getDiscountAmount(), order.getTotalAmount(), order.getCreatedAt(), responseSubOrders);
     }

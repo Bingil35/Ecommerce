@@ -20,6 +20,12 @@ import OrderDetailPage from '../pages/customer/OrderDetailPage';
 import AddressBookPage from '../pages/customer/AddressBookPage';
 import ChatPage from '../pages/chat/ChatPage';
 import SettingsPage from '../pages/settings/SettingsPage';
+import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
+import FollowedShopsPage from '../pages/customer/FollowedShopsPage';
+import RecentlyViewedPage from '../pages/customer/RecentlyViewedPage';
+import NotificationsPage from '../pages/customer/NotificationsPage';
+import NotificationDetailPage from '../pages/customer/NotificationDetailPage';
+import VoucherDetailPage from '../pages/customer/VoucherDetailPage';
 const PublicRoutes = () => {
   return (
     <Routes>
@@ -30,13 +36,20 @@ const PublicRoutes = () => {
         <Route path="/products" element={<ProductListingPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
-        <Route path="/account" element={<AccountInfoPage />} />
-        <Route path="/account/addresses" element={<AddressBookPage />} />
+        <Route path="/account" element={<CustomerAccountLayout />}>
+          <Route index element={<AccountInfoPage />} />
+          <Route path="addresses" element={<AddressBookPage />} />
+          <Route path="settings" element={<SettingsPage audience="customer" />} />
+          <Route path="followed-shops" element={<FollowedShopsPage />} />
+          <Route path="recently-viewed" element={<RecentlyViewedPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="notifications/:notificationId" element={<NotificationDetailPage />} />
+          <Route path="vouchers/:couponId" element={<VoucherDetailPage />} />
+        </Route>
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/orders" element={<OrderHistoryPage />} />
         <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         <Route path="/chat" element={<ChatPage />} />
-        <Route path="/account/settings" element={<SettingsPage audience="customer" />} />
         <Route
           path="/product/:slug"
           element={<ProductDetailPage />}
