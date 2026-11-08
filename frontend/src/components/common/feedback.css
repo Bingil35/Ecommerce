@@ -1,0 +1,251 @@
+.kala-toast-stack,
+.kala-dialog {
+  --feedback-bg: #fff;
+  --feedback-text: #202642;
+  --feedback-muted: #667085;
+  --feedback-border: #e2e8f2;
+  font-family: inherit;
+  color: var(--feedback-text);
+}
+.kala-toast-stack {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  width: min(390px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.kala-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--feedback-border);
+  border-left: 4px solid var(--toast-color);
+  border-radius: 14px;
+  background: var(--feedback-bg);
+  box-shadow: 0 8px 30px #20264220;
+  pointer-events: auto;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.kala-toast > svg {
+  flex-shrink: 0;
+  color: var(--toast-color);
+  margin-top: 1px;
+}
+.kala-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+.kala-toast p {
+  margin: 0;
+  line-height: 1.5;
+}
+.kala-toast a {
+  display: inline-block;
+  margin-top: 5px;
+  color: var(--toast-color);
+  font-weight: 600;
+}
+.kala-toast button,
+.kala-dialog-close {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--feedback-muted);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 6px;
+}
+.kala-toast-success {
+  --toast-color: #168450;
+}
+.kala-toast-error {
+  --toast-color: #d92d4c;
+}
+.kala-toast-warning {
+  --toast-color: #b86b05;
+}
+.kala-toast-info {
+  --toast-color: #3476cf;
+}
+.kala-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid var(--feedback-border);
+  border-radius: 20px;
+  background: var(--feedback-bg);
+  box-shadow: 0 24px 70px #101a4050;
+  --dialog-color: var(--kala-primary, #5367c9);
+  animation: kala-dialog-in 0.16s ease-out;
+}
+.kala-dialog::backdrop {
+  background: #141c3d80;
+  backdrop-filter: blur(2px);
+}
+.kala-dialog-danger {
+  --dialog-color: #d92d4c;
+}
+.kala-dialog-warning {
+  --dialog-color: #b86b05;
+}
+.kala-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.kala-dialog-icon {
+  display: grid;
+  place-items: center;
+  padding: 11px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dialog-color) 12%, transparent);
+  color: var(--dialog-color);
+}
+.kala-dialog h2 {
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 750;
+  margin: 0 0 10px;
+}
+.kala-dialog p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--feedback-muted);
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.kala-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.kala-dialog-actions > button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid var(--feedback-border);
+  border-radius: 11px;
+  background: var(--feedback-bg);
+  color: var(--feedback-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.kala-dialog-actions .kala-dialog-confirm {
+  background: var(--dialog-color);
+  color: white;
+  border-color: var(--dialog-color);
+}
+.kala-dialog button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.kala-dialog :focus-visible,
+.kala-toast :focus-visible {
+  outline: 3px solid #8c9be0;
+  outline-offset: 3px;
+}
+.kala-dialog-field {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 18px;
+}
+.kala-dialog-field input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 7px;
+  border: 1px solid var(--feedback-border);
+  border-radius: 10px;
+  padding: 11px;
+  font: inherit;
+  background: var(--feedback-bg);
+  color: var(--feedback-text);
+}
+.kala-dialog .kala-dialog-error {
+  margin-top: 14px;
+  color: #d92d4c;
+}
+.kala-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.kala-loading svg {
+  animation: kala-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.kala-loading-button {
+  display: inline-grid !important;
+  align-items: center;
+  justify-items: center;
+}
+.kala-button-layer {
+  grid-area: 1/1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+@keyframes kala-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes kala-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.dark .kala-toast-stack,
+.dark .kala-dialog,
+[data-theme='dark'] .kala-toast-stack,
+[data-theme='dark'] .kala-dialog {
+  --feedback-bg: #20263b;
+  --feedback-text: #f1f4fc;
+  --feedback-muted: #b7bfd2;
+  --feedback-border: #3a425c;
+}
+@media (max-width: 600px) {
+  .kala-toast-stack {
+    top: 12px;
+    right: 16px;
+  }
+  .kala-dialog {
+    padding: 22px;
+  }
+  .kala-dialog-actions > button {
+    flex: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kala-dialog {
+    animation: none;
+  }
+  .kala-loading svg {
+    animation-duration: 1.8s;
+  }
+}

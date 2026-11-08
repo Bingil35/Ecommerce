@@ -1,3 +1,5 @@
+import { LoadingButton } from '../../components/common/LoadingState';
+import { useToast, getFeedbackError } from '../../context/FeedbackContext';
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { BadgePercent, CalendarDays, Check, Clock3, Pencil, Plus, TicketPercent } from 'lucide-react';
@@ -12,18 +14,19 @@ const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'curren
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Không giới hạn';
 
 export default function SellerPromotionsPage() {
+  const toast=useToast();
   const [items, setItems] = useState<Coupon[]>([]);
   const [form, setForm] = useState<Payload>(empty);
   const [editing, setEditing] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const load = useCallback(async () => { try { setItems((await axiosClient.get<Envelope<Coupon[]>>('/shop-owner/coupons')).data.data); setError(''); } catch (e) { setError(getApiError(e)); } }, []);
+  const load = useCallback(async () => { try { setItems((await axiosClient.get<Envelope<Coupon[]>>('/shop-owner/coupons')).data.data); setError(''); } catch (e) { toast.error(getFeedbackError(e));  setError(getApiError(e)); } }, []);
   useEffect(() => { void load(); }, [load]);
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError('');
-    try { if (editing) await axiosClient.put(`/shop-owner/coupons/${editing}`, form); else await axiosClient.post('/shop-owner/coupons', form); setForm(empty); setEditing(null); setShowForm(false); await load(); }
-    catch (e) { setError(getApiError(e)); } finally { setBusy(false); }
+    try { if (editing) await axiosClient.put(`/shop-owner/coupons/${editing}`, form); else await axiosClient.post('/shop-owner/coupons', form); toast.success('Đã lưu chương trình khuyến mãi.'); setForm(empty); setEditing(null); setShowForm(false); await load(); }
+    catch (e) { toast.error(getFeedbackError(e));  setError(getApiError(e)); } finally { setBusy(false); }
   };
   const edit = (item: Coupon) => { setEditing(item.id); setForm({ code: item.code, discountType: item.discountType, discountValue: item.discountValue, minimumOrder: item.minimumOrder, maximumDiscount: item.maximumDiscount, usageLimit: item.usageLimit, startAt: item.startAt, endAt: item.endAt, status: item.status }); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const cancel = () => { setEditing(null); setForm(empty); setShowForm(false); };
@@ -43,7 +46,7 @@ export default function SellerPromotionsPage() {
     {showForm && <form onSubmit={e => void submit(e)} className="mb-6 rounded-2xl border bg-white p-5 sm:p-6">
       <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-[#5367C9]"><BadgePercent size={20}/></span><div><h2 className="text-base font-extrabold text-[#17213f]">{editing ? 'Chỉnh sửa khuyến mãi' : 'Thông tin ưu đãi mới'}</h2><p className="mt-1 text-xs text-slate-500">Thiết lập mã, mức giảm và thời gian áp dụng.</p></div></div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{input('code', 'Mã khuyến mãi')}<label className="grid gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Hình thức giảm<select value={form.discountType} onChange={e => setForm(current => ({ ...current, discountType: e.target.value as Payload['discountType'] }))} className="mt-0.5 px-3 py-2.5 text-sm font-medium normal-case tracking-normal"><option value="PERCENTAGE">Giảm theo phần trăm</option><option value="FIXED_AMOUNT">Giảm số tiền cố định</option></select></label>{input('discountValue', form.discountType === 'PERCENTAGE' ? 'Phần trăm giảm' : 'Số tiền giảm', 'number')}{input('minimumOrder', 'Đơn hàng tối thiểu (₫)', 'number')}{form.discountType === 'PERCENTAGE' && input('maximumDiscount', 'Mức giảm tối đa (₫)', 'number')}{input('usageLimit', 'Giới hạn lượt dùng', 'number')}<label className="grid gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Bắt đầu<input type="datetime-local" value={form.startAt?.slice(0, 16) || ''} onChange={e => setForm(current => ({ ...current, startAt: e.target.value ? new Date(e.target.value).toISOString() : null }))} className="mt-0.5 px-3 py-2.5 text-sm font-medium normal-case tracking-normal" /></label><label className="grid gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Kết thúc<input type="datetime-local" value={form.endAt?.slice(0, 16) || ''} onChange={e => setForm(current => ({ ...current, endAt: e.target.value ? new Date(e.target.value).toISOString() : null }))} className="mt-0.5 px-3 py-2.5 text-sm font-medium normal-case tracking-normal" /></label><label className="grid gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Trạng thái<select value={form.status} onChange={e => setForm(current => ({ ...current, status: e.target.value as Payload['status'] }))} className="mt-0.5 px-3 py-2.5 text-sm font-medium normal-case tracking-normal"><option value="ACTIVE">Đang hoạt động</option><option value="INACTIVE">Tạm dừng</option></select></label></div>
-      <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={cancel} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600">Hủy</button><button disabled={busy} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Tạo mã ưu đãi'}</button></div>
+      <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={cancel} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600">Hủy</button><LoadingButton type="submit" disabled={busy} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50" loading={busy} loadingText="Đang lưu...">{editing ? 'Lưu thay đổi' : 'Tạo mã ưu đãi'}</LoadingButton></div>
     </form>}
 
     {items.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map(item => <article key={item.id} className="!overflow-hidden !rounded-2xl !border !bg-white !p-0">

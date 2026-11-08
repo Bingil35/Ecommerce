@@ -1,3 +1,4 @@
+import { useToast } from '../../../context/FeedbackContext';
 import { useEffect, useState } from 'react';
 import { Check, ChevronRight, Ticket, X } from 'lucide-react';
 
@@ -39,6 +40,7 @@ const ShopVoucherBox = ({
   missingForVoucher,
   onChange,
 }: ShopVoucherBoxProps) => {
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [vouchers, setVouchers] = useState<ShopVoucher[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,10 +77,10 @@ const ShopVoucherBox = ({
 
   const openModal = () => {
     if (!IS_VOUCHER_READY) {
-      window.alert(
+      toast.info(
         shopId === null
-          ? 'Làm voucher tổng ở scrum khác'
-          : 'Làm voucher shop ở scrum khác'
+          ? 'Tính năng voucher toàn sàn hiện chưa khả dụng.'
+          : 'Tính năng voucher cửa hàng hiện chưa khả dụng.'
       );
       return;
     }

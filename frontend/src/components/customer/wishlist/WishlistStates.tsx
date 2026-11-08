@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import CommonConfirmDialog from '../../common/ConfirmDialog';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -106,65 +106,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-export const ConfirmDialog = ({
-  title,
-  description,
-  confirmLabel,
-  isBusy,
-  onConfirm,
-  onCancel,
-}: ConfirmDialogProps) => {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    cancelRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isBusy) onCancel();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isBusy, onCancel]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[#1F2540]/40 px-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !isBusy) onCancel();
-      }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-        aria-describedby="confirm-desc"
-        className="w-full max-w-[400px] rounded-2xl bg-white p-6 shadow-[0_24px_60px_rgba(31,37,64,0.25)]"
-      >
-        <h2 id="confirm-title" className="text-lg font-bold text-[#202642]">
-          {title}
-        </h2>
-        <p id="confirm-desc" className="mt-2 text-sm leading-6 text-[#667085]">
-          {description}
-        </p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            ref={cancelRef}
-            type="button"
-            disabled={isBusy}
-            onClick={onCancel}
-            className="rounded-full border border-[#DCE4F2] px-5 py-2.5 text-sm font-semibold text-[#4D5872] hover:bg-[#F7F9FD] disabled:opacity-60"
-          >
-            Hủy
-          </button>
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={onConfirm}
-            className="rounded-full bg-[#E5334F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#CF2A45] disabled:cursor-wait disabled:opacity-70"
-          >
-            {isBusy ? 'Đang xóa...' : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+export const ConfirmDialog = ({ title, description, confirmLabel, isBusy, onConfirm, onCancel }: ConfirmDialogProps) => (
+  <CommonConfirmDialog title={title} message={description} confirmText={confirmLabel} loading={isBusy}
+    variant="danger" loadingText="Đang xóa..." onConfirm={onConfirm} onCancel={onCancel}/>
+);

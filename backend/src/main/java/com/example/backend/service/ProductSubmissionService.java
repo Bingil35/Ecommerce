@@ -35,6 +35,7 @@ public class ProductSubmissionService {
             throw new IllegalArgumentException("Maximum 10 images and 3 videos");
         if (form.getThumbnailIndex()!=null && (form.getThumbnailIndex()<0 || form.getThumbnailIndex()>=images.size()))
             throw new IllegalArgumentException("Invalid thumbnail index");
+        ProductOptionValidation.validateOptions(form.getOptions());
         CreateProductRequest productRequest=new CreateProductRequest();
         productRequest.setShopId(shopId);
         productRequest.setCategoryId(form.getCategoryId());

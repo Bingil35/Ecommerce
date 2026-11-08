@@ -60,6 +60,7 @@ public class ProductController {
     private final ProductResponseMapper mapper;
     private final ProductOwnershipService ownership;
     private final ShopService shopService;
+    private final com.example.backend.service.ProductEditService editService;
 
     public ProductController(
             ProductService productService,
@@ -68,7 +69,8 @@ public class ProductController {
             ProductStatusService statusService,
             ProductResponseMapper mapper,
             ProductOwnershipService ownership,
-            ShopService shopService
+            ShopService shopService,
+            com.example.backend.service.ProductEditService editService
     ) {
         this.productService = productService;
         this.submissionService = submissionService;
@@ -77,6 +79,7 @@ public class ProductController {
         this.mapper = mapper;
         this.ownership = ownership;
         this.shopService = shopService;
+        this.editService = editService;
     }
 
     /** One final request after the user has reviewed all steps. Multipart part
@@ -364,7 +367,7 @@ public class ProductController {
     // UPDATE
     // =========================
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<ProductResponse> updateProduct(
             @PathVariable UUID id,
             @RequestBody UpdateProductRequest request,
@@ -383,6 +386,17 @@ public class ProductController {
     // =========================
     // DELETE (DỌN TOÀN BỘ DỮ LIỆU LIÊN QUAN)
     // =========================
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ProductResponse> updateProductWithMedia(
+            @PathVariable UUID id,
+            @RequestPart("product") com.example.backend.dto.request.EditProductRequest form,
+            @RequestPart(value = "images", required = false) java.util.List<MultipartFile> images,
+            @RequestPart(value = "videos", required = false) java.util.List<MultipartFile> videos,
+            Authentication authentication) {
+        Product product = editService.update(id, authentication.getName(), form, images, videos);
+        return ApiResponse.success("Đã lưu sản phẩm và media.", mapper.toResponse(product));
+    }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteProduct(

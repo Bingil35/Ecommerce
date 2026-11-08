@@ -1,3 +1,4 @@
+import { useToast, getFeedbackError } from '../../context/FeedbackContext';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -25,6 +26,7 @@ interface LocationState {
 }
 
 export default function SellerRegisterShopPage() {
+  const toast=useToast();
   const { user, isLoading: isAuthLoading, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -80,7 +82,8 @@ export default function SellerRegisterShopPage() {
       // Token và thông tin user mới đã có thêm role SHOP_OWNER.
       login(result.accessToken, result.user, remembered);
       setCreatedShop(result.shop);
-    } catch (error: any) {
+      toast.success('Đăng ký cửa hàng thành công.');
+    } catch (error: any) { toast.error(getFeedbackError(error));
       setErrorMessage(
         error.response?.data?.message ||
           'Đăng ký gian hàng thất bại. Vui lòng thử lại.'

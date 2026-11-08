@@ -24,6 +24,9 @@ import com.example.backend.repository.ProductMediaRepository;
 import com.example.backend.repository.ProductVariantRepository;
 import com.example.backend.repository.VariantOptionValueRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,20 +95,11 @@ public class ProductVariantService {
             CreateProductOptionRequest request
     ) {
 
-        Product product = getProduct(productId);
+        Product product = lockOptionProduct(productId);
 
-        validateOptionName(request.getName());
-
-        String name = request.getName().trim();
-
-        if (productOptionRepository.existsByProductIdAndName(
-                productId,
-                name
-        )) {
-            throw new IllegalArgumentException(
-                    "Product option already exists"
-            );
-        }
+        String name = ProductOptionValidation.required(request.getName(), "Tên thuộc tính");
+        ProductOptionValidation.unique(name, productOptionRepository.findByProductIdOrderByNameAsc(productId)
+                .stream().map(ProductOption::getName).toList(), "Thuộc tính trong sản phẩm");
 
         ProductOption option = new ProductOption();
 
@@ -151,24 +145,12 @@ public class ProductVariantService {
         ProductOption option =
                 getOptionById(optionId);
 
-        validateOptionName(request.getName());
-
-        String name = request.getName().trim();
-
-        UUID productId =
-                option.getProduct().getId();
-
-        if (productOptionRepository
-                .existsByProductIdAndNameAndIdNot(
-                        productId,
-                        name,
-                        optionId
-                )) {
-
-            throw new IllegalArgumentException(
-                    "Product option already exists"
-            );
-        }
+        UUID productId = option.getProduct().getId();
+        lockOptionProduct(productId);
+        String name = ProductOptionValidation.required(request.getName(), "Tên thuộc tính");
+        ProductOptionValidation.unique(name, productOptionRepository.findByProductIdOrderByNameAsc(productId)
+                .stream().filter(other -> !other.getId().equals(optionId)).map(ProductOption::getName).toList(),
+                "Thuộc tính trong sản phẩm");
 
         boolean nameChanged = !name.equals(option.getName());
 
@@ -237,21 +219,10 @@ public class ProductVariantService {
         ProductOption option =
                 getOptionById(optionId);
 
-        validateOptionValue(request.getValue());
-
-        String value =
-                request.getValue().trim();
-
-        if (productOptionValueRepository
-                .existsByProductOptionIdAndValue(
-                        optionId,
-                        value
-                )) {
-
-            throw new IllegalArgumentException(
-                    "Product option value already exists"
-            );
-        }
+        lockOptionProduct(option.getProduct().getId());
+        String value = ProductOptionValidation.required(request.getValue(), "Giá trị thuộc tính");
+        ProductOptionValidation.unique(value, productOptionValueRepository.findByProductOptionIdOrderBySortOrderAsc(optionId)
+                .stream().map(ProductOptionValue::getValue).toList(), "Giá trị trong thuộc tính '" + option.getName() + "'");
 
         ProductOptionValue optionValue =
                 new ProductOptionValue();
@@ -300,25 +271,12 @@ public class ProductVariantService {
         ProductOptionValue optionValue =
                 getOptionValueById(optionValueId);
 
-        validateOptionValue(request.getValue());
-
-        String value =
-                request.getValue().trim();
-
-        UUID optionId =
-                optionValue.getProductOption().getId();
-
-        if (productOptionValueRepository
-                .existsByProductOptionIdAndValueAndIdNot(
-                        optionId,
-                        value,
-                        optionValueId
-                )) {
-
-            throw new IllegalArgumentException(
-                    "Product option value already exists"
-            );
-        }
+        lockOptionProduct(optionValue.getProductOption().getProduct().getId());
+        String value = ProductOptionValidation.required(request.getValue(), "Giá trị thuộc tính");
+        UUID optionId = optionValue.getProductOption().getId();
+        ProductOptionValidation.unique(value, productOptionValueRepository.findByProductOptionIdOrderBySortOrderAsc(optionId)
+                .stream().filter(other -> !other.getId().equals(optionValueId)).map(ProductOptionValue::getValue).toList(),
+                "Giá trị trong thuộc tính '" + optionValue.getProductOption().getName() + "'");
 
         boolean valueChanged = !value.equals(optionValue.getValue());
 
@@ -503,6 +461,44 @@ public class ProductVariantService {
         variants.forEach(v -> inventoryRepository.findFirstByVariantId(v.getId())
                 .ifPresent(i -> v.setStockQuantity(i.getQuantity())));
         return variants;
+    }
+
+    /** Lấy một trang biến thể (phân trang ở DB), có cập nhật tồn kho theo từng biến thể. */
+    @Transactional(readOnly = true)
+    public Page<ProductVariant> getVariantsPage(UUID productId, int page, int size) {
+        getProduct(productId);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Page<ProductVariant> result = productVariantRepository.findByProductId(
+                productId,
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id")))
+        );
+        List<UUID> ids = result.getContent().stream().map(ProductVariant::getId).toList();
+        if (!ids.isEmpty()) {
+            java.util.Map<UUID, Integer> stock = new java.util.HashMap<>();
+            inventoryRepository.findByVariantIdIn(ids)
+                    .forEach(i -> stock.putIfAbsent(i.getVariant().getId(), i.getQuantity()));
+            result.getContent().forEach(v -> {
+                Integer q = stock.get(v.getId());
+                if (q != null) v.setStockQuantity(q);
+            });
+        }
+        return result;
+    }
+
+    /** Gom option value của nhiều biến thể bằng một truy vấn (tránh N+1). */
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, List<VariantOptionValue>> getOptionValuesByVariantIds(java.util.Collection<UUID> variantIds) {
+        java.util.Map<UUID, List<VariantOptionValue>> grouped = new java.util.HashMap<>();
+        if (variantIds.isEmpty()) return grouped;
+        for (VariantOptionValue link : variantOptionValueRepository.findWithOptionsByVariantIdIn(variantIds)) {
+            grouped.computeIfAbsent(link.getVariant().getId(), k -> new ArrayList<>()).add(link);
+        }
+        return grouped;
+    }
+
+    public ProductVariantRepository.VariantPriceSummary getPriceSummary(UUID productId) {
+        return productVariantRepository.summarizePrices(productId);
     }
 
     public List<ProductVariant> getVariantsByStatus(
@@ -778,6 +774,13 @@ public class ProductVariantService {
             );
         }
 
+        String sku = request.getSku().trim();
+        if (sku.length() > 255 || !sku.matches("[A-Za-z0-9][A-Za-z0-9_-]*")) {
+            throw new IllegalArgumentException(
+                    "SKU must be at most 255 characters, start with a letter or digit, and contain only Latin letters, digits, hyphens or underscores"
+            );
+        }
+
         if (request.getPrice() == null) {
             throw new IllegalArgumentException(
                     "Variant price is required"
@@ -835,28 +838,6 @@ public class ProductVariantService {
 
             throw new IllegalArgumentException(
                     "Variant stock quantity cannot be negative"
-            );
-        }
-    }
-
-    private void validateOptionName(
-            String name
-    ) {
-
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Option name is required"
-            );
-        }
-    }
-
-    private void validateOptionValue(
-            String value
-    ) {
-
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Option value is required"
             );
         }
     }
@@ -980,6 +961,11 @@ public class ProductVariantService {
     // =====================================================
     // HELPERS
     // =====================================================
+
+    private Product lockOptionProduct(UUID productId) {
+        return productRepository.findForOptionWrite(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+    }
 
     private Product getProduct(
             UUID productId

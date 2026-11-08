@@ -1,3 +1,4 @@
+import { useDialog, useToast } from '../../context/FeedbackContext';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Clock3, MapPin, Package, ReceiptText, Truck } from 'lucide-react';
@@ -9,6 +10,7 @@ import { reviewApi } from '../../services/reviews/reviewApi';
 const labels: Record<OrderStatus,string> = { PENDING:'Chờ xác nhận', CONFIRMED:'Đã xác nhận', SHIPPING:'Đang vận chuyển', DELIVERED:'Hoàn thành', CANCELLED:'Đã hủy' };
 const colors: Record<OrderStatus,string> = { PENDING:'bg-amber-50 text-amber-700', CONFIRMED:'bg-blue-50 text-blue-700', SHIPPING:'bg-indigo-50 text-indigo-700', DELIVERED:'bg-emerald-50 text-emerald-700', CANCELLED:'bg-rose-50 text-rose-700' };
 export default function OrderDetailPage() {
+  const toast=useToast();const {prompt}=useDialog();
   const { orderId = '' } = useParams();
   const { isAuthenticated, isLoading } = useAuth();
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -21,34 +23,26 @@ export default function OrderDetailPage() {
   useEffect(() => { if(isAuthenticated && orderId) void load(); }, [isAuthenticated, orderId]);
   if (isLoading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{from:`/orders/${orderId}`}}/>;
-  const cancel = async (subOrderId:string) => {
-    const input = window.prompt('Lý do hủy đơn (không bắt buộc):');
-    if (input === null) return;
-    const reason = input;
-    setBusyId(subOrderId); setError('');
-    try { await checkoutApi.cancelSubOrder(subOrderId,reason); await load(); }
-    catch(e) { setError(getApiError(e,'Không thể hủy đơn hàng.')); }
-    finally { setBusyId(''); }
-  };
+  const cancel = (subOrderId:string)=>prompt({title:'Hủy đơn hàng?',message:'Bạn có chắc chắn muốn hủy đơn hàng này?',confirmText:'Hủy đơn hàng',cancelText:'Giữ đơn hàng',variant:'danger',input:{label:'Lý do hủy (không bắt buộc)',maxLength:500},loadingText:'Đang hủy đơn...',successMessage:'Đã hủy đơn hàng.',onConfirm:async reason=>{setBusyId(subOrderId);setError('');try{await checkoutApi.cancelSubOrder(subOrderId,reason);await load();}finally{setBusyId('');}}});
   const canConfirmCod = !!order && order.paymentMethod === 'COD' && order.paymentStatus === 'PENDING' &&
     order.subOrders.some(s=>s.status!=='CANCELLED') && order.subOrders.filter(s=>s.status!=='CANCELLED').every(s=>s.status==='DELIVERED');
   const confirmCod = async () => {
     if(!order) return;
     setBusyId(order.id); setError('');
-    try { await checkoutApi.confirmCodReceived(order.id); await load(); }
-    catch(e) { setError(getApiError(e,'Chưa đủ điều kiện xác nhận COD.')); }
+    try { await checkoutApi.confirmCodReceived(order.id); toast.success('Đã xác nhận thanh toán COD.'); await load(); }
+    catch(e) { setError(getApiError(e,'Chưa đủ điều kiện xác nhận COD.')); toast.error(getApiError(e)); }
     finally { setBusyId(''); }
   };
   const confirmReceived = async (subOrderId: string) => {
     setBusyId(subOrderId); setError('');
-    try { await checkoutApi.confirmSubOrderReceived(subOrderId); await load(); }
-    catch(e) { setError(getApiError(e, 'Không thể xác nhận đã nhận hàng.')); }
+    try { await checkoutApi.confirmSubOrderReceived(subOrderId); toast.success('Đã xác nhận nhận hàng.'); await load(); }
+    catch(e) { setError(getApiError(e, 'Không thể xác nhận đã nhận hàng.')); toast.error(getApiError(e)); }
     finally { setBusyId(''); }
   };
   const submitReview = async (subOrderId:string, productId:string, variantId:string|null) => {
     const draft=reviewDrafts[productId]||{rating:5,content:''}; setBusyId(`review-${productId}`); setError('');
-    try { await reviewApi.create(productId,{...draft,subOrderId,variantId:variantId||undefined}); setReviewed(v=>[...v,productId]); }
-    catch(e) { setError(getApiError(e,'Không thể gửi đánh giá.')); }
+    try { await reviewApi.create(productId,{...draft,subOrderId,variantId:variantId||undefined}); setReviewed(v=>[...v,productId]); toast.success('Đã gửi đánh giá sản phẩm.'); }
+    catch(e) { setError(getApiError(e,'Không thể gửi đánh giá.')); toast.error(getApiError(e)); }
     finally { setBusyId(''); }
   };
   return <main className="min-h-[70vh] bg-[#F7F9FD] px-3 py-8 sm:px-5"><div className="mx-auto max-w-[1000px]">
