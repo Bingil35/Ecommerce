@@ -1,3 +1,5 @@
+import { LoadingState } from '../../common/LoadingState';
+import { useToast } from '../../../context/FeedbackContext';
 import { Trash2, Minus, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { CartItem as CartItemType } from '../../../services/cart/cartTypes';
@@ -18,23 +20,21 @@ interface CartItemProps {
 }
 
 const CartItem = ({ item, selected, onToggleSelect }: CartItemProps) => {
+  const toast = useToast();
   const navigate = useNavigate();
-  const { updateQuantity, removeFromCart } = useCart();
+  const { updateQuantity, removeFromCart, isLoading } = useCart();
   const [isRemoving, setIsRemoving] = useState(false);
 
-  // Xóa ngay, không hỏi xác nhận
-  const handleRemove = () => {
+  const handleRemove = async () => {
+    if(isRemoving)return;
     setIsRemoving(true);
-    setTimeout(async () => {
-      const ok = await removeFromCart(item.id);
-      if (!ok) setIsRemoving(false);
-    }, 200);
+    try{await removeFromCart(item.id);}finally{setIsRemoving(false);}
   };
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity < 1) return;
     if (item.stockQuantity != null && newQuantity > item.stockQuantity) {
-      alert(`Chỉ còn ${item.stockQuantity} sản phẩm trong kho.`);
+      toast.warning(`Chỉ còn ${item.stockQuantity} sản phẩm trong kho.`);
       return;
     }
     updateQuantity(item.id, newQuantity);
@@ -126,6 +126,7 @@ const CartItem = ({ item, selected, onToggleSelect }: CartItemProps) => {
             <button
               type="button"
               onClick={handleRemove}
+              disabled={isLoading || isRemoving}
               aria-label="Xóa sản phẩm"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#98A1B2] transition-colors hover:bg-[#FFF5F5] hover:text-[#DC5A5A]"
             >
@@ -168,7 +169,7 @@ const CartItem = ({ item, selected, onToggleSelect }: CartItemProps) => {
                 <button
                   type="button"
                   onClick={() => handleQuantityChange(item.quantity - 1)}
-                  disabled={item.quantity <= 1 || isOutOfStock}
+                  disabled={isLoading || isRemoving || item.quantity <= 1 || isOutOfStock}
                   aria-label="Giảm số lượng"
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E8EDF5] bg-white text-[#667085] transition-colors hover:border-[#5367C9] hover:bg-[#F3F6FC] hover:text-[#5367C9] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#E8EDF5] disabled:hover:bg-white disabled:hover:text-[#667085]"
                 >
@@ -184,7 +185,7 @@ const CartItem = ({ item, selected, onToggleSelect }: CartItemProps) => {
                     const val = parseInt(e.target.value) || 1;
                     handleQuantityChange(val);
                   }}
-                  disabled={isOutOfStock}
+                  disabled={isLoading || isRemoving || isOutOfStock}
                   className="h-8 w-14 rounded-lg border border-[#E8EDF5] bg-white text-center text-sm font-semibold text-[#252A3A] transition-colors focus:border-[#5367C9] focus:outline-none focus:ring-2 focus:ring-[#5367C9]/20 disabled:cursor-not-allowed disabled:opacity-40"
                 />
 
@@ -192,14 +193,14 @@ const CartItem = ({ item, selected, onToggleSelect }: CartItemProps) => {
                   type="button"
                   onClick={() => handleQuantityChange(item.quantity + 1)}
                   disabled={
-                    isOutOfStock ||
+                    isLoading || isRemoving ||                     isOutOfStock ||
                     (item.stockQuantity != null &&
                       item.quantity >= item.stockQuantity)
                   }
                   aria-label="Tăng số lượng"
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E8EDF5] bg-white text-[#667085] transition-colors hover:border-[#5367C9] hover:bg-[#F3F6FC] hover:text-[#5367C9] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#E8EDF5] disabled:hover:bg-white disabled:hover:text-[#667085]"
                 >
-                  <Plus size={14} strokeWidth={2} />
+                  {isLoading ? <LoadingState label="" size={14}/> : <Plus size={14} strokeWidth={2} />}
                 </button>
               </div>
 

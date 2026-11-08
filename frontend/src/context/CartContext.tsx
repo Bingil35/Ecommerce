@@ -1,3 +1,4 @@
+import { useDialog, useToast } from './FeedbackContext';
 import {
   createContext,
   useCallback,
@@ -32,6 +33,10 @@ const EMPTY_CART: CartDto = {
 };
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const toast = useToast();
+  const { confirm } = useDialog();
+  const mutations = useRef(new Set<string>());
+  const [mutationCount,setMutationCount] = useState(0);
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
 
   const [cart, setCart] = useState<CartDto>(EMPTY_CART);
@@ -77,26 +82,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, isAuthLoading, user?.id, refresh]);
 
   // Mỗi thao tác trả về giỏ hàng mới nhất từ BE -> thay thế state
-  const runMutation = async (action: () => Promise<CartDto>) => {
-    try {
-      setCart(await action());
-      return true;
-    } catch (e) {
-      window.alert(getCartErrorMessage(e));
-      return false;
-    }
+  const runMutation = async (key: string, action: () => Promise<CartDto>, message: string) => {
+    if(mutations.current.has(key)) return false;
+    mutations.current.add(key);setMutationCount(count=>count+1);
+    try { setCart(await action()); toast.success(message); return true; }
+    catch(e) { toast.error(getCartErrorMessage(e)); return false; }
+    finally { mutations.current.delete(key);setMutationCount(count=>count-1); }
   };
-
   const addToCart = (payload: AddToCartPayload) =>
-    runMutation(() => cartApi.addItem(payload));
-
-  const updateQuantity = (itemId: string, quantity: number) =>
-    quantity < 1
-      ? removeFromCart(itemId)
-      : runMutation(() => cartApi.updateItem(itemId, quantity));
-
-  const removeFromCart = (itemId: string) =>
-    runMutation(() => cartApi.removeItem(itemId));
+    runMutation(`add:${JSON.stringify(payload)}`, () => cartApi.addItem(payload), 'Đã thêm sản phẩm vào giỏ hàng.');
+  const removeFromCart = async (itemId: string) => confirm({
+    title:'Xóa sản phẩm khỏi giỏ hàng?', message:'Sản phẩm sẽ được xóa khỏi giỏ hàng của bạn.',
+    confirmText:'Xóa sản phẩm',variant:'danger',loadingText:'Đang xóa...',
+    onConfirm:()=>runMutation(itemId,()=>cartApi.removeItem(itemId),'Đã xóa sản phẩm khỏi giỏ hàng.'),
+  });
+  const updateQuantity = (itemId: string, quantity: number) => quantity < 1 ? removeFromCart(itemId) :
+    runMutation(itemId, () => cartApi.updateItem(itemId, quantity), 'Đã cập nhật số lượng sản phẩm.');
 
   const shops = useMemo(() => toCartShops(cart), [cart]);
   const items = useMemo(() => shops.flatMap((shop) => shop.items), [shops]);
@@ -108,7 +109,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     itemCount: Number(cart.totalQuantity ?? 0),
     distinctItemCount,
     subtotal: Number(cart.subtotal ?? 0),
-    isLoading,
+    isLoading: isLoading || mutationCount > 0,
     error,
     refresh,
     addToCart,

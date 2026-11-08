@@ -1,3 +1,5 @@
+import { LoadingButton } from '../../components/common/LoadingState';
+import { useToast, getFeedbackError } from '../../context/FeedbackContext';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, CreditCard, MapPin, PackageCheck, ShieldCheck, Ticket, ShoppingBag } from 'lucide-react';
@@ -10,6 +12,7 @@ import type { CheckoutPreview, CustomerAddress, Coupon } from '../../services/ch
 type CheckoutState = { itemIds?: string[]; platformCouponCode?: string | null; shopCouponCodes?: Record<string, string> };
 const isPositive = (value: number | string | null | undefined) => Number(value ?? 0) > 0;
 const CheckoutPage = () => {
+  const toast=useToast();
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -91,8 +94,8 @@ const CheckoutPage = () => {
     setSubmitting(true); setError('');
     try {
       const result = await checkoutApi.placeOrder({ ...request(), paymentMethod });
-      navigate(`/orders/${result.id}`, { replace: true, state: { justPlaced: true } });
-    } catch (e) { setError(getApiError(e, 'Đặt hàng thất bại. Vui lòng kiểm tra lại giỏ hàng.')); }
+      toast.success('Đặt hàng thành công.'); navigate(`/orders/${result.id}`, { replace: true, state: { justPlaced: true } });
+    } catch (e) { toast.error(getFeedbackError(e));  setError(getApiError(e, 'Đặt hàng thất bại. Vui lòng kiểm tra lại giỏ hàng.')); }
     finally { setSubmitting(false); }
   };
 
@@ -162,7 +165,7 @@ const CheckoutPage = () => {
           {preview.appliedCoupons.length > 0 && <p className="mt-3 rounded-lg bg-[#F1F5FF] px-3 py-2 text-xs text-[#596BD0]">Đã áp dụng: {preview.appliedCoupons.join(', ')}</p>}
         </> : <p className="mt-4 text-sm text-[#8A93A6]">{previewing ? 'Đang tính toán...' : 'Chọn địa chỉ để xem tổng tiền.'}</p>}
         {selectedAddress && <p className="mt-4 rounded-xl bg-[#F8FAFD] p-3 text-xs leading-5 text-[#68738A]"><strong className="text-[#34405B]">Giao đến:</strong> {selectedAddress.recipientName} · {selectedAddress.recipientPhone}<br/>{selectedAddress.addressDetail}, {selectedAddress.ward}, {selectedAddress.provinceCity}</p>}
-        <button type="button" onClick={() => void placeOrder()} disabled={submitting || !preview || !selectedAddress || previewing} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#596BD0] text-sm font-semibold text-white hover:bg-[#4859C2] disabled:cursor-not-allowed disabled:bg-[#C4CBEA]">{submitting ? 'Đang đặt hàng...' : <><CheckCircle2 size={17}/>Đặt hàng</>}</button>
+        <LoadingButton type="button" onClick={() => placeOrder()} disabled={submitting || !preview || !selectedAddress || previewing} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#596BD0] text-sm font-semibold text-white hover:bg-[#4859C2] disabled:cursor-not-allowed disabled:bg-[#C4CBEA]" loading={submitting} loadingText="Đang đặt hàng..."><CheckCircle2 size={17}/>Đặt hàng</LoadingButton>
         <p className="mt-3 text-center text-[11px] leading-5 text-[#8A93A6]">Giá và tồn kho sẽ được backend xác minh lại trong giao dịch đặt hàng.</p>
       </aside>
     </div>}

@@ -1,3 +1,5 @@
+import { LoadingButton } from '../../components/common/LoadingState';
+import { useToast, getFeedbackError } from '../../context/FeedbackContext';
 import {
   useState,
   type FormEvent,
@@ -21,6 +23,7 @@ interface LoginForm {
 }
 
 export default function LoginPage() {
+  const toast=useToast();
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -81,8 +84,9 @@ export default function LoginPage() {
         loginData.user,
         rememberMe
       );
+      toast.success('Đăng nhập thành công.');
       navigate(hasRole(loginData.user, ROLES.ADMIN) ? '/admin' : '/', { replace: true });
-    } catch (error: any) {
+    } catch (error: any) { toast.error(getFeedbackError(error));
       const message =
         error.response?.data?.message ||
         'Đăng nhập thất bại. Vui lòng thử lại.';
@@ -326,19 +330,11 @@ export default function LoginPage() {
               </div>
 
               {/* Submit */}
-              <button
+              <LoadingButton
                 type="submit"
                 disabled={isLoading}
                 className="flex h-[56px] w-full items-center justify-center gap-2 rounded-full bg-[#4F7CFF] text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(79,124,255,0.2)] transition hover:bg-[#3D63D8] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isLoading
-                  ? 'Đang đăng nhập...'
-                  : 'Đăng nhập'}
-
-                {!isLoading && (
-                  <ArrowRight size={17}/>
-                )}
-              </button>
+               loading={isLoading} loadingText="Đang đăng nhập...">Đăng nhập<ArrowRight size={17}/></LoadingButton>
             </form>
 
             {/* Divider */}

@@ -1,3 +1,5 @@
+import { LoadingButton } from '../../components/common/LoadingState';
+import { useToast, getFeedbackError } from '../../context/FeedbackContext';
 import {
   useState,
   type FormEvent,
@@ -20,6 +22,7 @@ interface RegisterForm {
 }
 
 export default function RegisterPage() {
+  const toast=useToast();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<RegisterForm>({
@@ -93,8 +96,8 @@ export default function RegisterPage() {
         confirmPassword: form.confirmPassword,
       });
 
-      navigate('/login');
-    } catch (error: unknown) {
+      toast.success('Đăng ký tài khoản thành công. Vui lòng đăng nhập.'); navigate('/login');
+    } catch (error: unknown) { toast.error(getFeedbackError(error));
       if (axios.isAxiosError(error)) {
         setErrorMessage(
           error.response?.data?.message ||
@@ -300,15 +303,11 @@ export default function RegisterPage() {
                 </label>
 
                 {/* Register button */}
-                <button
+                <LoadingButton
                   type="submit"
                   disabled={isLoading}
                   className="w-full rounded-xl bg-[#4F7CFF] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#3D63D8] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isLoading
-                    ? 'Đang đăng ký...'
-                    : 'Đăng ký tài khoản'}
-                </button>
+                 loading={isLoading} loadingText="Đang đăng ký...">Đăng ký</LoadingButton>
               </form>
 
               {/* Divider */}

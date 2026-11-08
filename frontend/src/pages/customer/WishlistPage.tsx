@@ -1,13 +1,13 @@
+import { useDialog, useToast } from '../../context/FeedbackContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
-import { CheckCircle2, ChevronRight, CircleAlert, Heart, Info, Trash2 } from 'lucide-react';
+import { ChevronRight, Heart, Trash2 } from 'lucide-react';
 
 import WishlistBenefits from '../../components/customer/wishlist/WishlistBenefits';
 import WishlistFilters from '../../components/customer/wishlist/WishlistFilters';
 import WishlistPagination from '../../components/customer/wishlist/WishlistPagination';
 import WishlistProductCard from '../../components/customer/wishlist/WishlistProductCard';
 import {
-  ConfirmDialog,
   EmptyWishlist,
   NoWishlistResults,
   WishlistError,
@@ -45,12 +45,6 @@ import {
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 type ToastKind = 'success' | 'error' | 'info';
-
-interface ToastState {
-  id: number;
-  kind: ToastKind;
-  message: string;
-}
 
 /** Chỉ khách hàng đã đăng nhập mới vào được trang này (giống trang giỏ hàng). */
 const WishlistPage = () => {
@@ -95,15 +89,15 @@ const WishlistContent = () => {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const {confirm} = useDialog();
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const [toast, setToast] = useState<ToastState | null>(null);
+  const toast = useToast();
   // Tăng lên để tải lại danh sách (nút "Thử lại", sau khi xóa hàng loạt)
   const [reloadToken, setReloadToken] = useState(0);
 
   // Chặn bấm lặp trước khi state kịp cập nhật
   const removeInFlight = useRef(new Set<string>());
-  const toastTimer = useRef<number | undefined>(undefined);
+
   const logoutRef = useRef(logout);
   useEffect(() => {
     logoutRef.current = logout;
@@ -111,13 +105,7 @@ const WishlistContent = () => {
 
   const total = truncated ? serverTotal : items.length;
 
-  const showToast = useCallback((kind: ToastKind, message: string) => {
-    window.clearTimeout(toastTimer.current);
-    setToast({ id: Date.now(), kind, message });
-    toastTimer.current = window.setTimeout(() => setToast(null), 3500);
-  }, []);
-
-  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+  const showToast = useCallback((kind: ToastKind, message: string) => toast[kind](message), [toast]);
 
   /* ---------- Tải dữ liệu ---------- */
 
@@ -136,7 +124,7 @@ const WishlistContent = () => {
       } catch (error) {
         if (isAbortError(error) || controller.signal.aborted) return;
         // Interceptor đã xóa token khi 401; đồng bộ AuthContext để route guard chuyển sang đăng nhập
-        if (getHttpStatus(error) === 401) logoutRef.current();
+        if (getHttpStatus(error) === 401) logoutRef.current(true);
         setErrorMessage(getWishlistErrorMessage(error));
         setStatus('error');
       }
@@ -274,7 +262,7 @@ const WishlistContent = () => {
         applyRemoved([product.id]);
         showToast('info', 'Sản phẩm này không còn trong danh sách yêu thích.');
       } else {
-        if (getHttpStatus(error) === 401) logoutRef.current();
+        if (getHttpStatus(error) === 401) logoutRef.current(true);
         showToast('error', getWishlistErrorMessage(error));
       }
     } finally {
@@ -296,7 +284,7 @@ const WishlistContent = () => {
         items.map((item) => item.product.id)
       );
       applyRemoved(removedIds);
-      setConfirmOpen(false);
+
 
       if (failedIds.length > 0) {
         showToast(
@@ -308,7 +296,8 @@ const WishlistContent = () => {
       }
       // Danh sách dài hơn giới hạn tải: tải lại phần còn lại
       if (truncated) reload();
-    } finally {
+      return failedIds.length === 0;
+    } catch(error) { showToast('error',getWishlistErrorMessage(error)); return false; } finally {
       setIsDeletingAll(false);
     }
   };
@@ -351,7 +340,7 @@ const WishlistContent = () => {
         <button
           type="button"
           disabled={status !== 'ready' || items.length === 0}
-          onClick={() => setConfirmOpen(true)}
+          onClick={() => void confirm({title:'Xóa tất cả sản phẩm yêu thích?',message:`${total} sản phẩm sẽ bị xóa khỏi danh sách yêu thích. Thao tác này không thể hoàn tác.`,confirmText:'Xóa tất cả',variant:'danger',loadingText:'Đang xóa...',onConfirm:handleDeleteAll})}
           className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-[#FAD0D8] bg-[#FFF5F7] px-5 text-sm font-semibold text-[#E5334F] transition hover:bg-[#FFE9ED] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Trash2 size={16} strokeWidth={1.9} />
@@ -444,39 +433,9 @@ const WishlistContent = () => {
         <WishlistBenefits />
       </div>
 
-      {confirmOpen && (
-        <ConfirmDialog
-          title="Xóa tất cả sản phẩm yêu thích?"
-          description={`${total} sản phẩm sẽ bị xóa khỏi danh sách yêu thích của bạn. Thao tác này không thể hoàn tác.`}
-          confirmLabel="Xóa tất cả"
-          isBusy={isDeletingAll}
-          onConfirm={() => void handleDeleteAll()}
-          onCancel={() => setConfirmOpen(false)}
-        />
-      )}
 
-      {toast && <Toast key={toast.id} toast={toast} />}
-    </div>
-  );
-};
 
-const TOAST_STYLES: Record<ToastKind, string> = {
-  success: 'border-[#CFEBDD] text-[#1F7A4D]',
-  error: 'border-[#F6D3D8] text-[#C73049]',
-  info: 'border-[#DCE5FA] text-[#4559B7]',
-};
 
-const Toast = ({ toast }: { toast: ToastState }) => {
-  const Icon =
-    toast.kind === 'success' ? CheckCircle2 : toast.kind === 'error' ? CircleAlert : Info;
-
-  return (
-    <div
-      role={toast.kind === 'error' ? 'alert' : 'status'}
-      className={`fixed bottom-6 left-1/2 z-[70] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2.5 rounded-xl border bg-white px-4 py-3 text-sm font-medium shadow-[0_12px_32px_rgba(31,37,64,0.18)] ${TOAST_STYLES[toast.kind]}`}
-    >
-      <Icon size={18} className="shrink-0" />
-      <span>{toast.message}</span>
     </div>
   );
 };

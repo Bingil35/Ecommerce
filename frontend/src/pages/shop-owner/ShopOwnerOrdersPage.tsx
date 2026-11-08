@@ -1,3 +1,4 @@
+import { useToast, getFeedbackError } from '../../context/FeedbackContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ClipboardList, MapPin, Package, Search, ShoppingBag } from 'lucide-react';
@@ -12,6 +13,7 @@ const statusStyles: Record<OrderStatus, string> = {
 };
 
 export default function ShopOwnerOrdersPage() {
+  const toast=useToast();
   const [items, setItems] = useState<ShopOwnerOrder[]>([]);
   const [status, setStatus] = useState<OrderStatus | ''>('');
   const [keyword, setKeyword] = useState('');
@@ -24,14 +26,14 @@ export default function ShopOwnerOrdersPage() {
 
   const load = useCallback(async () => {
     try { setError(''); const result = await checkoutApi.getShopOrders({ page, size: 10, status, keyword: query }); setItems(result.items); setPages(result.totalPages); }
-    catch (e) { setError(getApiError(e)); }
+    catch (e) { toast.error(getFeedbackError(e));  setError(getApiError(e)); }
   }, [page, status, query]);
   useEffect(() => { void load(); }, [load]);
 
   const advance = async (order: ShopOwnerOrder) => {
     const next = nextStatus[order.status]; if (!next) return;
-    try { setBusy(order.id); await checkoutApi.updateShopSubOrderStatus(order.id, next, notes[order.id] || ''); setNotes(current => ({ ...current, [order.id]: '' })); await load(); }
-    catch (e) { setError(getApiError(e)); }
+    try { setBusy(order.id); await checkoutApi.updateShopSubOrderStatus(order.id, next, notes[order.id] || ''); toast.success('Đã cập nhật trạng thái đơn hàng.'); setNotes(current => ({ ...current, [order.id]: '' })); await load(); }
+    catch (e) { toast.error(getFeedbackError(e));  setError(getApiError(e)); }
     finally { setBusy(null); }
   };
 

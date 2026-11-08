@@ -1,3 +1,5 @@
+import { LoadingButton } from '../../components/common/LoadingState';
+import { useToast, getFeedbackError } from '../../context/FeedbackContext';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -23,6 +25,7 @@ interface LocationState {
 }
 
 export default function SellerLoginPage() {
+  const toast=useToast();
   const { login, user, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,6 +72,7 @@ export default function SellerLoginPage() {
       // Chỉ tài khoản có role SHOP_OWNER mới được vào kênh người bán.
       if (isShopOwner(loggedInUser)) {
         login(accessToken, loggedInUser, rememberMe);
+        toast.success('Đăng nhập thành công.');
         navigate(from?.startsWith('/seller') ? from : '/seller', {
           replace: true,
         });
@@ -82,7 +86,7 @@ export default function SellerLoginPage() {
       }
 
       setErrorMessage('Tài khoản này không dùng được kênh người bán.');
-    } catch (error: any) {
+    } catch (error: any) { toast.error(getFeedbackError(error));
       // 403: đúng thông tin đăng nhập nhưng không có role SHOP_OWNER (chưa có gian hàng).
       if (error.response?.status === 403) {
         setNoShop(true);
@@ -193,14 +197,11 @@ export default function SellerLoginPage() {
           </Link>
         </div>
 
-        <button
-          type="submit"
+        <LoadingButton type="submit"
+
           disabled={isSubmitting}
           className="flex h-[58px] w-full items-center justify-center gap-2 rounded-full bg-[#3B7BF6] text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(59,123,246,0.28)] transition hover:bg-[#2F6BEA] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
-          {!isSubmitting && <ArrowRight className="h-5 w-5" strokeWidth={2} />}
-        </button>
+         loading={isSubmitting} loadingText="Đang đăng nhập...">Đăng nhập<ArrowRight className="h-5 w-5" strokeWidth={2}/></LoadingButton>
       </form>
 
       <div className="my-8 flex items-center gap-4">

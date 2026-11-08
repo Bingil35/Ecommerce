@@ -9,6 +9,7 @@ import com.example.backend.dto.request.UpdateProductVariantRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.ProductOptionResponse;
 import com.example.backend.dto.response.ProductOptionValueResponse;
+import com.example.backend.dto.response.ProductVariantPageResponse;
 import com.example.backend.dto.response.ProductVariantResponse;
 import com.example.backend.entity.ProductOption;
 import com.example.backend.entity.ProductOptionValue;
@@ -278,6 +279,29 @@ public class ProductVariantController {
         return ApiResponse.success(
                 "Lấy danh sách product variant thành công.",
                 response
+        );
+    }
+
+    @GetMapping("/products/{productId}/variants/page")
+    public ApiResponse<ProductVariantPageResponse> getVariantsPage(
+            @PathVariable UUID productId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            Authentication authentication
+    ) {
+        ownership.assertProduct(productId, authentication.getName());
+        org.springframework.data.domain.Page<ProductVariant> result =
+                productVariantService.getVariantsPage(productId, page, size);
+        java.util.Map<UUID, List<com.example.backend.entity.VariantOptionValue>> links =
+                productVariantService.getOptionValuesByVariantIds(
+                        result.getContent().stream().map(ProductVariant::getId).toList());
+        List<ProductVariantResponse> items = result.getContent().stream()
+                .map(v -> new ProductVariantResponse(v, links.getOrDefault(v.getId(), List.of())))
+                .toList();
+
+        return ApiResponse.success(
+                "Lấy trang product variant thành công.",
+                new ProductVariantPageResponse(result, items, productVariantService.getPriceSummary(productId))
         );
     }
 

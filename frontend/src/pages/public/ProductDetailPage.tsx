@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -15,8 +15,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import axiosClient from '../../services/api/axiosClient';
-import { AnimatePresence } from 'framer-motion';
-import ToastNotice from '../../components/customer/common/ToastNotice';
+
+
 import ProductReviews from '../../components/customer/product/ProductReviews';
 
 import ProductCard from '../../components/customer/home/recommendation/ProductCard';
@@ -94,7 +94,7 @@ const { addToCart } = useCart();
 
         const firstImage = data.media?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url;
 
-        setSelectedImage(firstImage || data.thumbnailUrl || '');
+        setSelectedImage(data.thumbnailUrl || firstImage || '');
 
         const initial: Record<string, string> = {};
 
@@ -295,49 +295,13 @@ const { addToCart } = useCart();
 
   const wishlisted = product ? isWishlisted(product.id) : false;
 
-  const [wishlistToast, setWishlistToast] = useState<{ id: number; message: string; added: boolean } | null>(null);
-
-  const toastTimer = useRef<number | undefined>(undefined);
-
-  const closeWishlistToast = useCallback(() => {
-
-    window.clearTimeout(toastTimer.current);
-
-    setWishlistToast(null);
-
-  }, []);
-
-  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
-
-
-
   const handleToggleWishlist = async () => {
 
     if (!product) return;
 
     if (!requireLogin('Đăng nhập để thêm sản phẩm vào danh sách yêu thích.')) return;
 
-    const saved = await toggle(product.id);
-
-    if (saved === null) return;
-
-    window.clearTimeout(toastTimer.current);
-
-    setWishlistToast({
-
-      id: Date.now(),
-
-      added: saved,
-
-      message: saved
-
-        ? 'Đã thêm sản phẩm vào danh sách yêu thích.'
-
-        : 'Đã bỏ sản phẩm khỏi danh sách yêu thích.',
-
-    });
-
-    toastTimer.current = window.setTimeout(() => setWishlistToast(null), 4000);
+    await toggle(product.id);
 
   };
 
@@ -394,7 +358,7 @@ const { addToCart } = useCart();
 
       });
 
-      if (success) setNotice('Đã thêm sản phẩm vào giỏ hàng.');
+      if (!success) return;
 
     } finally {
 
@@ -426,29 +390,11 @@ const { addToCart } = useCart();
 
     <main className="min-h-screen bg-[#F7FAFF] pb-12">
 
-      <AnimatePresence>
 
-        {wishlistToast && (
 
-          <ToastNotice
 
-            key={wishlistToast.id}
 
-            variant={wishlistToast.added ? 'success' : 'danger'}
 
-            message={wishlistToast.message}
-
-            actionLabel={wishlistToast.added ? 'Xem danh sách yêu thích' : undefined}
-
-            actionTo={wishlistToast.added ? '/wishlist' : undefined}
-
-            onClose={closeWishlistToast}
-
-          />
-
-        )}
-
-      </AnimatePresence>
 
       <div className="mx-auto max-w-[1200px] px-4 py-5 sm:py-8">
 

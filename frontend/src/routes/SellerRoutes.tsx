@@ -9,6 +9,7 @@ import SellerDashboardPage from '../pages/seller/SellerDashboardPage';
 import SellerProductsPage from '../pages/seller/SellerProductsPage';
 import SellerProductDetailPage from '../pages/seller/SellerProductDetailPage';
 import SellerCreateProductPage from '../pages/seller/SellerCreateProductPage';
+import SellerEditProductPage from '../pages/seller/SellerEditProductPage';
 import SellerInventoryPage from '../pages/seller/SellerInventoryPage';
 import SellerInventoryDetailPage from '../pages/seller/SellerInventoryDetailPage';
 import SellerPromotionsPage from '../pages/seller/SellerPromotionsPage';
@@ -40,6 +41,7 @@ const SellerRoutes = () => {
           <Route path="/seller/products" element={<SellerProductsPage />} />
           <Route path="/seller/products/:productId" element={<SellerProductDetailPage />} />
           <Route path="/seller/products/new" element={<SellerCreateProductPage />} />
+          <Route path="/seller/products/:productId/edit" element={<SellerEditProductPage />} />
           <Route path="/seller/inventory" element={<SellerInventoryPage />} />
           <Route path="/seller/inventory/:productId" element={<SellerInventoryDetailPage />} />
           <Route path="/seller/promotions" element={<SellerPromotionsPage />} />

@@ -1,3 +1,4 @@
+import { useToast } from './FeedbackContext';
 import {
   createContext,
   useContext,
@@ -18,7 +19,7 @@ interface AuthContextType {
     user: UserResponse,
     rememberMe: boolean
   ) => void;
-  logout: () => void;
+  logout: (silent?: boolean) => void;
 }
 
 const AuthContext =
@@ -31,6 +32,7 @@ interface AuthProviderProps {
 export function AuthProvider({
   children,
 }: AuthProviderProps) {
+  const toast = useToast();
   const [user, setUser] =
     useState<UserResponse | null>(null);
 
@@ -62,9 +64,10 @@ export function AuthProvider({
     setUser(user);
   };
 
-  const logout = () => {
+  const logout = (silent = false) => {
     authStorage.clear();
     setUser(null);
+    if (!silent) toast.success('Đã đăng xuất.');
   };
 
   const value: AuthContextType = {

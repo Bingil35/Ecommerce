@@ -1,3 +1,4 @@
+import { useToast } from './FeedbackContext';
 import {
   createContext,
   useCallback,
@@ -48,6 +49,7 @@ const WishlistContext = createContext<WishlistContextValue | undefined>(
 );
 
 export const WishlistProvider = ({ children }: { children: ReactNode }) => {
+  const toast = useToast();
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
 
   // Dữ liệu gắn với tài khoản đã tải nó, để đăng xuất/đổi tài khoản không hiện dữ liệu người cũ
@@ -142,18 +144,21 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       if (wasSaved) {
         await wishlistApi.remove(productId);
         apply(false);
+        toast.success('Đã bỏ sản phẩm khỏi danh sách yêu thích.');
         return false;
       }
       await wishlistApi.add(productId);
       apply(true);
+      toast.success('Đã thêm sản phẩm vào danh sách yêu thích.');
       return true;
     } catch (error) {
       // Xóa một mục đã không còn trong danh sách (xóa ở thiết bị khác) -> khớp lại giao diện
       if (wasSaved && isNotFound(error)) {
         apply(false);
+        toast.info('Sản phẩm không còn trong danh sách yêu thích.');
         return false;
       }
-      window.alert(getWishlistErrorMessage(error));
+      toast.error(getWishlistErrorMessage(error));
       return null;
     } finally {
       inFlight.current.delete(productId);
@@ -163,7 +168,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
         return next;
       });
     }
-  }, []);
+  }, [toast]);
 
   const value = useMemo<WishlistContextValue>(
     () => ({
