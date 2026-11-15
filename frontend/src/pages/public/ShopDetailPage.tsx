@@ -113,26 +113,23 @@ export default function ShopDetailPage() {
   return <main className="min-h-screen bg-[#F7F9FD] pb-12">
     <div className="mx-auto max-w-[1200px] px-4 pt-5">
       <nav aria-label="Đường dẫn" className="mb-4 flex items-center gap-2 text-xs text-[#8791A4]"><Link to="/" className="hover:text-[#5367C9]">Trang chủ</Link><ChevronRight size={14}/><span className="font-medium text-[#47516A]">{shop.shopName}</span></nav>
-      <section className="overflow-hidden rounded-3xl border border-[#E5EAF3] bg-white shadow-[0_8px_28px_rgba(53,69,112,0.06)]">
-        <div className="relative h-44 bg-gradient-to-r from-[#293A75] via-[#566CC3] to-[#A8B7F0] sm:h-60">
-          {shop.bannerUrl && <img src={mediaUrl(shop.bannerUrl)} alt="" className="h-full w-full object-cover"/>}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#202D5A]/55 to-transparent"/>
-          <div className="absolute bottom-4 left-5 text-white sm:bottom-6 sm:left-8"><p className="text-xs font-semibold uppercase tracking-[.18em] text-white/80">Gian hàng Kala</p><h1 className="mt-1 text-2xl font-bold sm:text-3xl">{shop.shopName}</h1></div>
-        </div>
-        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:px-8 sm:py-6">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-[#F0F3FF] shadow-md sm:h-28 sm:w-28">
-            {shop.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt={shop.shopName} className="h-full w-full object-cover"/> : <Store size={35} className="text-[#596BD0]"/>}
+      <section className="relative h-[275px] overflow-hidden rounded-[26px] border border-[#E5EAF3] bg-gradient-to-br from-[#293A75] via-[#667bd0] to-[#b7c3f4] shadow-[0_12px_34px_rgba(36,52,99,0.12)] sm:h-[310px]">
+        {shop.bannerUrl && <img src={mediaUrl(shop.bannerUrl)} alt="Ảnh bìa cửa hàng" className="absolute inset-0 h-full w-full object-cover"/>}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#17264e]/55 via-[#17264e]/5 to-transparent"/>
+        <div className="absolute inset-x-3 bottom-3 flex flex-col gap-3 rounded-[20px] border border-white/70 bg-white/85 p-3 shadow-[0_10px_32px_rgba(20,32,66,0.18)] backdrop-blur-2xl sm:inset-x-5 sm:bottom-5 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+          <div className="grid h-[64px] w-[64px] shrink-0 place-items-center overflow-hidden rounded-[17px] border border-[#E7EAF4] bg-white p-1.5 shadow-[0_3px_10px_rgba(30,45,80,0.10)] sm:h-[72px] sm:w-[72px] sm:p-2">
+            {shop.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt={shop.shopName} className="block h-full w-full object-contain"/> : <Store size={28} className="text-[#596BD0]"/>}
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold text-[#202642] sm:text-xl">{shop.shopName}</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#6F7A90]">
-              <span className="inline-flex items-center gap-1.5"><Star size={15} fill="currentColor" className="text-[#E8A832]"/>{Number(shop.ratingAverage ?? 0).toFixed(1)} <span className="text-xs">({shop.ratingCount ?? 0} đánh giá)</span></span>
-              <span>{shop.followersCount ?? 0} người theo dõi</span>
-              <span className="inline-flex items-center gap-1.5"><Package size={15}/>{products.length} sản phẩm</span>
+            <h1 className="truncate text-[17px] font-bold leading-tight tracking-[-.02em] text-[#202642] sm:text-lg">{shop.shopName}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#65718A]">
+              <span className="inline-flex items-center gap-1"><Star size={13} fill="currentColor" className="text-[#E8A832]"/>{Number(shop.ratingAverage ?? 0).toFixed(1)} <span className="text-[11px]">({shop.ratingCount ?? 0} đánh giá)</span></span>
+              <span className="inline-flex items-center gap-1"><Heart size={12}/>{shop.followersCount ?? 0} người theo dõi</span>
+              <span className="inline-flex items-center gap-1"><Package size={13}/>{products.length} sản phẩm</span>
             </div>
-            {shop.address && <p className="mt-2 flex items-start gap-1.5 text-xs text-[#8993A6]"><MapPin size={14} className="mt-0.5 shrink-0"/>{shop.address}</p>}
+            {shop.address && <p className="mt-2 flex items-center gap-1.5 text-[11px] leading-snug text-[#78839A]"><MapPin size={13} className="shrink-0 text-[#7B87A1]"/>{shop.address}</p>}
           </div>
-          <div className="flex flex-wrap gap-2"><button type="button" disabled={followBusy} onClick={()=>void toggleFollow()} className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition disabled:opacity-60 ${following?'border-rose-200 bg-rose-50 text-rose-600':'border-[#E1E6F1] bg-white text-[#5866B7] hover:bg-[#F5F6FF]'}`}><Heart size={16} fill={following?'currentColor':'none'}/>{following?'Đang theo dõi':'Theo dõi shop'}</button><Link to={`/chat?shopId=${encodeURIComponent(shop.id)}`} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 text-sm font-semibold text-white transition hover:bg-[#4659B8]"><MessageCircle size={16}/>Chat với shop</Link></div>
+          <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end"><button type="button" disabled={followBusy} onClick={()=>void toggleFollow()} className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition disabled:opacity-60 ${following?'border-rose-200 bg-rose-50 text-rose-600':'border-[#E1E6F1] bg-white/80 text-[#5866B7] hover:bg-white'}`}><Heart size={14} fill={following?'currentColor':'none'}/>{following?'Đang theo dõi':'Theo dõi shop'}</button><Link to={`/chat?shopId=${encodeURIComponent(shop.id)}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#5367C9] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4659B8]"><MessageCircle size={14}/>Chat với shop</Link></div>
         </div>
       </section>
 

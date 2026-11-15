@@ -55,7 +55,7 @@ public class ShopService {
         shop.setEmail(trimToNull(r.getEmail()) == null ? u.getEmail() : trimToNull(r.getEmail()));
         shop.setLogoUrl(trimToNull(r.getLogoUrl()));
         shop.setBannerUrl(trimToNull(r.getBannerUrl()));
-        shop.setAddress(trimToNull(r.getAddress()));
+        setAddress(shop, r);
         return shops.save(shop);
     }
 
@@ -115,7 +115,7 @@ public class ShopService {
         s.setEmail(shopEmail == null ? u.getEmail() : shopEmail);
         s.setLogoUrl(trimToNull(r.getLogoUrl()));
         s.setBannerUrl(trimToNull(r.getBannerUrl()));
-        s.setAddress(trimToNull(r.getAddress()));
+        setAddress(s, r);
         s.setStatus(ShopStatus.PENDING);
         return shops.save(s);
     }
@@ -152,6 +152,26 @@ public class ShopService {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private void setAddress(Shop shop, CreateShopRequest request) {
+        String province = trimToNull(request.getAddressProvince());
+        String ward = trimToNull(request.getAddressWard());
+        String detail = trimToNull(request.getAddressDetail());
+        if (province != null || ward != null || detail != null) {
+            if (province == null || ward == null) {
+                throw new IllegalArgumentException("Vui lòng chọn đầy đủ tỉnh/thành phố và xã/phường.");
+            }
+            shop.setAddressProvince(province);
+            shop.setAddressWard(ward);
+            shop.setAddressDetail(detail);
+            shop.setAddress(detail == null ? ward + ", " + province : detail + ", " + ward + ", " + province);
+        } else {
+            shop.setAddress(trimToNull(request.getAddress()));
+            shop.setAddressProvince(null);
+            shop.setAddressWard(null);
+            shop.setAddressDetail(null);
+        }
     }
 
     private String slug(String s) {

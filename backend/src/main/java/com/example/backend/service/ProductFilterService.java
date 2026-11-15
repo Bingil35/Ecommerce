@@ -140,15 +140,15 @@ public class ProductFilterService {
                 predicates.add(cb.equal(root.get("brandId"), brandId));
             }
 
-            // Lọc theo địa chỉ shop; địa chỉ thuộc Shops, không phải Products.
+            // Lọc chính xác theo tỉnh/thành hành chính của shop.
             if (shopAddress != null) {
                 Subquery<UUID> matchingShop = query.subquery(UUID.class);
                 Root<Shop> addressShop = matchingShop.from(Shop.class);
                 matchingShop.select(addressShop.get("id"))
                         .where(cb.equal(addressShop.get("id"), root.get("shopId")),
                                 cb.equal(addressShop.get("status"), ShopStatus.ACTIVE),
-                                cb.like(cb.lower(addressShop.get("address")),
-                                        "%" + escapeLike(shopAddress.toLowerCase(Locale.ROOT)) + "%", LIKE_ESCAPE));
+                                cb.equal(cb.lower(addressShop.get("addressProvince")),
+                                        shopAddress.toLowerCase(Locale.ROOT)));
                 predicates.add(cb.exists(matchingShop));
             }
 

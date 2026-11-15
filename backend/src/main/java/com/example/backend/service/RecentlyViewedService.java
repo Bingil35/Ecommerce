@@ -45,7 +45,8 @@ public class RecentlyViewedService {
         if(product.getStatus()!=ProductStatus.ACTIVE) return;
         MapSqlParameterSource params=new MapSqlParameterSource().addValue("userId",user.getId()).addValue("productId",productId);
         jdbc.update("delete from recentlyviewedproduct where user_id=:userId and product_id=:productId",params);
-        jdbc.update("insert into recentlyviewedproduct(user_id,product_id,viewed_at) values (:userId,:productId,NOW())",params);
+        // Older installations may have created this table without the id default.
+        jdbc.update("insert into recentlyviewedproduct(id,user_id,product_id,viewed_at) values (gen_random_uuid(),:userId,:productId,NOW())",params);
     }
 
     @Transactional(readOnly=true)

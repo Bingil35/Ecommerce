@@ -9,6 +9,9 @@ export interface ShopResponse {
   phone: string | null;
   email: string | null;
   address: string | null;
+  addressProvince: string | null;
+  addressWard: string | null;
+  addressDetail: string | null;
   status: string;
   createdAt: string;
 }
@@ -18,6 +21,9 @@ export interface CreateShopRequest {
   phone?: string;
   email?: string;
   address?: string;
+  addressProvince?: string;
+  addressWard?: string;
+  addressDetail?: string;
   logoUrl?: string;
   bannerUrl?: string;
 }

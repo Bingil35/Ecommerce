@@ -22,12 +22,14 @@ import java.util.stream.Collectors;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final LocalStorageService storage;
 
     private static final Pattern COMBINING_MARKS =
             Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
 
-    public CategoryService(CategoryRepository categoryRepository) {
+    public CategoryService(CategoryRepository categoryRepository, LocalStorageService storage) {
         this.categoryRepository = categoryRepository;
+        this.storage = storage;
     }
 
     /**
@@ -78,6 +80,27 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public List<CategoryResponse> reorderRootCategories(List<UUID> orderedIds) {
+        List<Category> roots = categoryRepository.findByParentIsNullOrderBySortOrderAscNameAsc();
+        if (orderedIds == null || orderedIds.size() != roots.size()
+                || new java.util.HashSet<>(orderedIds).size() != orderedIds.size()) {
+            throw new IllegalArgumentException("Danh sách thứ tự danh mục gốc không hợp lệ.");
+        }
+
+        java.util.Map<UUID, Category> rootsById = roots.stream()
+                .collect(Collectors.toMap(Category::getId, category -> category));
+        for (int index = 0; index < orderedIds.size(); index++) {
+            Category category = rootsById.get(orderedIds.get(index));
+            if (category == null) {
+                throw new IllegalArgumentException("Chỉ có thể sắp xếp danh mục gốc.");
+            }
+            category.setSortOrder((short) index);
+        }
+        categoryRepository.saveAll(roots);
+        return getAllCategories();
+    }
+
     /**
      * Get category by ID.
      */
@@ -117,11 +140,15 @@ public class CategoryService {
             category.setSlug(slug);
         }
 
+        String previousImageUrl = category.getImageUrl();
         category.setName(name);
         category.setParent(parent);
         category.setImageUrl(normalizeImageUrl(request.getImageUrl()));
 
         Category updatedCategory = categoryRepository.save(category);
+        if (previousImageUrl != null && !previousImageUrl.equals(updatedCategory.getImageUrl())) {
+            storage.deleteCategoryImage(previousImageUrl);
+        }
 
         return new CategoryResponse(updatedCategory);
     }
@@ -142,6 +169,7 @@ public class CategoryService {
         try {
             categoryRepository.delete(category);
             categoryRepository.flush();
+            storage.deleteCategoryImage(category.getImageUrl());
         } catch (DataIntegrityViolationException exception) {
             throw new IllegalArgumentException(
                     "Cannot delete category because it is being used by products."

@@ -79,6 +79,11 @@ export default function LoginPage() {
 
       const loginData = response.data.data;
 
+      if (hasRole(loginData.user, ROLES.ADMIN)) {
+        setErrorMessage('Tài khoản quản trị vui lòng đăng nhập tại /admin/login.');
+        return;
+      }
+
       login(
         loginData.accessToken,
         loginData.user,

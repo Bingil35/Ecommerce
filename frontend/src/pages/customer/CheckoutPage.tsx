@@ -38,7 +38,7 @@ const CheckoutPage = () => {
     Promise.all([checkoutApi.getAddresses(), checkoutApi.getCoupons('PLATFORM'), checkoutApi.getCoupons('SHOP')])
       .then(([a, p, s]) => {
         if (!alive) return;
-        setAddresses(a); setAddressId(a.find(x => x.isDefault)?.id ?? a[0]?.id ?? '');
+        setAddresses(a); const current = a.filter(x => x.provinceCode && x.wardCode); setAddressId(current.find(x => x.isDefault)?.id ?? current[0]?.id ?? '');
         setPlatformCoupons(p); setShopCoupons(s);
       })
       .catch(e => { if (alive) setError(getApiError(e, 'Không thể tải dữ liệu thanh toán.')); })
@@ -61,9 +61,6 @@ const CheckoutPage = () => {
     return () => { alive = false; };
   }, [addressId, itemIds, platformCouponCode, shopCouponCodes]);
 
-  if (authLoading) return null;
-  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: '/checkout', notice: 'Đăng nhập để thanh toán.' }} />;
-  if (itemIds.length === 0) return <Navigate to="/cart" replace />;
   const selectedAddress = addresses.find(a => a.id === addressId);
   const selectedItemsByShop = useMemo(() => cartShops
     .map(shop => ({ ...shop, items: shop.items.filter(item => itemIds.includes(item.id)) }))
@@ -89,8 +86,12 @@ const CheckoutPage = () => {
     }
   }, [cartLoading, loading, shopCoupons, platformCoupons, selectedItemsByShop, preview?.shopDiscount, preview?.subtotal, platformCouponCode]);
 
+  if (authLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: '/checkout', notice: 'Đăng nhập để thanh toán.' }} />;
+  if (itemIds.length === 0) return <Navigate to="/cart" replace />;
+
   const placeOrder = async () => {
-    if (!addressId || !preview) { setError('Vui lòng chọn địa chỉ và chờ hệ thống tính lại đơn hàng.'); return; }
+    if (!addressId || !selectedAddress?.provinceCode || !selectedAddress?.wardCode || !preview) { setError('Vui lòng chọn địa chỉ dùng đơn vị hành chính mới và chờ hệ thống tính lại đơn hàng.'); return; }
     setSubmitting(true); setError('');
     try {
       const result = await checkoutApi.placeOrder({ ...request(), paymentMethod });
@@ -131,7 +132,7 @@ const CheckoutPage = () => {
         </section>
         <section className="rounded-2xl border border-[#E7EBF3] bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2"><MapPin size={19} className="text-[#596BD0]"/><h2 className="font-bold text-[#252B40]">Địa chỉ nhận hàng</h2></div>
-          {addresses.length ? <div className="space-y-3">{addresses.map(a => <label key={a.id} className={`flex cursor-pointer gap-3 rounded-xl border p-4 ${addressId === a.id ? 'border-[#6576D8] bg-[#F5F7FF]' : 'border-[#E8ECF3] hover:border-[#C8D1EA]'}`}><input type="radio" name="address" checked={addressId === a.id} onChange={() => setAddressId(a.id)} className="mt-1 accent-[#596BD0]"/><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#273047]">{a.recipientName}<span className="font-normal text-[#788195]">{a.recipientPhone}</span>{a.isDefault && <span className="rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[10px] font-semibold text-[#596BD0]">Mặc định</span>}</span><span className="mt-1 block text-sm text-[#697386]">{a.addressDetail}, {a.ward}, {a.provinceCity}</span></span></label>)}</div> : <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">Bạn chưa có địa chỉ nhận hàng. <Link to="/account/addresses" state={{ checkoutState: location.state }} className="font-semibold underline">Thêm địa chỉ</Link>.</div>}
+          {addresses.length ? <div className="space-y-3">{addresses.map(a => <label key={a.id} className={`flex cursor-pointer gap-3 rounded-xl border p-4 ${addressId === a.id ? 'border-[#6576D8] bg-[#F5F7FF]' : 'border-[#E8ECF3] hover:border-[#C8D1EA]'}`}><input type="radio" name="address" checked={addressId === a.id} disabled={!a.provinceCode || !a.wardCode} onChange={() => setAddressId(a.id)} className="mt-1 accent-[#596BD0]"/><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#273047]">{a.recipientName}<span className="font-normal text-[#788195]">{a.recipientPhone}</span>{a.isDefault && <span className="rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[10px] font-semibold text-[#596BD0]">Mặc định</span>}</span><span className="mt-1 block text-sm text-[#697386]">{a.addressDetail}, {a.ward}, {a.provinceCity}</span>{(!a.provinceCode || !a.wardCode) && <Link to="/account/addresses" state={{ checkoutState: location.state }} className="mt-1 inline-block text-xs font-semibold text-amber-700 underline">Địa chỉ cũ — cập nhật theo địa giới mới</Link>}</span></label>)}</div> : <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">Bạn chưa có địa chỉ nhận hàng. <Link to="/account/addresses" state={{ checkoutState: location.state }} className="font-semibold underline">Thêm địa chỉ</Link>.</div>}
         </section>
         <section className="rounded-2xl border border-[#E7EBF3] bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2"><Ticket size={19} className="text-[#E88B42]"/><h2 className="font-bold text-[#252B40]">Coupon ưu đãi</h2></div>

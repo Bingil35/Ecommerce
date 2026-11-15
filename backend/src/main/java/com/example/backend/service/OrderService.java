@@ -68,6 +68,7 @@ public class OrderService {
         if (customer.getStatus() != UserStatus.ACTIVE) throw new AccessDeniedException("Tài khoản không hoạt động.");
         UserAddress address = userAddressRepository.findByIdAndUser_Id(request.getAddressId(), customer.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Địa chỉ giao hàng không tồn tại hoặc không thuộc tài khoản của bạn."));
+        if (address.getProvinceCode() == null || address.getWardCode() == null) throw new IllegalArgumentException("Địa chỉ đang dùng đơn vị hành chính cũ. Vui lòng cập nhật tỉnh/thành phố và xã/phường trước khi đặt hàng.");
         Cart cart = cartRepository.findByUserId(customer.getId()).orElseThrow(() -> new IllegalArgumentException("Giỏ hàng đang trống."));
 
         List<CartDetail> allCartLines = cartDetailRepository.findDetailedByCartId(cart.getId());

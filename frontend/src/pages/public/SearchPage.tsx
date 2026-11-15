@@ -8,6 +8,7 @@ import type { Category } from '../../services/product/productTypes';
 import {
   buildParams,
   findCategory,
+  getKeywordProductFacets,
   getCategories,
   parseFilters,
   searchProducts,
@@ -44,6 +45,7 @@ export default function SearchPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [keywordFacets, setKeywordFacets] = useState<{ categoryIds: string[]; brandIds: string[] } | null>(null);
   const [brands, setBrands] = useState<BrandDto[]>([]);
 
   // Đồng bộ các ô giá khi URL đổi (Back, xóa bộ lọc...). Từ khóa được quản lý tại Header.
@@ -72,6 +74,15 @@ export default function SearchPage() {
         // Không tải được danh mục thì trang vẫn tìm kiếm được.
       });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!filters.q.trim()) { setKeywordFacets(null); return; }
+    setKeywordFacets(null);
+    getKeywordProductFacets(filters.q).then(facets => { if (!cancelled) setKeywordFacets(facets); })
+      .catch(() => { if (!cancelled) setKeywordFacets({ categoryIds: [], brandIds: [] }); });
+    return () => { cancelled = true; };
+  }, [filters.q]);
 
   // Gọi backend mỗi khi bộ lọc đổi.
   useEffect(() => {
@@ -178,6 +189,12 @@ export default function SearchPage() {
 
   const inputClass =
     'h-11 w-full rounded-xl border border-[#D7E0F2] bg-white px-3 text-sm text-[#172033] outline-none transition placeholder:text-[#9AA8C6] focus:border-[#5B8DEF] focus:ring-4 focus:ring-[#5B8DEF]/10';
+  const visibleCategories = filters.q && keywordFacets !== null
+    ? filterCategoryTree(categories, new Set(keywordFacets.categoryIds))
+    : filters.q ? [] : categories;
+  const visibleBrands = filters.q && keywordFacets !== null
+    ? brands.filter(brand => keywordFacets.brandIds.includes(brand.id))
+    : filters.q ? [] : brands;
 
   return (
     <div className="min-h-screen bg-[#F7F9FC] px-4 py-6 sm:px-6 lg:px-10">
@@ -206,14 +223,14 @@ export default function SearchPage() {
             </div>
 
             {/* Danh mục (cây cha - con) */}
-            {categories.length > 0 && (
+            {visibleCategories.length > 0 && (
               <fieldset>
                 <legend className="text-sm font-medium text-[#52638F]">
                   Danh mục
                 </legend>
 
                 <ul className="mt-3 space-y-1">
-                  {categories.map((node) => (
+                  {visibleCategories.map((node) => (
                     <CategoryItem
                       key={node.id}
                       node={node}
@@ -227,12 +244,13 @@ export default function SearchPage() {
                 </ul>
               </fieldset>
             )}
+            {filters.q && keywordFacets === null && <p className="text-xs text-[#98A2B3]">Đang tìm bộ lọc phù hợp...</p>}
 
             {/* Thương hiệu: checkbox nhiều lựa chọn, có thu gọn/xem thêm. */}
             <fieldset className="border-t border-[#E1E7F2] pt-6">
               <legend className="text-sm font-medium text-[#52638F]">Thương hiệu</legend>
               <div className="mt-3 space-y-3">
-                {(expandedBrands ? brands : brands.slice(0, 5)).map((brand) => (
+                {(expandedBrands ? visibleBrands : visibleBrands.slice(0, 5)).map((brand) => (
                   <label key={brand.id} className="flex cursor-pointer items-center gap-2.5 text-sm text-[#667085]">
                     <input type="checkbox" checked={filters.brandIds.includes(brand.id)}
                       onChange={(event) => update({ brandIds: event.target.checked ? [...filters.brandIds, brand.id] : filters.brandIds.filter((id) => id !== brand.id) })}
@@ -240,8 +258,9 @@ export default function SearchPage() {
                     <span>{brand.name}</span>
                   </label>
                 ))}
-                {brands.length > 5 && <button type="button" onClick={() => setExpandedBrands((value) => !value)} className="text-sm font-medium text-[#3975E8] hover:underline">{expandedBrands ? 'Thu gọn' : `Xem thêm (${brands.length - 5})`}</button>}
-                {brands.length === 0 && <p className="text-sm text-[#98A2B3]">Chưa có dữ liệu thương hiệu.</p>}
+                {visibleBrands.length > 5 && <button type="button" onClick={() => setExpandedBrands((value) => !value)} className="text-sm font-medium text-[#3975E8] hover:underline">{expandedBrands ? 'Thu gọn' : `Xem thêm (${visibleBrands.length - 5})`}</button>}
+                {visibleBrands.length === 0 && keywordFacets !== null && <p className="text-sm text-[#98A2B3]">Không có thương hiệu phù hợp với từ khóa.</p>}
+                {visibleBrands.length === 0 && !filters.q && <p className="text-sm text-[#98A2B3]">Chưa có dữ liệu thương hiệu.</p>}
               </div>
             </fieldset>
 
@@ -511,4 +530,12 @@ function CategoryItem({ node, depth, activeId, expandedIds, onToggle, onSelect }
       {hasChildren && expanded && <ul className="space-y-1">{node.children!.map((child) => <CategoryItem key={child.id} node={child} depth={depth + 1} activeId={activeId} expandedIds={expandedIds} onToggle={onToggle} onSelect={onSelect} />)}</ul>}
     </li>
   );
+}
+
+function filterCategoryTree(nodes: Category[], matchingIds: Set<string>): Category[] {
+  return nodes.flatMap(node => {
+    const children = filterCategoryTree(node.children ?? [], matchingIds);
+    if (!matchingIds.has(node.id) && children.length === 0) return [];
+    return [{ ...node, children }];
+  });
 }

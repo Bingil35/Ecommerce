@@ -34,7 +34,7 @@ public class ShopPublicController {
     public ApiResponse<List<ShopAddressOptionResponse>> listPublicShopAddresses() {
         Map<String, ShopAddressOptionResponse> uniqueAddresses = new LinkedHashMap<>();
         for (Shop shop : shops.findByStatusOrderByShopNameAsc(ShopStatus.ACTIVE)) {
-            String address = shop.getAddress() == null ? "" : shop.getAddress().trim();
+            String address = shop.getAddressProvince() == null ? "" : shop.getAddressProvince().trim();
             if (address.isEmpty()) {
                 continue;
             }

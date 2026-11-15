@@ -99,7 +99,9 @@ public class CustomerAddressService {
         a.setRecipientName(r.getRecipientName().trim());
         a.setRecipientPhone(r.getRecipientPhone().trim());
         a.setProvinceCity(r.getProvinceCity().trim());
+        a.setProvinceCode(r.getProvinceCode().trim());
         a.setWard(r.getWard().trim());
+        a.setWardCode(r.getWardCode().trim());
         a.setAddressDetail(r.getAddressDetail().trim());
     }
 }
