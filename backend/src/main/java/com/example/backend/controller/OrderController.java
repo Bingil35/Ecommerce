@@ -53,6 +53,11 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("Lấy chi tiết đơn hàng thành công.", orderQueryService.getMyOrder(authentication.getName(), orderId)));
     }
 
+    @GetMapping("/sub-orders/{subOrderId}")
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> getMySubOrder(Authentication authentication, @PathVariable UUID subOrderId) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy chi tiết đơn hàng thành công.", orderQueryService.getMySubOrder(authentication.getName(), subOrderId)));
+    }
+
     @PostMapping("/sub-orders/{subOrderId}/cancel")
     public ResponseEntity<ApiResponse<CancelSubOrderResponse>> cancelSubOrder(Authentication authentication, @PathVariable UUID subOrderId, @Valid @RequestBody(required = false) CancelRequest request) {
         String reason = request == null ? null : request.reason();

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { ChevronRight, Heart, Trash2 } from 'lucide-react';
 
-import WishlistBenefits from '../../components/customer/wishlist/WishlistBenefits';
 import WishlistFilters from '../../components/customer/wishlist/WishlistFilters';
 import WishlistPagination from '../../components/customer/wishlist/WishlistPagination';
 import WishlistProductCard from '../../components/customer/wishlist/WishlistProductCard';
@@ -428,13 +427,6 @@ const WishlistContent = () => {
           )}
         </>
       )}
-
-      <div className="mt-10">
-        <WishlistBenefits />
-      </div>
-
-
-
 
     </div>
   );

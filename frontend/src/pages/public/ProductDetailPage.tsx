@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import axiosClient from '../../services/api/axiosClient';
+import { mediaUrl } from '../../services/api/mediaUrl';
 
 
 import ProductReviews from '../../components/customer/product/ProductReviews';
@@ -62,6 +63,7 @@ const { addToCart } = useCart();
 
   const [relatedProducts, setRelatedProducts] = useState<import('../../services/catalog/productApi').ProductCardDto[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [shopLogoFailed, setShopLogoFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -90,6 +92,7 @@ const { addToCart } = useCart();
         if (!active) return;
 
         setProduct(data);
+        setShopLogoFailed(false);
         if(isAuthenticated)void axiosClient.post(`/customer/recently-viewed/${data.id}`).catch(()=>{});
 
         const firstImage = data.media?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url;
@@ -474,7 +477,7 @@ const { addToCart } = useCart();
 
 
 
-        {product.shop && <section className="mt-6 flex flex-col gap-4 rounded-3xl border border-[#E7ECF5] bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"><div className="flex items-center gap-4"><img src={product.shop.logoUrl || 'https\://placehold.co/100x100/e8f2ff/315b8a?text=Shop'} alt={product.shop.name} className="h-16 w-16 rounded-2xl border border-[#EDF0F6] object-cover"/><div><div className="text-xs text-[#8A93A6]">Được bán bởi</div><h2 className="mt-1 font-bold text-[#202642]">{product.shop.name}</h2><div className="mt-1 flex items-center gap-3 text-xs text-[#7B8498]"><span className="flex items-center gap-1"><Star size={13} fill="currentColor" className="text-[#E7A92B]"/>{Number(product.shop.ratingAverage ?? 0).toFixed(1)}</span><span>{product.shop.followersCount ?? 0} người theo dõi</span></div></div></div><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" onClick={() => navigate(`/chat?shopId=${encodeURIComponent(product.shop!.id)}`)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4559B7]"><MessageCircle size={16}/> Chat</button><Link to={`/shop/${product.shop.slug || product.shop.id}`} className="inline-flex items-center justify-center gap-2 rounded-full border border-[#DCE4F2] px-5 py-2.5 text-sm font-semibold text-[#5367C9] hover:bg-[#F4F7FF]"><Store size={16}/> Xem cửa hàng <ChevronRight size={15}/></Link></div></section>}
+        {product.shop && <section className="mt-6 flex flex-col gap-4 rounded-3xl border border-[#E7ECF5] bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"><div className="flex items-center gap-4"><span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#EDF0F6] bg-[#F7F8FC] p-1.5">{product.shop.logoUrl && !shopLogoFailed ? <img src={mediaUrl(product.shop.logoUrl)} alt={product.shop.name} className="block h-full w-full object-contain" onError={() => setShopLogoFailed(true)}/> : <Store size={23} className="text-[#5367C9]"/>}</span><div><div className="text-xs text-[#8A93A6]">Được bán bởi</div><h2 className="mt-1 font-bold text-[#202642]">{product.shop.name}</h2><div className="mt-1 flex items-center gap-3 text-xs text-[#7B8498]"><span className="flex items-center gap-1"><Star size={13} fill="currentColor" className="text-[#E7A92B]"/>{Number(product.shop.ratingAverage ?? 0).toFixed(1)}</span><span>{product.shop.followersCount ?? 0} người theo dõi</span></div></div></div><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" onClick={() => navigate(`/chat?shopId=${encodeURIComponent(product.shop!.id)}`)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#5367C9] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4559B7]"><MessageCircle size={16}/> Chat</button><Link to={`/shop/${product.shop.slug || product.shop.id}`} className="inline-flex items-center justify-center gap-2 rounded-full border border-[#DCE4F2] px-5 py-2.5 text-sm font-semibold text-[#5367C9] hover:bg-[#F4F7FF]"><Store size={16}/> Xem cửa hàng <ChevronRight size={15}/></Link></div></section>}
 
 
 

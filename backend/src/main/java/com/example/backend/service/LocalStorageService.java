@@ -105,6 +105,50 @@ public class LocalStorageService {
         } catch (IOException exception) { throw new IllegalStateException("Failed to store banner image", exception); }
     }
 
+    public String storeCategoryImage(MultipartFile file, String extension) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid category image extension");
+        try {
+            Path directory = uploadRoot.resolve("categories").normalize();
+            Files.createDirectories(directory);
+            String filename = UUID.randomUUID() + "." + extension;
+            Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target);
+            return "/uploads/categories/" + filename;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to store category image", exception);
+        }
+    }
+
+    public void deleteCategoryImage(String imageUrl) {
+        if (imageUrl != null && imageUrl.startsWith("/uploads/categories/")) {
+            deleteProductMedia(imageUrl);
+        }
+    }
+
+    public String storeBrandLogo(MultipartFile file, String extension) {
+        validateFile(file);
+        if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid brand logo extension");
+        try {
+            Path directory = uploadRoot.resolve("brands").normalize();
+            Files.createDirectories(directory);
+            String filename = UUID.randomUUID() + "." + extension;
+            Path target = directory.resolve(filename).normalize();
+            if (!target.startsWith(directory)) throw new IllegalArgumentException("Invalid file path");
+            file.transferTo(target);
+            return "/uploads/brands/" + filename;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to store brand logo", exception);
+        }
+    }
+
+    public void deleteBrandLogo(String logoUrl) {
+        if (logoUrl != null && logoUrl.startsWith("/uploads/brands/")) {
+            deleteProductMedia(logoUrl);
+        }
+    }
+
     public String storeChatMedia(UUID conversationId, MultipartFile file, String extension) {
         validateFile(file);
         if (extension == null || !extension.matches("[a-z0-9]{2,5}")) throw new IllegalArgumentException("Invalid chat media extension");

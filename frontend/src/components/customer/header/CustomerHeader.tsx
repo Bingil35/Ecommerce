@@ -11,6 +11,7 @@ import {
   Store,
   MapPin,
   MessageCircle,
+  Clock3,
 } from 'lucide-react';
 
 import {
@@ -43,6 +44,11 @@ const CustomerHeader = () => {
   const [isHidden, setIsHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try { const value = JSON.parse(localStorage.getItem('customer-search-history') || '[]'); return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, 8) : []; }
+    catch { return []; }
+  });
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
 
   useEffect(() => {
     setSearchQuery(new URLSearchParams(location.search).get('q') ?? '');
@@ -76,15 +82,22 @@ const CustomerHeader = () => {
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    submitSearch(searchQuery);
+  };
 
-    const query = searchQuery.trim();
-
-    if (!query) {
-      navigate('/search');
-      return;
-    }
-
+  const submitSearch = (value: string) => {
+    const query = value.trim();
+    setShowSearchHistory(false);
+    if (!query) { navigate('/search'); return; }
+    const next = [query, ...searchHistory.filter(item => item.toLocaleLowerCase() !== query.toLocaleLowerCase())].slice(0, 8);
+    setSearchHistory(next);
+    try { localStorage.setItem('customer-search-history', JSON.stringify(next)); } catch { /* Search still works when storage is unavailable. */ }
+    setSearchQuery(query);
     navigate(`/search?q=${encodeURIComponent(query)}`);
+  };
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+    try { localStorage.removeItem('customer-search-history'); } catch { /* Ignore unavailable storage. */ }
   };
 
   return (
@@ -135,7 +148,10 @@ const CustomerHeader = () => {
                   value={searchQuery}
                   onChange={(event) => {
                     setSearchQuery(event.target.value);
+                    setShowSearchHistory(true);
                   }}
+                  onFocus={() => setShowSearchHistory(true)}
+                  onBlur={() => window.setTimeout(() => setShowSearchHistory(false), 150)}
                   placeholder="Tìm kiếm sản phẩm..."
                   aria-label="Tìm kiếm sản phẩm"
                     className="
@@ -164,6 +180,8 @@ const CustomerHeader = () => {
                     "
                 />
 
+                {showSearchHistory && searchHistory.length > 0 && !searchQuery.trim() && <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[60] overflow-hidden rounded-2xl border border-[#E5EAF4] bg-white shadow-[0_14px_40px_rgba(30,45,80,.14)]"><div className="flex items-center justify-between border-b border-[#EEF1F6] px-4 py-2.5"><span className="text-xs font-semibold text-[#778197]">Tìm kiếm gần đây</span><button type="button" onMouseDown={event => event.preventDefault()} onClick={clearSearchHistory} className="text-[11px] font-medium text-[#6576D8] hover:underline">Xóa lịch sử</button></div>{searchHistory.map((item, index) => <button key={`${item}-${index}`} type="button" onMouseDown={event => event.preventDefault()} onClick={() => submitSearch(item)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-[#46516A] hover:bg-[#F7F9FD]"><Clock3 size={15} className="shrink-0 text-[#9AA3B4]"/><span className="truncate">{item}</span></button>)}</div>}
+
               </div>
             </form>
           </div>
@@ -171,9 +189,9 @@ const CustomerHeader = () => {
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
 
-            {!isShopOwner(user) && <NotificationBell audience="customer" authenticated={isAuthenticated}/>}
+            <NotificationBell audience="customer" authenticated={isAuthenticated}/>
 
-            {isAuthenticated && !isShopOwner(user) && <button type="button" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/chat')} className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-white hover:text-[#171B7A] sm:h-10 sm:w-10"><MessageCircle size={20} strokeWidth={1.8}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>}
+            <button type="button" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => isAuthenticated ? navigate('/chat') : navigate('/login', { state: { from: '/chat', notice: 'Đăng nhập để sử dụng tin nhắn.' } })} className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-white hover:text-[#171B7A] sm:h-10 sm:w-10"><MessageCircle size={20} strokeWidth={1.8}/>{isAuthenticated && hasUnreadChat && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>
 
             {/* Cart */}
             <div className="relative">

@@ -5,6 +5,9 @@ import com.example.backend.dto.request.UpdateCategoryRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.CategoryResponse;
 import com.example.backend.service.CategoryService;
+import com.example.backend.service.LocalStorageService;
+import com.example.backend.service.MediaFileInspector;
+import com.example.backend.entity.ProductMediaType;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +15,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import com.example.backend.entity.Category;
 import com.example.backend.entity.CategoryStatus;
 import com.example.backend.repository.CategoryRepository;
@@ -22,13 +28,26 @@ public class CategoryController {
 
     private final CategoryService categoryService;
     private final CategoryRepository categoryRepository;
+    private final LocalStorageService storage;
+    private final MediaFileInspector inspector;
 
     public CategoryController(
             CategoryService categoryService,
-            CategoryRepository categoryRepository
+            CategoryRepository categoryRepository,
+            LocalStorageService storage,
+            MediaFileInspector inspector
     ) {
         this.categoryService = categoryService;
         this.categoryRepository = categoryRepository;
+        this.storage = storage;
+        this.inspector = inspector;
+    }
+
+    @PostMapping(value="/upload", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Map<String,String>> uploadCategoryImage(@RequestParam("file") MultipartFile file) {
+        MediaFileInspector.Detected detected=inspector.inspect(file);
+        if(detected.type()!=ProductMediaType.IMAGE) throw new IllegalArgumentException("Chỉ chấp nhận file ảnh.");
+        return ApiResponse.success("Đã tải ảnh danh mục.",Map.of("url",storage.storeCategoryImage(file,detected.extension())));
     }
 
     @PostMapping
@@ -60,6 +79,14 @@ public class CategoryController {
                         categories
                 )
         );
+    }
+
+    @PutMapping("/reorder")
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> reorderRootCategories(@RequestBody CategoryOrderRequest request) {
+        List<CategoryResponse> categories = categoryService.reorderRootCategories(
+                request == null ? null : request.ids()
+        );
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật thứ tự danh mục gốc.", categories));
     }
 
     @GetMapping("/{id}")
@@ -118,4 +145,5 @@ public class CategoryController {
     }
 
     public record CategoryStatusRequest(String status) {}
+    public record CategoryOrderRequest(List<UUID> ids) {}
 }

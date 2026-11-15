@@ -4,7 +4,7 @@ export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
 export interface CustomerAddress {
   id: string; recipientName: string; recipientPhone: string;
-  provinceCity: string; ward: string; addressDetail: string; isDefault: boolean;
+  provinceCity: string; provinceCode: string | null; ward: string; wardCode: string | null; addressDetail: string; isDefault: boolean;
 }
 export interface Coupon {
   id: string; code: string; scope: 'PLATFORM' | 'SHOP'; shopId: string | null; shopName: string | null;
@@ -30,9 +30,9 @@ export interface CheckoutPreview {
 }
 export interface PlaceOrderRequest extends CheckoutPreviewRequest { paymentMethod: PaymentMethod }
 export interface OrderListItem {
-  id: string; orderCode: string; paymentMethod: PaymentMethod | null; paymentStatus: PaymentStatus;
+  id: string; orderId: string; orderCode: string; shopName: string | null; status: OrderStatus; paymentMethod: PaymentMethod | null; paymentStatus: PaymentStatus;
   subtotal: number | string; discountAmount: number | string; totalAmount: number | string;
-  createdAt: string; subOrderCount: number;
+  createdAt: string;
 }
 export interface PageResponse<T> {
   items: T[]; page: number; size: number; totalElements: number; totalPages: number; last: boolean;
@@ -45,7 +45,7 @@ export interface OrderDetail {
     subtotal: number | string; discountAmount: number | string; totalAmount: number | string;
     shippingAddress: { recipientName: string; recipientPhone: string; recipientCity: string; ward: string; addressDetail: string } | null;
     statusHistory: { oldStatus: OrderStatus | null; newStatus: OrderStatus; note: string | null; createdAt: string }[];
-    items: { id: string; productId: string | null; variantId: string | null; productName: string; price: number | string; quantity: number; discountAmount: number | string; totalAmount: number | string }[];
+    items: { id: string; productId: string | null; variantId: string | null; productName: string; imageUrl: string | null; variantOptions: string[]; price: number | string; quantity: number; discountAmount: number | string; totalAmount: number | string }[];
   }[];
 }
 export interface PaymentConfirmation {

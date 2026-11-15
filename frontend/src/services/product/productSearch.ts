@@ -101,6 +101,34 @@ const SORT_TO_API: Record<SortKey, NonNullable<ProductSearchQuery['sort']>> = {
   'name-asc': 'name_asc',
 };
 
+export interface KeywordProductFacets { categoryIds: string[]; brandIds: string[]; }
+const keywordFacetCache = new Map<string, Promise<KeywordProductFacets>>();
+export function getKeywordProductFacets(keyword: string): Promise<KeywordProductFacets> {
+  const normalized = keyword.trim().toLocaleLowerCase();
+  if (!normalized) return Promise.resolve({ categoryIds: [], brandIds: [] });
+  const cached = keywordFacetCache.get(normalized);
+  if (cached) return cached;
+  const request = (async () => {
+    const categoryIds = new Set<string>();
+    const brandIds = new Set<string>();
+    let page = 0;
+    let totalPages = 1;
+    do {
+      const response = await productApi.search({ keyword: keyword.trim(), page, size: 50, sort: 'newest' });
+      for (const product of response.items ?? []) {
+        if (product.categoryId) categoryIds.add(product.categoryId);
+        if (product.brandId) brandIds.add(product.brandId);
+      }
+      totalPages = Math.max(1, response.totalPages ?? 1);
+      page += 1;
+    } while (page < totalPages);
+    return { categoryIds: [...categoryIds], brandIds: [...brandIds] };
+  })();
+  keywordFacetCache.set(normalized, request);
+  request.catch(() => keywordFacetCache.delete(normalized));
+  return request;
+}
+
 export async function searchProducts(filters: SearchFilters): Promise<SearchResult> {
   const common: ProductSearchQuery = {
     keyword: filters.q.trim() || undefined,

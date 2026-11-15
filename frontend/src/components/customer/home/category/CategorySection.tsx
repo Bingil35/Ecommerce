@@ -16,6 +16,7 @@ import {
 
 import CategoryCard from './CategoryCard';
 import { categoryApi, type CategoryDto } from '../../../../services/catalog/productApi';
+import { mediaUrl } from '../../../../services/api/mediaUrl';
 import type { CategoryItem } from './categoryData';
 
 const VISIBLE_CATEGORY_COUNT = 7;
@@ -45,7 +46,9 @@ const CategorySection = () => {
             id: category.id,
             name: category.name,
             slug: category.slug,
-            image: category.imageUrl || 'https://placehold.co/160x160/EEF3FF/5367C9?text=Category',
+            image: category.imageUrl
+              ? mediaUrl(category.imageUrl)
+              : 'https://placehold.co/160x160/EEF3FF/5367C9?text=Category',
           })),
         );
       })

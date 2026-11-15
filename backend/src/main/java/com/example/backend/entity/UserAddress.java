@@ -36,8 +36,14 @@ public class UserAddress {
     @Column(name = "province_city", columnDefinition = "text")
     private String provinceCity;
 
+    @Column(name = "province_code", length = 2)
+    private String provinceCode;
+
     @Column(name = "ward", columnDefinition = "text")
     private String ward;
+
+    @Column(name = "ward_code", length = 5)
+    private String wardCode;
 
     @Column(name = "address_detail", columnDefinition = "text")
     private String addressDetail;
@@ -71,8 +77,12 @@ public class UserAddress {
     public void setRecipientPhone(String recipientPhone) { this.recipientPhone = recipientPhone; }
     public String getProvinceCity() { return provinceCity; }
     public void setProvinceCity(String provinceCity) { this.provinceCity = provinceCity; }
+    public String getProvinceCode() { return provinceCode; }
+    public void setProvinceCode(String provinceCode) { this.provinceCode = provinceCode; }
     public String getWard() { return ward; }
     public void setWard(String ward) { this.ward = ward; }
+    public String getWardCode() { return wardCode; }
+    public void setWardCode(String wardCode) { this.wardCode = wardCode; }
     public String getAddressDetail() { return addressDetail; }
     public void setAddressDetail(String addressDetail) { this.addressDetail = addressDetail; }
     public Boolean getIsDefault() { return isDefault; }

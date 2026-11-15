@@ -1,9 +1,9 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 import AuthLayout from '../layouts/AuthLayout';
 import PublicLayout from '../layouts/PublicLayout';
 
-import HomePage from '../pages/public/HomePage';
+import DomainHomePage from '../pages/public/DomainHomePage';
 import SearchPage from '../pages/public/SearchPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
 import ProductListingPage from '../pages/public/ProductListingPage';
@@ -31,7 +31,7 @@ const PublicRoutes = () => {
     <Routes>
 
       <Route element={<PublicLayout />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<DomainHomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/products" element={<ProductListingPage />} />
         <Route path="/cart" element={<CartPage />} />
@@ -48,6 +48,7 @@ const PublicRoutes = () => {
         </Route>
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/orders" element={<OrderHistoryPage />} />
+        <Route path="/orders/sub-orders/:orderId" element={<OrderDetailPage />} />
         <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route
@@ -63,7 +64,7 @@ const PublicRoutes = () => {
       <Route element={<AuthLayout />}>
         <Route
           path="/login"
-          element={<LoginPage />}
+          element={<DomainLoginPage />}
         />
         <Route
           path="/register"
@@ -74,5 +75,12 @@ const PublicRoutes = () => {
     </Routes>
   );
 };
+
+function DomainLoginPage() {
+  const host = window.location.hostname.toLowerCase();
+  if (host.startsWith('admin.')) return <Navigate to="/admin/login" replace />;
+  if (host.startsWith('shop.')) return <Navigate to="/seller/login" replace />;
+  return <LoginPage />;
+}
 
 export default PublicRoutes;

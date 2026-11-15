@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowUpRight, ClipboardList, Package, PackagePlus, ShoppingBag, Star, Wallet, Warehouse } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, ClipboardList, Package, ShoppingBag, Star, Wallet, Warehouse } from 'lucide-react';
 import { sellerProductApi, type SellerProduct } from '../../services/seller/productApi';
 import { dashboardApi, type ShopOwnerDashboard } from '../../services/seller/dashboardApi';
 import { shopApi } from '../../services/shop/shopApi';
@@ -61,7 +61,7 @@ export default function SellerDashboardPage() {
   ];
 
   return <><style>{styles}</style><div className="kd-page seller-container">
-    <div className="kd-heading"><div><h1>Chào mừng trở lại!</h1><p>Tổng quan hoạt động của {shopName}.</p></div><Link className="kd-new" to="/seller/products/new"><PackagePlus size={18}/> Thêm sản phẩm</Link></div>
+    <div className="kd-heading"><div><h1>Chào mừng trở lại!</h1><p>Tổng quan hoạt động của {shopName}.</p></div></div>
     {error && <div className="kd-alert">{error}</div>}
     <div className="kd-stats">{cards.map(card => <div className="kd-stat" key={card.title}><div><p>{card.title}</p><strong>{card.value}</strong></div><span style={{ color: card.color, background: card.bg }}><card.icon size={23}/></span></div>)}</div>
     <div className="kd-grid">

@@ -7,6 +7,19 @@
 .env.*
 !.env.example
 !**/.env.example
+**/application-local.yaml
+**/application-local.yml
+**/application-local.properties
+**/application-secrets.yaml
+**/application-secrets.yml
+**/application-secrets.properties
+**/application-*.local.yaml
+**/application-*.local.yml
+**/application-*.local.properties
+**/.secrets/
+**/secrets/
+*.pem
+*.key
 
 # Dependencies and generated build output
 **/node_modules/

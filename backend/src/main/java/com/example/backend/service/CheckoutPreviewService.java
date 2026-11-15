@@ -29,6 +29,7 @@ public class CheckoutPreviewService {
         User user=users.findByEmail(email).orElseThrow(()->new ResourceNotFoundException("Không tìm thấy tài khoản."));
         if(user.getStatus()!=UserStatus.ACTIVE) throw new AccessDeniedException("Tài khoản không hoạt động.");
         UserAddress address=addresses.findByIdAndUser_Id(request.addressId(),user.getId()).orElseThrow(()->new IllegalArgumentException("Địa chỉ không tồn tại hoặc không thuộc tài khoản."));
+        if (address.getProvinceCode() == null || address.getWardCode() == null) throw new IllegalArgumentException("Địa chỉ đang dùng đơn vị hành chính cũ. Vui lòng cập nhật tỉnh/thành phố và xã/phường trước khi thanh toán.");
         if(request.itemIds()==null || request.itemIds().isEmpty() || new HashSet<>(request.itemIds()).size()!=request.itemIds().size()) throw new IllegalArgumentException("Danh sách sản phẩm không hợp lệ.");
         Cart cart=carts.findByUserId(user.getId()).orElseThrow(()->new IllegalArgumentException("Giỏ hàng đang trống."));
         Map<UUID,CartDetail> byId=lines.findDetailedByCartId(cart.getId()).stream().collect(Collectors.toMap(CartDetail::getId,x->x));

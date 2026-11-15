@@ -1,5 +1,23 @@
 @import 'tailwindcss';
 
+@theme {
+  --font-sans: "Inter", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+}
+
+@layer base {
+  html { font-family: var(--font-sans); font-size: 16px; }
+  body { min-width: 320px; color: #202642; font-size: 1rem; line-height: 1.5; }
+  button, input, select, textarea { font-family: inherit; }
+}
+
 html { --kala-primary: #5367c9; --kala-soft: #eef1ff; }
 html[data-kala-theme="ocean"] { --kala-primary: #087e9b; --kala-soft: #e5f7fa; }
 html[data-kala-theme="forest"] { --kala-primary: #39805b; --kala-soft: #eaf6ef; }
@@ -133,3 +151,41 @@ html[data-kala-theme] .notice-read-all,html[data-kala-theme] .notice-view-all{co
 html[data-kala-theme] .notice-item.unread{background:color-mix(in srgb,var(--kala-soft) 52%,white)}
 html[data-kala-theme] .notice-item-icon{background:var(--kala-soft);color:var(--kala-primary)}
 html[data-kala-theme] .notice-unread-dot{background:var(--kala-primary)}
+
+/* Keep dense admin metadata readable while retaining compact dashboard layouts. */
+.admin-shell .admin-brand-sub,.admin-shell .admin-nav-label,.admin-shell .admin-eyebrow{font-size:10px}
+.admin-shell .admin-workspace small,.admin-shell .admin-help-card p,.admin-shell .admin-help-card button,.admin-shell .admin-profile small,.admin-shell .admin-identity small,.admin-shell .admin-cell-sub,.admin-shell .admin-recent-user small,.admin-shell .admin-quick-list button small,.admin-shell .admin-stat-bottom>span,.admin-shell .admin-stat-bottom b,.admin-shell .admin-section-head p,.admin-shell .admin-footer,.admin-shell .admin-date{font-size:11px}
+.admin-shell .admin-global-search input,.admin-shell .admin-table-search input,.admin-shell .admin-field input,.admin-shell .admin-field select{font-size:12px}
+.admin-shell .admin-status,.admin-shell .admin-role-tags span,.admin-shell .admin-row-actions button{font-size:11px}
+.admin-shell .notice-item-copy>span{font-size:12px}
+
+.admin-login-page{display:grid;min-height:100vh;place-items:center;background:radial-gradient(ellipse at top,#edf1ff 0,#f7f8fc 56%,#f4f6fb 100%);padding:24px}
+.admin-login-card{width:min(100%,440px);border:1px solid #e5e9f2;border-radius:22px;background:#fff;padding:34px;box-shadow:0 22px 70px #26365b14}
+.admin-login-brand{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eef0f5;padding-bottom:22px}
+.admin-login-brand img{width:116px;height:42px;object-fit:contain;object-position:left center}
+.admin-login-brand span{display:flex;align-items:center;gap:6px;color:#6978d7;font-size:11px;font-weight:750;letter-spacing:.08em}
+.admin-login-heading{padding:28px 0 22px;text-align:center}
+.admin-login-icon{display:grid;width:48px;height:48px;place-items:center;margin:0 auto 13px;border-radius:15px;background:#f0f2ff;color:#6274d5}
+.admin-login-heading h1{margin:0;color:#202b49;font-size:24px;font-weight:750;letter-spacing:-.03em}
+.admin-login-heading p{margin:7px 0 0;color:#7d879b;font-size:14px}
+.admin-login-form{display:grid;gap:16px}
+.admin-login-form>label:not(.admin-login-remember){display:grid;gap:7px;color:#3b4761;font-size:13px;font-weight:650}
+.admin-login-form input:not([type=checkbox]){width:100%;height:46px;border:1px solid #dfe4ef;border-radius:11px;background:#fff;padding:0 13px;color:#202642;font-size:14px;outline:none}
+.admin-login-form input:focus{border-color:#8b98e3;box-shadow:0 0 0 3px #eef0ff}
+.admin-login-password{position:relative;display:block}
+.admin-login-password input{padding-right:46px!important}
+.admin-login-password button{position:absolute;top:0;right:4px;display:grid;width:38px;height:46px;place-items:center;border:0;background:transparent;color:#8b95a8;cursor:pointer}
+.admin-login-remember{display:flex;align-items:center;gap:8px;color:#667187;font-size:13px}
+.admin-login-remember input{width:16px;height:16px;accent-color:#6475d5}
+.admin-login-error{margin:0;border-radius:9px;background:#fff1f1;padding:10px 12px;color:#bd4e58;font-size:13px}
+.admin-login-submit{height:46px;border:0;border-radius:11px;background:#5d70d3;color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
+.admin-login-submit:hover{background:#4d60c3}.admin-login-submit:disabled{opacity:.6;cursor:wait}
+.admin-login-footer{margin:22px 0 0;color:#98a1b2;font-size:11px;text-align:center}
+@media(max-width:480px){.admin-login-card{padding:25px 20px}.admin-login-heading h1{font-size:22px}}
+.admin-banner-form{display:grid;gap:17px}.admin-banner-form-intro{display:flex;align-items:center;gap:11px;padding:13px;border:1px solid #e9edfb;border-radius:10px;background:linear-gradient(120deg,#f7f8ff,#fbfcff)}.admin-banner-form-icon{display:grid;width:37px;height:37px;flex:none;place-items:center;border-radius:10px;background:#eaedff;color:#6677d8}.admin-banner-form-intro div{display:grid;gap:4px}.admin-banner-form-intro b{color:#35415e;font-size:12px}.admin-banner-form-intro small{color:#8994a9;font-size:10px}.admin-banner-dropzone{position:relative;display:flex;min-height:190px;flex-direction:column;align-items:center;justify-content:center;gap:7px;overflow:hidden;border:1.5px dashed #cbd3ed;border-radius:12px;background:#fafbff;padding:15px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}.admin-banner-dropzone:hover{border-color:#7381dc;background:#f6f7ff}.admin-banner-dropzone input{position:absolute;inset:0;z-index:2;width:100%;height:100%;opacity:0;cursor:pointer}.admin-banner-dropzone img{width:100%;max-height:205px;object-fit:contain;border-radius:7px}.admin-banner-upload-icon{display:grid;width:42px;height:42px;place-items:center;border-radius:12px;background:#edf0ff;color:#6575d5}.admin-banner-dropzone b{color:#4d5e9b;font-size:12px}.admin-banner-dropzone small{color:#929bb0;font-size:10px}.admin-banner-form>.admin-field-row{margin-top:1px}
+.customer-banner-transition{animation:customer-banner-slide-in .55s cubic-bezier(.22,.75,.25,1) both;will-change:transform,opacity}@keyframes customer-banner-slide-in{from{opacity:.45;transform:translate3d(36px,0,0)}to{opacity:1;transform:translate3d(0,0,0)}}@media(prefers-reduced-motion:reduce){.customer-banner-transition{animation:none;will-change:auto}}
+.admin-banner-draggable{cursor:grab}.admin-banner-draggable:active{cursor:grabbing}.admin-banner-draggable:hover{background:#f8f9ff!important}.admin-banner-drag-handle{display:grid;width:22px;height:30px;flex:none;place-items:center;border-radius:5px;color:#9aa5ba;cursor:grab}.admin-banner-drag-handle:hover{background:#eef0ff;color:#6475d5}.admin-banner-reorder-hint{margin-right:7px;color:#7b87a0;font-size:10px;white-space:nowrap}.admin-banner-draggable[draggable="false"]{opacity:.72}
+.admin-category-root-row{background:#fff}.admin-category-root-row:hover{background:#f8f9ff!important}.admin-category-child-row{background:#fbfcfe}.admin-category-child-row td:first-child{border-left:2px solid #e8ecf6}.admin-category-identity .admin-identity>span{min-width:0}.admin-category-identity.is-child{opacity:.88}.admin-category-child-guide{display:grid;width:22px;height:30px;flex:none;place-items:center;color:#a0abc0;font-size:19px}.admin-category-level{flex:none;border-radius:20px;padding:4px 7px;font-size:9px;font-style:normal;font-weight:700}.admin-category-level.root{background:#eef0ff;color:#5e6fce}.admin-category-level.child{background:#f1f4f8;color:#818ca0}.admin-category-root-row[draggable="false"]{cursor:default}.admin-category-root-row[draggable="true"]{cursor:grab}.admin-category-root-row:active{cursor:grabbing}
+.admin-category-name{display:flex;min-width:0;align-items:center;gap:4px}.admin-category-toggle{display:grid;width:22px;height:22px;flex:none;place-items:center;border:0;border-radius:5px;background:transparent;color:#7e8aa3;cursor:pointer}.admin-category-toggle:hover:not(:disabled){background:#eef0ff;color:#596bd1}.admin-category-toggle:disabled{cursor:default}
+.admin-brand-logo-dropzone{min-height:130px}.admin-brand-logo-dropzone img{max-height:125px;object-fit:contain}
+.kp-page .kp-summary-card>.kp-summary-icon{display:grid;place-items:center;align-self:center;box-sizing:border-box;padding:0;line-height:0}.kp-page .kp-summary-card>.kp-summary-icon>svg{display:block;margin:0}

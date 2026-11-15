@@ -36,6 +36,9 @@ export const checkoutApi = {
   async getOrder(id: string): Promise<OrderDetail> {
     return unwrap((await axiosClient.get<Envelope<OrderDetail>>(`/customer/orders/${id}`)).data);
   },
+  async getSubOrder(id: string): Promise<OrderDetail> {
+    return unwrap((await axiosClient.get<Envelope<OrderDetail>>(`/customer/orders/sub-orders/${id}`)).data);
+  },
   async cancelSubOrder(id: string, reason?: string): Promise<unknown> {
     return unwrap((await axiosClient.post(`/customer/orders/sub-orders/${id}/cancel`, { reason })).data);
   },
