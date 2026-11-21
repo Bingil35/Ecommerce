@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import CustomerHeader from '../components/customer/header/CustomerHeader';
 import CustomerFooter from '../components/customer/footer/CustomerFooter';
+import ChatWidget from '../components/customer/chat/ChatWidget';
 
 export default function PublicLayout() {
   const location = useLocation();
@@ -17,6 +18,7 @@ export default function PublicLayout() {
         <Outlet />
       </main>
       <CustomerFooter />
+      {location.pathname !== '/chat' && <ChatWidget />}
     </div>
   );
 }

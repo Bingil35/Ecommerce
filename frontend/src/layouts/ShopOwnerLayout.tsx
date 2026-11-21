@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, ClipboardList, Home, LogOut, MessageCircle, Package, Settings, Star, Store, Tag, Truck, Warehouse, ChartNoAxesColumn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { shopApi } from '../services/shop/shopApi';
@@ -7,6 +7,7 @@ import type { ShopResponse } from '../services/shop/shopTypes';
 import { mediaUrl } from '../services/api/mediaUrl';
 import { useChatUnread } from '../hooks/useChatUnread';
 import NotificationBell from '../components/notifications/NotificationBell';
+import ChatWidget from '../components/customer/chat/ChatWidget';
 
 const items = [
   { to: '/seller', text: 'Trang chủ', icon: Home },
@@ -27,6 +28,7 @@ const layoutStyles = '.seller-container{width:100%;max-width:1200px;margin-inlin
 
 export default function ShopOwnerLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout, user } = useAuth();
   const hasUnreadChat = useChatUnread('shop-owner');
   const [shop, setShop] = useState<ShopResponse | null>(null);
@@ -72,5 +74,6 @@ export default function ShopOwnerLayout() {
       </div>
     </nav>
     <main><Outlet/></main>
+    {location.pathname !== '/seller/chat' && <ChatWidget role="shop-owner"/>}
   </div>;
 }
