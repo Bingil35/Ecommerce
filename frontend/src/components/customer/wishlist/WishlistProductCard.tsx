@@ -1,4 +1,4 @@
-import { Heart, LoaderCircle, Star } from 'lucide-react';
+import { Flame, Heart, LoaderCircle, MapPin, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -55,11 +55,7 @@ const WishlistProductCard = ({
           }`}
         />
 
-        {product.featured && (
-          <span className="absolute left-2 top-2 rounded-md bg-[#5367C9] px-2 py-1 text-[10px] font-semibold text-white">
-            Nổi bật
-          </span>
-        )}
+        {product.featured && <span aria-label="Sản phẩm nổi bật" title="Sản phẩm nổi bật" className="absolute left-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-[#FFF0E6] text-[#E85D24] shadow-sm"><Flame size={15} fill="currentColor" strokeWidth={1.8}/></span>}
 
         {discountPercent != null && (
           <span className="absolute bottom-2 left-2 rounded-md bg-[#FFECEE] px-2 py-1 text-[10px] font-bold text-[#D95368]">
@@ -122,6 +118,7 @@ const WishlistProductCard = ({
               : ''}
           </span>
         </div>
+        {product.shopAddressProvince && <div className="mt-3 flex min-w-0 items-center gap-1 border-t border-[#F0F2F6] pt-2 text-[11px] text-[#8A929F]"><MapPin size={12} className="shrink-0"/><span className="truncate">{product.shopAddressProvince}</span></div>}
       </button>
 
     </article>

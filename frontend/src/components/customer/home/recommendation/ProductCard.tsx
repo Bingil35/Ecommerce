@@ -1,4 +1,4 @@
-import { Heart, Star } from 'lucide-react';
+import { Flame, Heart, MapPin, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useWishlist } from '../../../../context/WishlistContext';
@@ -17,7 +17,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return <article className="group min-w-0 overflow-hidden rounded-2xl border border-[#E8EDF5] bg-white shadow-[0_4px_18px_rgba(72,93,140,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(72,93,140,0.10)]">
     <div className="relative aspect-square cursor-pointer overflow-hidden bg-[#F3F6FC]" onClick={openProduct} role="link" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && openProduct()}>
       <img src={productImage(product)} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-      {product.featured && <span className="absolute left-2 top-2 rounded-md bg-[#5367C9] px-2 py-1 text-[10px] font-semibold text-white">Nổi bật</span>}
+      {product.featured && <span aria-label="Sản phẩm nổi bật" title="Sản phẩm nổi bật" className="absolute left-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-[#FFF0E6] text-[#E85D24] shadow-sm"><Flame size={15} fill="currentColor" strokeWidth={1.8}/></span>}
       {hasDiscount && <span className="absolute bottom-2 left-2 rounded-md bg-[#FFECEE] px-2 py-1 text-[10px] font-bold text-[#D95368]">-{discountPercent}%</span>}
       <button type="button" aria-label={wishlisted ? 'Bỏ khỏi yêu thích' : 'Thêm vào yêu thích'} aria-pressed={wishlisted} disabled={isPending(product.id)} onClick={(e) => { e.stopPropagation(); if (!isAuthenticated) navigate('/login', { state: { from: productPath, notice: 'Đăng nhập để thêm sản phẩm vào yêu thích.' } }); else void toggle(product.id); }} className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition disabled:cursor-wait disabled:opacity-70 ${wishlisted ? 'text-[#E5334F]' : 'text-[#667085] hover:text-[#E5334F]'}`}><Heart size={16} strokeWidth={1.8} fill={wishlisted ? 'currentColor' : 'none'}/></button>
     </div>
@@ -25,6 +25,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-[#252A3A]">{product.name}</h3>
       <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1"><span className="text-base font-bold text-[#5367C9]">{formatVnd(price)}</span>{hasDiscount && <span className="text-xs text-[#9AA2B1] line-through">{formatVnd(comparePrice)}</span>}</div>
       <div className="mt-2 flex items-center justify-between"><span className="flex items-center gap-1"><Star size={13} fill="currentColor" className="text-[#F3B63F]"/><span className="text-xs text-[#667085]">{Number(product.ratingAverage ?? 0).toFixed(1)}{product.ratingCount ? ` (${product.ratingCount})` : ''}</span></span><span className="text-xs text-[#98A1B2]">{product.stockQuantity != null ? (product.stockQuantity > 0 ? `Còn ${product.stockQuantity}` : 'Hết hàng') : ''}</span></div>
+      {product.shopAddressProvince && <div className="mt-3 flex min-w-0 items-center gap-1 border-t border-[#F0F2F6] pt-2 text-[11px] text-[#8A929F]"><MapPin size={12} className="shrink-0"/><span className="truncate">{product.shopAddressProvince}</span></div>}
     </button>
   </article>;
 }

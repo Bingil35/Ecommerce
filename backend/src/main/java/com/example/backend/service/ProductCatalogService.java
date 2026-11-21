@@ -223,6 +223,9 @@ public class ProductCatalogService {
         }
 
         Map<UUID, ProductCardResponse> byId = new LinkedHashMap<>();
+        Map<UUID, String> shopAddressProvinceById = new HashMap<>();
+        shops.findAllById(source.stream().map(Product::getShopId).filter(Objects::nonNull).distinct().toList())
+                .forEach(shop -> shopAddressProvinceById.put(shop.getId(), shop.getAddressProvince()));
         for (Product p : source) {
             ProductMetrics metrics = metricsOf(variantsByProduct.getOrDefault(p.getId(), List.of()),
                     variantId -> freeStock.getOrDefault(variantId, 0),
@@ -230,7 +233,8 @@ public class ProductCatalogService {
             String thumbnail = p.getThumbnailUrl() == null || p.getThumbnailUrl().isBlank()
                     ? fallbackThumbnail.get(p.getId()) : p.getThumbnailUrl();
             byId.put(p.getId(), new ProductCardResponse(p, metrics.minPrice, metrics.maxPrice,
-                    metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail));
+                    metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail,
+                    shopAddressProvinceById.get(p.getShopId())));
         }
         return source.stream().map(p -> byId.get(p.getId())).toList();
     }
@@ -254,8 +258,11 @@ public class ProductCatalogService {
                     .filter(url -> url != null && !url.isBlank())
                     .findFirst().orElse(null);
         }
+        String shopAddressProvince = shops.findById(product.getShopId())
+                .map(Shop::getAddressProvince)
+                .orElse(null);
         return new ProductCardResponse(product, metrics.minPrice, metrics.maxPrice,
-                metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail);
+                metrics.representativeComparePrice, metrics.stock, metrics.soldQuantity, thumbnail, shopAddressProvince);
     }
 
     /** Danh mục phải tồn tại và đang ACTIVE (cùng quy tắc với PublicProductVisibility). */

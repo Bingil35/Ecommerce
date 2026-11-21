@@ -25,6 +25,7 @@ const SORT_OPTIONS: { id: SortKey; label: string }[] = [
 ];
 
 const RATING_OPTIONS = [4, 3, 2];
+const CATEGORY_PREVIEW_COUNT = 10;
 
 const cardClass =
   'rounded-2xl bg-white border border-[#E5EBF6]';
@@ -39,6 +40,7 @@ export default function SearchPage() {
   const [expandedAddresses, setExpandedAddresses] = useState(false);
   const [shops, setShops] = useState<ShopAddressDto[]>([]);
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
+  const [expandedCategories, setExpandedCategories] = useState(false);
 
   const [result, setResult] = useState<SearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +79,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setExpandedCategories(false);
     if (!filters.q.trim()) { setKeywordFacets(null); return; }
     setKeywordFacets(null);
     getKeywordProductFacets(filters.q).then(facets => { if (!cancelled) setKeywordFacets(facets); })
@@ -230,7 +233,7 @@ export default function SearchPage() {
                 </legend>
 
                 <ul className="mt-3 space-y-1">
-                  {visibleCategories.map((node) => (
+                  {(expandedCategories ? visibleCategories : visibleCategories.slice(0, CATEGORY_PREVIEW_COUNT)).map((node) => (
                     <CategoryItem
                       key={node.id}
                       node={node}
@@ -242,6 +245,7 @@ export default function SearchPage() {
                     />
                   ))}
                 </ul>
+                {visibleCategories.length > CATEGORY_PREVIEW_COUNT && <button type="button" onClick={() => setExpandedCategories(value => !value)} className="mt-3 text-sm font-medium text-[#3975E8] hover:underline">{expandedCategories ? 'Thu gọn' : `Xem thêm (${visibleCategories.length - CATEGORY_PREVIEW_COUNT})`}</button>}
               </fieldset>
             )}
             {filters.q && keywordFacets === null && <p className="text-xs text-[#98A2B3]">Đang tìm bộ lọc phù hợp...</p>}

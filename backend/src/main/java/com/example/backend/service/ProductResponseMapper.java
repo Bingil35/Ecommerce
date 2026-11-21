@@ -6,6 +6,7 @@ import com.example.backend.dto.response.ProductSummary;
 import com.example.backend.entity.Category;
 import com.example.backend.entity.Product;
 import com.example.backend.repository.CategoryRepository;
+import com.example.backend.repository.ShopRepository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -27,18 +28,22 @@ public class ProductResponseMapper {
 
     private final ProductService productService;
     private final CategoryRepository categoryRepository;
+    private final ShopRepository shopRepository;
 
     public ProductResponseMapper(
             ProductService productService,
-            CategoryRepository categoryRepository
+            CategoryRepository categoryRepository,
+            ShopRepository shopRepository
     ) {
         this.productService = productService;
         this.categoryRepository = categoryRepository;
+        this.shopRepository = shopRepository;
     }
 
     private record Context(
             Map<UUID, ProductSummary> summaries,
-            Map<UUID, String> categoryNames
+            Map<UUID, String> categoryNames,
+            Map<UUID, String> shopAddressProvinces
     ) {
     }
 
@@ -79,12 +84,10 @@ public class ProductResponseMapper {
     }
 
     private Context load(List<Product> products) {
-        return new Context(
-                productService.getSummaries(
-                        products.stream().map(Product::getId).toList()
-                ),
-                categoryNames(products)
-        );
+        Set<UUID> shopIds = products.stream().map(Product::getShopId).filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        Map<UUID, String> shopAddressProvinces = new HashMap<>();
+        if (!shopIds.isEmpty()) shopRepository.findAllById(shopIds).forEach(shop -> shopAddressProvinces.put(shop.getId(), shop.getAddressProvince()));
+        return new Context(productService.getSummaries(products.stream().map(Product::getId).toList()), categoryNames(products), shopAddressProvinces);
     }
 
     private ProductResponse build(Product product, Context context) {
@@ -96,7 +99,8 @@ public class ProductResponseMapper {
         return new ProductResponse(
                 product,
                 context.summaries().getOrDefault(product.getId(), ProductSummary.EMPTY),
-                categoryName
+                categoryName,
+                context.shopAddressProvinces().get(product.getShopId())
         );
     }
 }

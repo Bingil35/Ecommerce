@@ -9,6 +9,7 @@ public class ProductResponse {
 
     private UUID id;
     private UUID shopId;
+    private String shopAddressProvince;
     private UUID categoryId;
     private String name;
     private String slug;
@@ -40,9 +41,14 @@ public class ProductResponse {
     }
 
     public ProductResponse(Product product, ProductSummary summary, String categoryName) {
+        this(product, summary, categoryName, null);
+    }
+
+    public ProductResponse(Product product, ProductSummary summary, String categoryName, String shopAddressProvince) {
 
         this.id = product.getId();
         this.shopId = product.getShopId();
+        this.shopAddressProvince = shopAddressProvince;
 
         if (product.getCategory() != null) {
             this.categoryId =
@@ -79,6 +85,7 @@ public class ProductResponse {
     public UUID getShopId() {
         return shopId;
     }
+    public String getShopAddressProvince() { return shopAddressProvince; }
 
     public UUID getCategoryId() {
         return categoryId;
