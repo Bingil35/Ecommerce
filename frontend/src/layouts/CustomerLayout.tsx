@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 
 import CustomerHeader from '../components/customer/header/CustomerHeader';
 import CustomerFooter from '../components/customer/footer/CustomerFooter';
+import ChatWidget from '../components/customer/chat/ChatWidget';
 
 const CustomerLayout = () => {
   return (
@@ -13,6 +14,7 @@ const CustomerLayout = () => {
       </main>
 
       <CustomerFooter />
+      <ChatWidget />
     </div>
   );
 };
