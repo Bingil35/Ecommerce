@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
 
-  ArrowLeft, ChevronRight, Heart, Minus, PackageCheck,
+  ArrowLeft, ChevronRight, Flame, Heart, Minus, PackageCheck,
 
   MessageCircle, Plus, ShieldCheck, ShoppingCart, Star, Store, Truck,
 
@@ -431,7 +431,7 @@ const { addToCart } = useCart();
 
           <div className="min-w-0 p-2 sm:p-3 lg:p-2">
 
-            <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-semibold text-[#5367C9]">Kala</span>{product.featured && <span className="rounded-full bg-[#F0F7FF] px-3 py-1 text-xs font-semibold text-[#4974A8]">Nổi bật</span>}</div>
+            <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-semibold text-[#5367C9]">Kala</span>{product.featured && <span aria-label="Sản phẩm nổi bật" title="Sản phẩm nổi bật" className="grid h-7 w-7 place-items-center rounded-full bg-[#FFF0E6] text-[#E85D24]"><Flame size={15} fill="currentColor" strokeWidth={1.8}/></span>}</div>
 
             <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-[#202642] sm:text-3xl">{product.name}</h1>
 

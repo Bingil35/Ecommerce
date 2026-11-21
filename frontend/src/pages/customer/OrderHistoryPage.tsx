@@ -37,17 +37,20 @@ export default function OrderHistoryPage() {
   }, [isAuthenticated, params, page]);
   if (isLoading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: '/orders' }} />;
-  const filter = (e: FormEvent) => { e.preventDefault(); const next = new URLSearchParams(); if (status) next.set('status', status); if (code.trim()) next.set('orderCode', code.trim()); if (from) next.set('from', from); if (to) next.set('to', to); next.set('page', '0'); setParams(next); };
+  const applyFilters = (nextStatus = status) => { const next = new URLSearchParams(); if (nextStatus) next.set('status', nextStatus); if (code.trim()) next.set('orderCode', code.trim()); if (from) next.set('from', from); if (to) next.set('to', to); next.set('page', '0'); setParams(next); };
+  const filter = (e: FormEvent) => { e.preventDefault(); applyFilters(); };
   const goPage = (n: number) => { const next = new URLSearchParams(params); next.set('page', String(n)); setParams(next); };
 
-  return <main className="min-h-[70vh] bg-[#F7F9FD] px-3 py-8 sm:px-5"><div className="mx-auto max-w-[1050px]">
-    <div className="mb-6"><p className="text-xs font-semibold uppercase tracking-[.15em] text-[#6576D8]">Tài khoản Kala</p><h1 className="mt-2 text-2xl font-bold text-[#252B40] sm:text-3xl">Đơn mua</h1><p className="mt-1 text-sm text-[#7A8498]">Mỗi cửa hàng được hiển thị thành một đơn riêng.</p></div>
-    <form onSubmit={filter} className="mb-5 grid gap-3 rounded-2xl border border-[#E7EBF3] bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
+  return <main className="min-h-[70vh] bg-[#F7F9FD] px-3 py-8 sm:px-5"><div className="mx-auto w-full max-w-[1200px] rounded-2xl border border-[#E6EAF3] bg-white p-5 shadow-[0_6px_24px_rgba(40,55,90,.04)] sm:p-7">
+    <div className="mb-5"><h1 className="text-xl font-bold text-[#252B40]">Đơn mua</h1><p className="mt-1 text-sm text-[#7A8498]">Danh sách các đơn hàng đã đặt</p></div>
+    <div role="tablist" aria-label="Lọc đơn hàng theo trạng thái" className="mb-4 flex gap-2 overflow-x-auto border-b border-[#E9EDF4] [scrollbar-width:none]">
+      {statuses.map(item => <button key={item.value || 'ALL'} type="button" role="tab" aria-selected={status === item.value} onClick={() => { setStatus(item.value); applyFilters(item.value); }} className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-semibold transition ${status === item.value ? 'border-[#596BD0] text-[#596BD0]' : 'border-transparent text-[#737F94] hover:text-[#3F4B63]'}`}>{item.label}</button>)}
+    </div>
+    <form onSubmit={filter} className="mb-5 grid gap-3 rounded-2xl border border-[#E7EBF3] bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
       <label className="text-xs font-semibold text-[#697386] lg:col-span-2">Mã đơn hàng<div className="relative mt-1.5"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9AA3B4]"/><input value={code} onChange={e => setCode(e.target.value)} placeholder="Nhập mã đơn..." className="h-10 w-full rounded-lg border border-[#E2E8F2] pl-9 pr-3 text-sm outline-none focus:border-[#6576D8]"/></div></label>
-      <label className="text-xs font-semibold text-[#697386]">Trạng thái<select value={status} onChange={e => setStatus(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-[#E2E8F2] px-2 text-sm">{statuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select></label>
       <label className="text-xs font-semibold text-[#697386]">Từ ngày<input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-[#E2E8F2] px-2 text-sm"/></label>
       <label className="text-xs font-semibold text-[#697386]">Đến ngày<input type="date" min={from || undefined} value={to} onChange={e => setTo(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-[#E2E8F2] px-2 text-sm"/></label>
-      <div className="flex gap-2 sm:col-span-2 lg:col-span-5"><button className="h-10 rounded-lg bg-[#596BD0] px-5 text-sm font-semibold text-white">Lọc đơn hàng</button><button type="button" onClick={() => { setCode(''); setStatus(''); setFrom(''); setTo(''); setParams({ page: '0' }); }} className="h-10 rounded-lg border border-[#E2E8F2] px-4 text-sm font-medium text-[#697386]">Xóa bộ lọc</button></div>
+      <div className="flex gap-2 sm:col-span-2 lg:col-span-4"><button className="h-10 rounded-lg bg-[#596BD0] px-5 text-sm font-semibold text-white">Lọc đơn hàng</button><button type="button" onClick={() => { setCode(''); setStatus(''); setFrom(''); setTo(''); setParams({ page: '0' }); }} className="h-10 rounded-lg border border-[#E2E8F2] px-4 text-sm font-medium text-[#697386]">Xóa bộ lọc</button></div>
     </form>
     {error && <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
     {loading ? <div className="rounded-2xl bg-white p-12 text-center text-sm text-[#697386]">Đang tải đơn hàng...</div> : data?.items.length ? <div className="space-y-3">{data.items.map(order => <article key={order.id} className="rounded-2xl border border-[#E7EBF3] bg-white p-5 shadow-sm">

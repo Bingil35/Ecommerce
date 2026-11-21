@@ -4,6 +4,7 @@ export interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 export interface ProductCardDto {
   id: string;
   shopId: string;
+  shopAddressProvince?: string | null;
   categoryId?: string | null;
   brandId?: string | null;
   name: string;

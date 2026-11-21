@@ -9,6 +9,7 @@ import com.example.backend.entity.Product;
 public class ProductCardResponse {
     private UUID id;
     private UUID shopId;
+    private String shopAddressProvince;
     private UUID categoryId;
     private UUID brandId;
     private String name;
@@ -25,9 +26,10 @@ public class ProductCardResponse {
     private BigDecimal ratingAverage;
     private Integer ratingCount;
 
-    public ProductCardResponse(Product product, BigDecimal minPrice, BigDecimal maxPrice, BigDecimal comparePrice, Integer stockQuantity, Integer soldQuantity, String thumbnailUrl) {
+    public ProductCardResponse(Product product, BigDecimal minPrice, BigDecimal maxPrice, BigDecimal comparePrice, Integer stockQuantity, Integer soldQuantity, String thumbnailUrl, String shopAddressProvince) {
         this.id = product.getId();
         this.shopId = product.getShopId();
+        this.shopAddressProvince = shopAddressProvince;
         this.categoryId = product.getCategory() == null ? null : product.getCategory().getId();
         this.brandId = product.getBrandId();
         this.name = product.getName();
@@ -49,7 +51,7 @@ public class ProductCardResponse {
         return comparePrice.subtract(price).multiply(BigDecimal.valueOf(100))
                 .divide(comparePrice, 0, java.math.RoundingMode.HALF_UP).intValue();
     }
-    public UUID getId(){return id;} public UUID getShopId(){return shopId;} public UUID getCategoryId(){return categoryId;}
+    public UUID getId(){return id;} public UUID getShopId(){return shopId;} public String getShopAddressProvince(){return shopAddressProvince;} public UUID getCategoryId(){return categoryId;}
     public UUID getBrandId(){return brandId;} public String getName(){return name;} public String getSlug(){return slug;}
     public String getDescription(){return description;} public String getThumbnailUrl(){return thumbnailUrl;}
     public BigDecimal getMinPrice(){return minPrice;} public BigDecimal getMaxPrice(){return maxPrice;} public BigDecimal getPrice(){return minPrice;} public BigDecimal getComparePrice(){return comparePrice;} public Integer getDiscountPercent(){return discountPercent;}
