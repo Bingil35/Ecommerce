@@ -58,8 +58,8 @@ const AccountInfoPage = () => {
     catch (e: any) { toast.error(getFeedbackError(e)); setPasswordError(e?.response?.data?.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.'); }
     finally { setPasswordSaving(false); }
   };
-  return <main className="min-h-[65vh] bg-[#F7F9FD] px-3 py-8 sm:px-5 sm:py-10"><div className="mx-auto max-w-[1000px]">
-    <div className="mb-6"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6577D8]">Tài khoản Kala</p><h1 className="mt-2 text-2xl font-bold tracking-tight text-[#20263A] sm:text-3xl">Thông tin người dùng</h1><p className="mt-2 text-sm text-[#697386]">Xem và cập nhật thông tin cá nhân của bạn.</p></div>
+  return <div className="min-h-[360px] rounded-2xl border border-[#E6EAF3] bg-white p-5 shadow-[0_6px_24px_rgba(40,55,90,.04)] sm:p-7">
+    <div className="mb-6"><h1 className="text-xl font-bold text-[#252B40]">Thông tin người dùng</h1><p className="mt-1 text-sm text-[#7A8498]">Xem và cập nhật thông tin cá nhân của bạn.</p></div>
     {error && <div role="alert" className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"><AlertCircle size={19} className="mt-0.5 shrink-0"/>{error}</div>}
 
     <section className="overflow-hidden rounded-2xl border border-[#E6EAF3] bg-white shadow-[0_8px_28px_rgba(40,55,90,0.05)]">
@@ -85,6 +85,6 @@ const AccountInfoPage = () => {
         <div><button type="submit" disabled={passwordSaving} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#5969D8] px-4 text-sm font-semibold text-white hover:bg-[#4858C8] disabled:opacity-60">{passwordSaving ? <LoaderCircle size={16} className="animate-spin"/> : <LockKeyhole size={16}/>} {passwordSaving ? 'Đang cập nhật...' : 'Đổi mật khẩu'}</button></div>
       </form>
     </section>
-  </div></main>;
+  </div>;
 };
 export default AccountInfoPage;

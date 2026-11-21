@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { ChevronDown, ClipboardList, Home, LogOut, MessageCircle, Package, Settings, Star, Store, Tag, Truck, Warehouse } from 'lucide-react';
+import { ChevronDown, ClipboardList, Home, LogOut, MessageCircle, Package, Settings, Star, Store, Tag, Truck, Warehouse, ChartNoAxesColumn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { shopApi } from '../services/shop/shopApi';
 import type { ShopResponse } from '../services/shop/shopTypes';
@@ -11,6 +11,7 @@ import NotificationBell from '../components/notifications/NotificationBell';
 const items = [
   { to: '/seller', text: 'Trang chủ', icon: Home },
   { to: '/seller/products', text: 'Sản phẩm', icon: Package },
+  { to: '/shop-owner/product-stats', text: 'Thống kê sản phẩm', icon: ChartNoAxesColumn },
   { to: '/shop-owner/orders', text: 'Đơn hàng', icon: ClipboardList },
   { to: '/shop-owner/reviews', text: 'Đánh giá', icon: Star },
   { to: '/seller/inventory', text: 'Kho hàng', icon: Warehouse },
