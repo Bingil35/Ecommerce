@@ -112,7 +112,7 @@ const CustomerHeader = () => {
       }}
     >
         <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-4">
-        <div className="flex h-[68px] items-center gap-3 sm:h-[72px] sm:gap-5 lg:gap-8">
+        <div className="flex h-[60px] min-w-0 items-center gap-1.5 sm:h-[72px] sm:gap-5 lg:gap-8">
 
           {/* Logo */}
           <div className="shrink-0">
@@ -187,7 +187,7 @@ const CustomerHeader = () => {
           </div>
 
           {/* Actions */}
-          <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-0 sm:gap-2">
 
             <NotificationBell audience="customer" authenticated={isAuthenticated}/>
 

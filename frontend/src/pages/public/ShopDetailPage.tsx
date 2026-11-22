@@ -111,25 +111,30 @@ export default function ShopDetailPage() {
   ];
 
   return <main className="min-h-screen bg-[#F7F9FD] pb-12">
-    <div className="mx-auto max-w-[1200px] px-4 pt-5">
+    <div className="mx-auto w-full max-w-[1200px] min-w-0 px-3 pt-5 sm:px-4">
       <nav aria-label="Đường dẫn" className="mb-4 flex items-center gap-2 text-xs text-[#8791A4]"><Link to="/" className="hover:text-[#5367C9]">Trang chủ</Link><ChevronRight size={14}/><span className="font-medium text-[#47516A]">{shop.shopName}</span></nav>
       <section className="relative h-[275px] overflow-hidden rounded-[26px] border border-[#E5EAF3] bg-gradient-to-br from-[#293A75] via-[#667bd0] to-[#b7c3f4] shadow-[0_12px_34px_rgba(36,52,99,0.12)] sm:h-[310px]">
         {shop.bannerUrl && <img src={mediaUrl(shop.bannerUrl)} alt="Ảnh bìa cửa hàng" className="absolute inset-0 h-full w-full object-cover"/>}
         <div className="absolute inset-0 bg-gradient-to-t from-[#17264e]/55 via-[#17264e]/5 to-transparent"/>
-        <div className="absolute inset-x-3 bottom-3 flex flex-col gap-3 rounded-[20px] border border-white/70 bg-white/85 p-3 shadow-[0_10px_32px_rgba(20,32,66,0.18)] backdrop-blur-2xl sm:inset-x-5 sm:bottom-5 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
-          <div className="grid h-[64px] w-[64px] shrink-0 place-items-center overflow-hidden rounded-[17px] border border-[#E7EAF4] bg-white p-1.5 shadow-[0_3px_10px_rgba(30,45,80,0.10)] sm:h-[72px] sm:w-[72px] sm:p-2">
-            {shop.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt={shop.shopName} className="block h-full w-full object-contain"/> : <Store size={28} className="text-[#596BD0]"/>}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[17px] font-bold leading-tight tracking-[-.02em] text-[#202642] sm:text-lg">{shop.shopName}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#65718A]">
-              <span className="inline-flex items-center gap-1"><Star size={13} fill="currentColor" className="text-[#E8A832]"/>{Number(shop.ratingAverage ?? 0).toFixed(1)} <span className="text-[11px]">({shop.ratingCount ?? 0} đánh giá)</span></span>
-              <span className="inline-flex items-center gap-1"><Heart size={12}/>{shop.followersCount ?? 0} người theo dõi</span>
-              <span className="inline-flex items-center gap-1"><Package size={13}/>{products.length} sản phẩm</span>
+        <div className="absolute bottom-3 left-3 flex w-fit max-w-[calc(100%-1.5rem)] flex-col gap-3 rounded-[20px] border border-white/35 bg-white/40 p-3 shadow-[0_10px_30px_rgba(20,32,66,0.16)] backdrop-blur-md sm:bottom-5 sm:left-5 sm:max-w-[calc(100%-2.5rem)] sm:flex-row sm:items-center sm:gap-5 sm:p-4">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <div className="grid h-[64px] w-[64px] shrink-0 place-items-center overflow-hidden rounded-[17px] border border-[#E7EAF4] bg-white p-1.5 shadow-[0_3px_10px_rgba(30,45,80,0.10)] sm:h-[72px] sm:w-[72px] sm:p-2">
+              {shop.logoUrl ? <img src={mediaUrl(shop.logoUrl)} alt={shop.shopName} className="block h-full w-full object-contain"/> : <Store size={28} className="text-[#596BD0]"/>}
             </div>
-            {shop.address && <p className="mt-2 flex items-center gap-1.5 text-[11px] leading-snug text-[#78839A]"><MapPin size={13} className="shrink-0 text-[#7B87A1]"/>{shop.address}</p>}
+            <div className="min-w-0">
+              <h1 className="truncate text-[17px] font-bold leading-tight tracking-[-.02em] text-[#202642] sm:text-lg">{shop.shopName}</h1>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" disabled={followBusy} onClick={()=>void toggleFollow()} className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition disabled:opacity-60 ${following?'border-rose-200 bg-rose-50 text-rose-600':'border-[#E1E6F1] bg-white/80 text-[#5866B7] hover:bg-white'}`}><Heart size={14} fill={following?'currentColor':'none'}/>{following?'Đang theo dõi':'Theo dõi shop'}</button>
+                <Link to={`/chat?shopId=${encodeURIComponent(shop.id)}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#5367C9] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4659B8]"><MessageCircle size={14}/>Chat với shop</Link>
+              </div>
+            </div>
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end"><button type="button" disabled={followBusy} onClick={()=>void toggleFollow()} className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition disabled:opacity-60 ${following?'border-rose-200 bg-rose-50 text-rose-600':'border-[#E1E6F1] bg-white/80 text-[#5866B7] hover:bg-white'}`}><Heart size={14} fill={following?'currentColor':'none'}/>{following?'Đang theo dõi':'Theo dõi shop'}</button><Link to={`/chat?shopId=${encodeURIComponent(shop.id)}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#5367C9] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4659B8]"><MessageCircle size={14}/>Chat với shop</Link></div>
+          <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 border-t border-white/40 pt-3 text-xs text-[#46516A] sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+            <span className="inline-flex min-w-0 items-center gap-1"><Star size={13} className="shrink-0 text-[#E8A832]" fill="currentColor"/>{Number(shop.ratingAverage ?? 0).toFixed(1)} <span className="truncate text-[11px]">({shop.ratingCount ?? 0} đánh giá)</span></span>
+            <span className="inline-flex min-w-0 items-center gap-1"><Heart size={12} className="shrink-0"/><span className="truncate">{shop.followersCount ?? 0} người theo dõi</span></span>
+            <span className="inline-flex min-w-0 items-center gap-1"><Package size={13} className="shrink-0"/><span>{products.length} sản phẩm</span></span>
+            {shop.address && <span className="inline-flex min-w-0 items-center gap-1"><MapPin size={13} className="shrink-0 text-[#7B87A1]"/><span className="truncate">{shop.address}</span></span>}
+          </div>
         </div>
       </section>
 

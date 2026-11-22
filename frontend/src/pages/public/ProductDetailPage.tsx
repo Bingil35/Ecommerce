@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
 
-  ArrowLeft, ChevronRight, Flame, Heart, Minus, PackageCheck,
+  ChevronRight, Flame, Heart, Minus, PackageCheck,
 
   MessageCircle, Plus, ShieldCheck, ShoppingCart, Star, Store, Truck,
 
@@ -490,10 +490,6 @@ const { addToCart } = useCart();
         {shopProducts.length > 0 && <ProductShelf title="Sản phẩm khác của cửa hàng" products={shopProducts} />}
 
         {relatedProducts.length > 0 && <ProductShelf title="Sản phẩm liên quan" products={relatedProducts} />}
-
-
-
-        <div className="mt-6"><button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-sm font-semibold text-[#5367C9] hover:text-[#394DAA]"><ArrowLeft size={16}/> Quay lại trang trước</button></div>
 
       </div>
 
