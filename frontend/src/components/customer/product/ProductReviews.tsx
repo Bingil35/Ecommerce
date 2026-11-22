@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, ThumbsUp } from 'lucide-react';
 import { reviewApi, reviewDate, type ProductReview } from '../../../services/reviews/reviewApi';
+import { useAuth } from '../../../context/AuthContext';
+import { ROLES, hasRole } from '../../../services/auth/roles';
+import { useToast } from '../../../context/FeedbackContext';
 
 const REVIEWS_PER_PAGE = 5;
 
@@ -9,6 +12,10 @@ export default function ProductReviews({ productId }: { productId: string }) {
   const [error, setError] = useState('');
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+  const [likeBusyIds, setLikeBusyIds] = useState<string[]>([]);
+  const { user } = useAuth();
+  const toast = useToast();
+  const canLike = hasRole(user, ROLES.CUSTOMER);
 
   useEffect(() => {
     let active = true;
@@ -30,6 +37,23 @@ export default function ProductReviews({ productId }: { productId: string }) {
   const totalPages = Math.ceil(visibleReviews.length / REVIEWS_PER_PAGE);
   const pageReviews = visibleReviews.slice((page - 1) * REVIEWS_PER_PAGE, page * REVIEWS_PER_PAGE);
 
+  const toggleLike = async (review: ProductReview) => {
+    if (!canLike || likeBusyIds.includes(review.id)) return;
+    setLikeBusyIds(current => [...current, review.id]);
+    try {
+      const result = review.likedByMe
+        ? await reviewApi.unlike(review.id)
+        : await reviewApi.like(review.id);
+      setReviews(current => current.map(item => item.id === review.id
+        ? { ...item, likedByMe: result.liked, likeCount: result.likeCount }
+        : item));
+    } catch {
+      toast.error('Không thể cập nhật lượt thích. Vui lòng thử lại.');
+    } finally {
+      setLikeBusyIds(current => current.filter(id => id !== review.id));
+    }
+  };
+
   return <section className="mt-6 min-w-0 rounded-3xl border border-[#E7ECF5] bg-white p-4 sm:p-7">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div><h2 className="text-lg font-bold text-[#202642] sm:text-xl">Đánh giá sản phẩm</h2><p className="mt-1 text-sm text-[#7B8498]">{reviews.length ? `${average.toFixed(1)} / 5 · ${reviews.length} đánh giá` : 'Chưa có đánh giá'}</p></div>
@@ -49,7 +73,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
       </div>
     </div>}
     {!error && ratingFilter !== null && visibleReviews.length === 0 && <p className="mt-5 rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">Chưa có đánh giá {ratingFilter} sao.</p>}
-    <div className="mt-3 divide-y divide-slate-100">{pageReviews.map(review => <article key={review.id} className="py-4 first:pt-1"><div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold text-slate-700">{review.customerName || 'Khách hàng'}</div><div className="text-xs text-slate-400">{reviewDate(review.createdAt)}</div></div><div className="mt-1 flex gap-0.5 text-amber-500">{Array.from({ length: 5 }, (_, i) => <Star key={i} size={14} fill={i < review.rating ? 'currentColor' : 'none'} />)}</div>{review.content && <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{review.content}</p>}{review.replies.map(reply => <div key={reply.id} className="mt-3 rounded-xl bg-indigo-50 p-3 text-sm"><b className="text-indigo-800">Phản hồi của cửa hàng</b><p className="mt-1 whitespace-pre-wrap text-slate-700">{reply.content}</p></div>)}</article>)}</div>
+      <div className="mt-3 divide-y divide-slate-100">{pageReviews.map(review => <article key={review.id} className="py-4 first:pt-1"><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-semibold text-slate-700">{review.customerName || 'Khách hàng'}</div><div className="mt-1 flex gap-0.5 text-amber-500">{Array.from({ length: 5 }, (_, i) => <Star key={i} size={14} fill={i < review.rating ? 'currentColor' : 'none'} />)}</div></div><div className="flex flex-col items-end gap-1 text-[13px] text-slate-400"><span>{reviewDate(review.createdAt)}</span>{canLike ? <button type="button" aria-label={review.likedByMe ? 'Bỏ thích đánh giá' : 'Thích đánh giá'} aria-pressed={review.likedByMe} disabled={likeBusyIds.includes(review.id)} onClick={() => void toggleLike(review)} className={`inline-flex items-center gap-1 rounded px-1 py-0.5 text-[13px] transition disabled:cursor-wait disabled:opacity-50 ${review.likedByMe ? 'text-[#5367C9]' : 'text-slate-400 hover:text-[#5367C9]'}`}><ThumbsUp size={16} fill={review.likedByMe ? 'currentColor' : 'none'}/><span>{review.likeCount}</span></button> : <span className="inline-flex items-center gap-1 px-1 py-0.5 text-[13px]"><ThumbsUp size={16}/><span>{review.likeCount}</span></span>}</div></div>{review.content && <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{review.content}</p>}{review.replies.map(reply => <div key={reply.id} className="mt-3 rounded-xl bg-indigo-50 p-3 text-sm"><b className="text-indigo-800">Phản hồi của cửa hàng</b><p className="mt-1 whitespace-pre-wrap text-slate-700">{reply.content}</p></div>)}</article>)}</div>
     {visibleReviews.length > 0 && <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row">
       <p className="text-xs text-[#7B8498]">Đang hiển thị {((page - 1) * REVIEWS_PER_PAGE) + 1}–{Math.min(page * REVIEWS_PER_PAGE, visibleReviews.length)} trong {visibleReviews.length} nhận xét</p>
       {totalPages > 1 && <nav aria-label="Phân trang nhận xét" className="flex items-center gap-1">

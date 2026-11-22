@@ -2,7 +2,7 @@ import axiosClient from '../api/axiosClient';
 
 export interface ProductReview {
   id: string; productId: string; productName: string; customerName: string | null;
-  rating: number; content: string | null; createdAt: string;
+  rating: number; content: string | null; createdAt: string; likeCount: number; likedByMe: boolean;
   replies: { id: string; content: string; createdAt: string }[];
 }
 type Envelope<T> = { data: T; message?: string } | T;
@@ -12,6 +12,12 @@ export const reviewApi = {
   async list(productId: string) { return unwrap((await axiosClient.get<Envelope<ProductReview[]>>(`/products/${productId}/reviews`)).data); },
   async create(productId: string, input: { rating: number; content: string; subOrderId: string; variantId?: string }) {
     return unwrap((await axiosClient.post<Envelope<ProductReview>>(`/customer/products/${productId}/reviews`, input)).data);
+  },
+  async like(reviewId: string) {
+    return unwrap((await axiosClient.put<Envelope<{ liked: boolean; likeCount: number }>>(`/customer/reviews/${reviewId}/like`)).data);
+  },
+  async unlike(reviewId: string) {
+    return unwrap((await axiosClient.delete<Envelope<{ liked: boolean; likeCount: number }>>(`/customer/reviews/${reviewId}/like`)).data);
   },
   async ownerList() { return unwrap((await axiosClient.get<Envelope<ProductReview[]>>('/shop-owner/reviews')).data); },
   async reply(reviewId: string, content: string) {
