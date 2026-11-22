@@ -17,6 +17,13 @@ public interface SubOrderRepository extends JpaRepository<SubOrder, UUID>, org.s
     @Query("select sum(s.totalAmount) from SubOrder s where s.shop.id = :shopId and s.status = :status")
     BigDecimal sumTotalByShopIdAndStatus(@Param("shopId") UUID shopId, @Param("status") OrderStatus status);
     List<SubOrder> findByShop_IdAndStatusAndUpdatedAtGreaterThanEqualOrderByUpdatedAtAsc(UUID shopId, OrderStatus status, OffsetDateTime from);
+    List<SubOrder> findByShop_IdAndStatusAndUpdatedAtGreaterThanEqualAndUpdatedAtLessThanOrderByUpdatedAtAsc(
+            UUID shopId, OrderStatus status, OffsetDateTime from, OffsetDateTime toExclusive);
+    @Query("select s from SubOrder s join fetch s.order o join fetch o.user where s.shop.id = :shopId and s.createdAt >= :from and s.createdAt < :toExclusive order by s.createdAt asc")
+    List<SubOrder> findDashboardOrders(@Param("shopId") UUID shopId, @Param("from") OffsetDateTime from,
+            @Param("toExclusive") OffsetDateTime toExclusive);
+    @Query("select s from SubOrder s join fetch s.order o join fetch o.user where s.shop.id = :shopId order by s.createdAt desc, s.id desc")
+    List<SubOrder> findRecentDashboardOrders(@Param("shopId") UUID shopId, org.springframework.data.domain.Pageable pageable);
     @org.springframework.data.jpa.repository.Query("select s from SubOrder s join s.order o join o.user u where s.shop.ownerUserId = :ownerId and (:status is null or s.status = :status) and (:keyword = '' or lower(o.orderCode) like concat('%', :keyword, '%') or lower(u.fullName) like concat('%', :keyword, '%'))" )
     org.springframework.data.domain.Page<SubOrder> searchShopOrders(@Param("ownerId") UUID ownerId,
             @Param("status") OrderStatus status, @Param("keyword") String keyword,

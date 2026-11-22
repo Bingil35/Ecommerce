@@ -2,7 +2,7 @@ import { useDialog, useToast } from '../../context/FeedbackContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, BarChart3, ChevronRight, Copy, Eye, EyeOff, Image as ImageIcon,
+  ArrowLeft, BarChart3, ChevronRight, Eye, EyeOff, Image as ImageIcon,
   LayoutGrid, Maximize2, MoreVertical, Package, Pencil, Play, Save, Star, Store, Trash2,
   Video as VideoIcon, Warehouse, X,
 } from 'lucide-react';
@@ -228,15 +228,6 @@ export default function SellerProductDetailPage() {
     } catch (err) { setError(errorMessage(err)); toast.error(errorMessage(err)); } finally { setBusy(false); }
   };
 
-  const duplicate = async () => {
-    setBusy(true); setError('');
-    try {
-      const copy = await sellerProductApi.duplicate(productId);
-      toast.success('Đã sao chép sản phẩm.');
-      navigate(`/seller/products/${copy.id}`);
-    } catch (err) { setError(errorMessage(err)); toast.error(errorMessage(err)); } finally { setBusy(false); }
-  };
-
   const toggleVisibility = async () => {
     if (!product) return;
     setMenuOpen(false); setBusy(true); setError('');
@@ -296,8 +287,6 @@ export default function SellerProductDetailPage() {
         </> : <>
           <button type="button" onClick={() => navigate(`/seller/products/${product.id}/edit`, { state: { returnTo: `/seller/products/${product.id}` } })}
             className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#1B2559] shadow-sm transition hover:bg-slate-50"><Pencil size={15} className="text-[#5367C9]" /> Sửa</button>
-          <button type="button" onClick={duplicate} disabled={busy}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#1B2559] shadow-sm transition hover:bg-slate-50 disabled:opacity-50"><Copy size={15} /> Sao chép</button>
         </>}
         <div className="relative" ref={menuRef}>
           <button type="button" aria-label="Thêm" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}
