@@ -1,9 +1,8 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.request.CreateProductOptionRequest;
-import com.example.backend.dto.request.CreateProductOptionValueRequest;
 import com.example.backend.dto.request.CreateProductRequest;
 import com.example.backend.dto.request.CreateProductVariantRequest;
+import com.example.backend.dto.response.CategoryResponse;
 import com.example.backend.dto.response.ProductImportResponse;
 import com.example.backend.dto.response.ProductStatsResponse;
 import com.example.backend.dto.response.ProductSummary;
@@ -51,7 +50,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -62,7 +63,7 @@ import java.util.UUID;
 
 /**
  * Nghiệp vụ quản lý sản phẩm dành cho shop owner:
- * tìm kiếm/lọc/sắp xếp, thống kê tab, xóa dây chuyền, nhân bản,
+ * tìm kiếm/lọc/sắp xếp, thống kê tab, xóa dây chuyền,
  * thao tác hàng loạt, xuất và nhập CSV.
  *
  * Service này KHÔNG tự kiểm tra quyền; controller phải xác định shopId
@@ -77,7 +78,6 @@ public class ProductManagementService {
     private static final long MAX_IMPORT_BYTES = 2L * 1024 * 1024;
     private static final int MAX_IMPORT_ERRORS = 100;
     private static final int MAX_NAME_LENGTH = 255;
-    private static final String COPY_NAME_SUFFIX = " (Bản sao)";
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter EXPORT_DATE =
@@ -150,6 +150,7 @@ public class ProductManagementService {
             UUID shopId,
             String keyword,
             UUID categoryId,
+            List<UUID> categoryIds,
             ProductStatus status,
             StockStatus stockStatus,
             BigDecimal minPrice,
@@ -182,6 +183,34 @@ public class ProductManagementService {
                 count(shopId, ProductStatus.INACTIVE, null),
                 count(shopId, ProductStatus.ACTIVE, StockStatus.LOW_STOCK)
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> rootCategoriesForShop(UUID shopId) {
+        Set<UUID> usedCategoryIds = new HashSet<>(productRepository.findDistinctCategoryIdsByShopId(shopId));
+        if (usedCategoryIds.isEmpty()) return List.of();
+
+        Map<UUID, Category> categories = new HashMap<>();
+        Map<UUID, UUID> parentIds = new HashMap<>();
+        for (Category category : categoryRepository.findAll()) {
+            categories.put(category.getId(), category);
+            parentIds.put(category.getId(), category.getParent() == null ? null : category.getParent().getId());
+        }
+
+        Set<UUID> rootIds = new HashSet<>();
+        for (UUID categoryId : usedCategoryIds) {
+            UUID cursor = categoryId;
+            while (cursor != null && categories.containsKey(cursor)) {
+                UUID parentId = parentIds.get(cursor);
+                if (parentId == null) { rootIds.add(cursor); break; }
+                cursor = parentId;
+            }
+        }
+
+        return rootIds.stream().map(categories::get)
+                .sorted(java.util.Comparator.comparing((Category category) -> category.getSortOrder() == null ? 0 : category.getSortOrder())
+                        .thenComparing(Category::getName, java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .map(CategoryResponse::new).toList();
     }
 
     private long count(UUID shopId, ProductStatus status, StockStatus stockStatus) {
@@ -219,10 +248,14 @@ public class ProductManagementService {
                 ? null
                 : f.createdTo().plusDays(1).atStartOfDay(ZONE).toOffsetDateTime();
 
-        return OwnerProductSpecifications.of(
+        Set<UUID> selectedRoots = new HashSet<>(f.categoryIds() == null ? List.of() : f.categoryIds());
+        if (f.categoryId() != null) selectedRoots.add(f.categoryId());
+        Collection<UUID> categoryIds = descendantCategoryIds(selectedRoots);
+
+        return OwnerProductSpecifications.ofCategories(
                 f.shopId(),
                 f.keyword(),
-                f.categoryId(),
+                categoryIds,
                 f.status(),
                 f.stockStatus(),
                 lowStockThreshold,
@@ -232,6 +265,25 @@ public class ProductManagementService {
                 toExclusive,
                 sortKey
         );
+    }
+
+    private Collection<UUID> descendantCategoryIds(Collection<UUID> rootIds) {
+        if (rootIds.isEmpty()) return List.of();
+        Map<UUID, UUID> parentIds = new HashMap<>();
+        for (Category category : categoryRepository.findAll()) {
+            parentIds.put(category.getId(), category.getParent() == null ? null : category.getParent().getId());
+        }
+        Set<UUID> result = new HashSet<>();
+        Set<UUID> matchedRoots = new HashSet<>();
+        for (UUID categoryId : parentIds.keySet()) {
+            UUID cursor = categoryId;
+            while (cursor != null && parentIds.containsKey(cursor)) {
+                if (rootIds.contains(cursor)) { result.add(categoryId); matchedRoots.add(cursor); break; }
+                cursor = parentIds.get(cursor);
+            }
+        }
+        rootIds.stream().filter(rootId -> !matchedRoots.contains(rootId)).forEach(result::add);
+        return result;
     }
 
     private String normalizeSort(String sort) {
@@ -385,158 +437,6 @@ public class ProductManagementService {
         }
 
         return products.size();
-    }
-
-    // =========================================================
-    // DUPLICATE
-    // =========================================================
-
-    /**
-     * Nhân bản sản phẩm: sao chép thông tin, option, giá trị option, media (file được
-     * sao chép thật) và variant. Bản sao là sản phẩm mới nên ở trạng thái PENDING
-     * (chờ Admin duyệt), tồn kho = 0, SKU thêm hậu tố "-COPY" (và số thứ tự nếu trùng).
-     */
-    @Transactional
-    public Product duplicate(UUID sourceId) {
-
-        Product source = productService.getProductById(sourceId);
-
-        CreateProductRequest request = new CreateProductRequest();
-        request.setShopId(source.getShopId());
-        request.setCategoryId(
-                source.getCategory() == null ? null : source.getCategory().getId()
-        );
-        request.setBrandId(source.getBrandId());
-        request.setFeatured(source.getFeatured());
-        request.setName(copyName(source.getName()));
-        request.setDescription(source.getDescription());
-
-        Product copy = productService.createProduct(request);
-
-        // ---- option + giá trị option ----
-        Map<UUID, UUID> valueMap = new HashMap<>();
-
-        for (ProductOption option :
-                optionRepository.findByProductIdOrderBySortOrderAsc(sourceId)) {
-
-            CreateProductOptionRequest optionRequest = new CreateProductOptionRequest();
-            optionRequest.setName(option.getName());
-
-            ProductOption newOption =
-                    productVariantService.createOption(copy.getId(), optionRequest);
-            newOption.setSortOrder(option.getSortOrder());
-
-            for (ProductOptionValue value :
-                    optionValueRepository.findByProductOptionIdOrderBySortOrderAsc(option.getId())) {
-
-                CreateProductOptionValueRequest valueRequest =
-                        new CreateProductOptionValueRequest();
-                valueRequest.setValue(value.getValue());
-
-                ProductOptionValue newValue =
-                        productVariantService.createOptionValue(newOption.getId(), valueRequest);
-                newValue.setSortOrder(value.getSortOrder());
-
-                valueMap.put(value.getId(), newValue.getId());
-            }
-        }
-
-        // ---- media (sao chép file thật) ----
-        Map<UUID, UUID> mediaMap = new HashMap<>();
-        Map<String, String> urlMap = new HashMap<>();
-        List<String> copiedUrls = new ArrayList<>();
-
-        for (ProductMedia media :
-                mediaRepository.findByProductIdOrderBySortOrderAsc(sourceId)) {
-
-            String newUrl =
-                    localStorageService.copyProductMedia(copy.getId(), media.getMediaUrl());
-
-            if (newUrl == null) {
-                continue;
-            }
-
-            copiedUrls.add(newUrl);
-
-            ProductMedia newMedia = new ProductMedia();
-            newMedia.setProduct(copy);
-            newMedia.setMediaType(media.getMediaType());
-            newMedia.setMediaUrl(newUrl);
-            newMedia.setSortOrder(media.getSortOrder());
-            newMedia = mediaRepository.save(newMedia);
-
-            mediaMap.put(media.getId(), newMedia.getId());
-            urlMap.put(media.getMediaUrl(), newUrl);
-        }
-
-        TransactionCallbacks.afterRollback(() -> deleteFilesQuietly(copiedUrls));
-
-        String thumbnail = source.getThumbnailUrl();
-
-        if (thumbnail != null && !thumbnail.isBlank()) {
-            if (urlMap.containsKey(thumbnail)) {
-                copy.setThumbnailUrl(urlMap.get(thumbnail));
-            } else if (!thumbnail.startsWith("/uploads/")) {
-                copy.setThumbnailUrl(thumbnail);
-            }
-        }
-
-        // ---- variant (tồn kho = 0) ----
-        Set<String> usedSkus = new java.util.HashSet<>();
-
-        for (ProductVariant variant :
-                variantRepository.findByProductIdOrderByCreatedAtAsc(sourceId)) {
-
-            CreateProductVariantRequest variantRequest = new CreateProductVariantRequest();
-            variantRequest.setProductId(copy.getId());
-            variantRequest.setSku(SkuGenerator.copyOf(
-                    variant.getSku(),
-                    candidate -> usedSkus.contains(candidate)
-                            || variantRepository.existsByProductIdAndSku(copy.getId(), candidate)
-            ));
-            variantRequest.setPrice(variant.getPrice());
-            variantRequest.setComparePrice(variant.getComparePrice());
-            variantRequest.setCostPrice(variant.getCostPrice());
-            variantRequest.setStockQuantity(0);
-
-            if (variant.getPrimaryMedia() != null) {
-                variantRequest.setPrimaryMediaId(
-                        mediaMap.get(variant.getPrimaryMedia().getId())
-                );
-            }
-
-            variantRequest.setOptionValueIds(
-                    variantOptionValueRepository.findByVariantId(variant.getId())
-                            .stream()
-                            .map(link -> valueMap.get(link.getOptionValue().getId()))
-                            .filter(Objects::nonNull)
-                            .toList()
-            );
-
-            ProductVariant newVariant =
-                    productVariantService.createVariant(variantRequest);
-
-            usedSkus.add(newVariant.getSku());
-
-            if (variant.getStatus() != null) {
-                newVariant.setStatus(variant.getStatus());
-            }
-        }
-
-        return productRepository.save(copy);
-    }
-
-    private String copyName(String name) {
-
-        String base = name == null ? "" : name;
-
-        int max = MAX_NAME_LENGTH - COPY_NAME_SUFFIX.length();
-
-        if (base.length() > max) {
-            base = base.substring(0, max);
-        }
-
-        return base + COPY_NAME_SUFFIX;
     }
 
     // =========================================================
@@ -956,18 +856,4 @@ public class ProductManagementService {
         return semicolons > commas ? ';' : ',';
     }
 
-    // =========================================================
-    // FILES
-    // =========================================================
-
-    private void deleteFilesQuietly(List<String> urls) {
-
-        for (String url : urls) {
-            try {
-                localStorageService.deleteProductMedia(url);
-            } catch (RuntimeException ignored) {
-                // Best effort: file mồ côi không làm hỏng nghiệp vụ.
-            }
-        }
-    }
 }

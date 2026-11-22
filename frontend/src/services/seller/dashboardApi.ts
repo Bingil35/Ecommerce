@@ -1,11 +1,13 @@
 import axiosClient from '../api/axiosClient';
-import type { ProductStats } from './productApi';
 
 export interface ShopOwnerDashboard {
-  products: ProductStats;
-  totalOrders: number; pendingOrders: number; shippingOrders: number; deliveredOrders: number;
-  revenue: number | string; ratingAverage: number | string; reviewCount: number;
-  dailyPerformance: { date: string; deliveredOrders: number; revenue: number | string }[];
+  from: string; to: string;
+  orderCount: number; deliveredOrders: number; pendingOrders: number;
+  revenue: number | string; averageOrderValue: number | string;
+  dailyPerformance: { date: string; orderCount: number; revenue: number | string }[];
+  orderStatusBreakdown: { status: 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED'; count: number }[];
+  recentOrders: { id: string; orderCode: string; status: 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED'; customerName: string | null; createdAt: string }[];
+  attention: { lowStock: number; outOfStock: number; pendingProducts: number; unansweredReviews: number };
 }
 export interface ShopOwnerProductStats {
   items: { id: string; name: string; thumbnailUrl: string | null; slug: string; currentPrice: number | string | null;
@@ -14,8 +16,8 @@ export interface ShopOwnerProductStats {
   page: number; size: number; totalElements: number; totalPages: number; sort: string; shopName: string;
 }
 export const dashboardApi = {
-  async get(days: 7 | 30 = 7): Promise<ShopOwnerDashboard> {
-    return (await axiosClient.get<{ data: ShopOwnerDashboard }>('/shop-owner/dashboard', { params: { days } })).data.data;
+  async get(from: string, to: string): Promise<ShopOwnerDashboard> {
+    return (await axiosClient.get<{ data: ShopOwnerDashboard }>('/shop-owner/dashboard', { params: { from, to } })).data.data;
   },
   async getProductStats(params: { keyword?: string; sort?: string; page?: number; size?: number } = {}): Promise<ShopOwnerProductStats> {
     return (await axiosClient.get<{ data: ShopOwnerProductStats }>('/shop-owner/product-stats', { params })).data.data;

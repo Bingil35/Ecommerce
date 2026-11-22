@@ -15,4 +15,6 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, UU
     boolean existsBySubOrder_IdAndProduct_IdAndUser_Id(UUID subOrderId, UUID productId, UUID userId);
     @Query("select r from ProductReview r where r.id = :id and r.product.shopId = :shopId")
     Optional<ProductReview> findByIdAndShopId(@Param("id") UUID id, @Param("shopId") UUID shopId);
+    @Query("select count(r) from ProductReview r where r.product.shopId = :shopId and not exists (select rr.id from ReviewReply rr where rr.review = r)")
+    long countUnansweredByShopId(@Param("shopId") UUID shopId);
 }

@@ -165,54 +165,6 @@ public class LocalStorageService {
         }
     }
 
-    /**
-     * Sao chép một file media sang thư mục của sản phẩm khác.
-     * Trả về URL mới, hoặc null nếu file nguồn không tồn tại / không phải file nội bộ.
-     */
-    public String copyProductMedia(UUID targetProductId, String sourceUrl) {
-
-        if (sourceUrl == null || !sourceUrl.startsWith("/uploads/")) {
-            return null;
-        }
-
-        try {
-            Path source = Paths.get(sourceUrl.substring(1))
-                    .toAbsolutePath()
-                    .normalize();
-
-            if (!source.startsWith(uploadRoot)) {
-                throw new IllegalArgumentException("Invalid file path");
-            }
-
-            if (!Files.isRegularFile(source)) {
-                return null;
-            }
-
-            Path directory = uploadRoot
-                    .resolve("products")
-                    .resolve(targetProductId.toString())
-                    .normalize();
-
-            Files.createDirectories(directory);
-
-            String filename = UUID.randomUUID()
-                    + getFileExtension(source.getFileName().toString());
-
-            Path target = directory.resolve(filename).normalize();
-
-            if (!target.startsWith(directory)) {
-                throw new IllegalArgumentException("Invalid file path");
-            }
-
-            Files.copy(source, target);
-
-            return "/uploads/products/" + targetProductId + "/" + filename;
-
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to copy file", exception);
-        }
-    }
-
     public void deleteProductMedia(String mediaUrl) {
         if (mediaUrl == null || mediaUrl.isBlank()) {
             return;
@@ -243,26 +195,6 @@ public class LocalStorageService {
                     exception
             );
         }
-    }
-
-    private String getFileExtension(
-            String originalFilename
-    ) {
-        if (originalFilename == null
-                || originalFilename.isBlank()) {
-            return "";
-        }
-
-        int lastDotIndex =
-                originalFilename.lastIndexOf(".");
-
-        if (lastDotIndex < 0) {
-            return "";
-        }
-
-        return originalFilename
-                .substring(lastDotIndex)
-                .toLowerCase();
     }
 
     private void validateFile(MultipartFile file) {

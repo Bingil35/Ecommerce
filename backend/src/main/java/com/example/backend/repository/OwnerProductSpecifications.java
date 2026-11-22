@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collection;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -61,6 +62,23 @@ public final class OwnerProductSpecifications {
             OffsetDateTime createdToExclusive,
             String sortKey
     ) {
+        return ofCategories(shopId, keyword, categoryId == null ? List.of() : List.of(categoryId), status,
+                stockStatus, lowStockThreshold, minPrice, maxPrice, createdFrom, createdToExclusive, sortKey);
+    }
+
+    public static Specification<Product> ofCategories(
+            UUID shopId,
+            String keyword,
+            Collection<UUID> categoryIds,
+            ProductStatus status,
+            StockStatus stockStatus,
+            int lowStockThreshold,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            OffsetDateTime createdFrom,
+            OffsetDateTime createdToExclusive,
+            String sortKey
+    ) {
         return (root, query, cb) -> {
 
             List<Predicate> predicates = new ArrayList<>();
@@ -71,10 +89,8 @@ public final class OwnerProductSpecifications {
                 predicates.add(cb.equal(root.get("status"), status));
             }
 
-            if (categoryId != null) {
-                predicates.add(
-                        cb.equal(root.get("category").get("id"), categoryId)
-                );
+            if (categoryIds != null && !categoryIds.isEmpty()) {
+                predicates.add(root.get("category").get("id").in(categoryIds));
             }
 
             String kw = normalizeKeyword(keyword);

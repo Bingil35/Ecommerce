@@ -6,6 +6,7 @@ import com.example.backend.dto.request.CreateProductRequest;
 import com.example.backend.dto.request.UpdateProductRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.BulkResultResponse;
+import com.example.backend.dto.response.CategoryResponse;
 import com.example.backend.dto.response.PageResponse;
 import com.example.backend.dto.response.ProductImportResponse;
 import com.example.backend.dto.response.ProductResponse;
@@ -36,6 +37,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
 
 /**
  * API quản lý sản phẩm của shop owner.
@@ -150,6 +152,7 @@ public class ProductController {
     public ApiResponse<PageResponse<ProductResponse>> getMyProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) List<UUID> categoryIds,
             @RequestParam(required = false) ProductStatus status,
             @RequestParam(required = false) StockStatus stockStatus,
             @RequestParam(required = false) BigDecimal minPrice,
@@ -169,7 +172,7 @@ public class ProductController {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
 
         ProductManagementService.Filter filter = new ProductManagementService.Filter(
-                myShop.getId(), keyword, categoryId, status, stockStatus,
+                myShop.getId(), keyword, categoryId, categoryIds, status, stockStatus,
                 minPrice, maxPrice, createdFrom, createdTo, sort
         );
 
@@ -195,6 +198,13 @@ public class ProductController {
         );
     }
 
+    @GetMapping("/categories")
+    public ApiResponse<List<CategoryResponse>> getMyProductRootCategories(Authentication authentication) {
+        Shop myShop = shopService.getMyShop(authentication.getName());
+        return ApiResponse.success("Lấy danh mục sản phẩm của cửa hàng thành công.",
+                managementService.rootCategoriesForShop(myShop.getId()));
+    }
+
     // =========================
     // EXPORT CSV (CÙNG BỘ LỌC VỚI DANH SÁCH, TỐI ĐA 10.000 DÒNG)
     // =========================
@@ -203,6 +213,7 @@ public class ProductController {
     public ResponseEntity<byte[]> exportProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) List<UUID> categoryIds,
             @RequestParam(required = false) ProductStatus status,
             @RequestParam(required = false) StockStatus stockStatus,
             @RequestParam(required = false) BigDecimal minPrice,
@@ -217,7 +228,7 @@ public class ProductController {
         Shop myShop = shopService.getMyShop(authentication.getName());
 
         ProductManagementService.Filter filter = new ProductManagementService.Filter(
-                myShop.getId(), keyword, categoryId, status, stockStatus,
+                myShop.getId(), keyword, categoryId, categoryIds, status, stockStatus,
                 minPrice, maxPrice, createdFrom, createdTo, sort
         );
 
@@ -296,27 +307,6 @@ public class ProductController {
                 "Xóa sản phẩm thành công.",
                 new BulkResultResponse(affected)
         );
-    }
-
-    // =========================
-    // DUPLICATE
-    // =========================
-
-    @PostMapping("/{id}/duplicate")
-    public ResponseEntity<ApiResponse<ProductResponse>> duplicateProduct(
-            @PathVariable UUID id,
-            Authentication authentication
-    ) {
-        ownership.assertProduct(id, authentication.getName());
-
-        Product copy = managementService.duplicate(id);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(
-                        "Nhân bản sản phẩm thành công.",
-                        mapper.toResponse(copy)
-                ));
     }
 
     // =========================
