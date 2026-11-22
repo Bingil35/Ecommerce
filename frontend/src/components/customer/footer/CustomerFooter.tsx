@@ -11,7 +11,7 @@ import InstagramIcon from '../../icons/InstagramIcon';
 const CustomerFooter = () => {
   return (
     <footer className="border-t border-[#E4EAF5] bg-white">
-      <div className="mx-auto w-full max-w-[1200px] px-4">
+      <div className="mx-auto w-full max-w-[1200px] min-w-0 px-3 sm:px-4">
         {/* Main footer */}
         <div
           className="

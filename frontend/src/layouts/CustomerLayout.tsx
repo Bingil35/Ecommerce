@@ -9,7 +9,7 @@ const CustomerLayout = () => {
     <div className="min-h-screen flex flex-col bg-[#F7FAFF]">
       <CustomerHeader />
 
-      <main className="flex-grow w-full">
+      <main className="min-w-0 w-full flex-grow">
         <Outlet />
       </main>
 
