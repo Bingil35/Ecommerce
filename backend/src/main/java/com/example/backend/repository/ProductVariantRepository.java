@@ -16,6 +16,7 @@ public interface ProductVariantRepository
     @org.springframework.data.jpa.repository.Query("select v from ProductVariant v join fetch v.product p where p.shopId = :shopId order by p.name asc, v.sku asc")
     List<ProductVariant> findAllByShopId(@org.springframework.data.repository.query.Param("shopId") UUID shopId);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "primaryMedia")
     Page<ProductVariant> findByProductId(UUID productId, Pageable pageable);
 
     interface VariantPriceSummary {
@@ -23,9 +24,11 @@ public interface ProductVariantRepository
         java.math.BigDecimal getMaxPrice();
         java.math.BigDecimal getMinComparePrice();
         java.math.BigDecimal getMaxComparePrice();
+        java.math.BigDecimal getMinCostPrice();
+        java.math.BigDecimal getMaxCostPrice();
     }
 
-    @org.springframework.data.jpa.repository.Query("select min(v.price) as minPrice, max(v.price) as maxPrice, min(v.comparePrice) as minComparePrice, max(v.comparePrice) as maxComparePrice from ProductVariant v where v.product.id = :productId")
+    @org.springframework.data.jpa.repository.Query("select min(v.price) as minPrice, max(v.price) as maxPrice, min(v.comparePrice) as minComparePrice, max(v.comparePrice) as maxComparePrice, min(v.costPrice) as minCostPrice, max(v.costPrice) as maxCostPrice from ProductVariant v where v.product.id = :productId")
     VariantPriceSummary summarizePrices(@org.springframework.data.repository.query.Param("productId") UUID productId);
 
     List<ProductVariant> findByProductIdOrderByCreatedAtAsc(

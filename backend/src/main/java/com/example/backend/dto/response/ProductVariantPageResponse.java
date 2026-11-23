@@ -19,6 +19,8 @@ public class ProductVariantPageResponse {
     private BigDecimal maxPrice;
     private BigDecimal minComparePrice;
     private BigDecimal maxComparePrice;
+    private BigDecimal minCostPrice;
+    private BigDecimal maxCostPrice;
 
     public ProductVariantPageResponse() {
     }
@@ -39,6 +41,8 @@ public class ProductVariantPageResponse {
             this.maxPrice = summary.getMaxPrice();
             this.minComparePrice = summary.getMinComparePrice();
             this.maxComparePrice = summary.getMaxComparePrice();
+            this.minCostPrice = summary.getMinCostPrice();
+            this.maxCostPrice = summary.getMaxCostPrice();
         }
     }
 
@@ -52,4 +56,6 @@ public class ProductVariantPageResponse {
     public BigDecimal getMaxPrice() { return maxPrice; }
     public BigDecimal getMinComparePrice() { return minComparePrice; }
     public BigDecimal getMaxComparePrice() { return maxComparePrice; }
+    public BigDecimal getMinCostPrice() { return minCostPrice; }
+    public BigDecimal getMaxCostPrice() { return maxCostPrice; }
 }

@@ -49,6 +49,8 @@ public class ShopOwnerProductStatsService {
         String query = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
         Comparator<ShopOwnerProductStatsResponse.Item> comparator = comparator(sortKey);
         List<ShopOwnerProductStatsResponse.Item> filtered = all.stream()
+                .filter(p -> p.getStatus() == com.example.backend.entity.ProductStatus.ACTIVE
+                        || p.getStatus() == com.example.backend.entity.ProductStatus.INACTIVE)
                 .filter(p -> query.isEmpty() || (p.getName() != null && p.getName().toLowerCase(Locale.ROOT).contains(query)))
                 .map(p -> item(p, variantsByProduct.get(p.getId()), lifetime.get(p.getId()), recent.get(p.getId())))
                 .sorted(comparator.thenComparing(ShopOwnerProductStatsResponse.Item::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))

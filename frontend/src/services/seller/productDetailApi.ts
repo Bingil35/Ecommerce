@@ -20,6 +20,7 @@ export interface ProductVariantDto {
   sku: string | null;
   price: number | null;
   comparePrice: number | null;
+  costPrice: number | null;
   stockQuantity: number | null;
   imageUrl: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'REJECTED';
@@ -37,6 +38,8 @@ export interface ProductVariantPage {
   maxPrice: number | null;
   minComparePrice: number | null;
   maxComparePrice: number | null;
+  minCostPrice: number | null;
+  maxCostPrice: number | null;
 }
 
 export interface ProductMediaDto {
