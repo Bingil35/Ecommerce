@@ -2,7 +2,7 @@ import { useDialog, useToast } from '../../context/FeedbackContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, BarChart3, ChevronRight, Eye, EyeOff, Image as ImageIcon,
+  ArrowLeft, BarChart3, Eye, EyeOff, Image as ImageIcon,
   LayoutGrid, Maximize2, MoreVertical, Package, Pencil, Play, Save, Star, Store, Trash2,
   Video as VideoIcon, Warehouse, X,
 } from 'lucide-react';
@@ -37,7 +37,7 @@ const statusStyle: Record<SellerProduct['status'], string> = {
 };
 
 const money = (v: number | null | undefined) =>
-  v == null ? '—' : `${new Intl.NumberFormat('vi-VN').format(v)}₫`;
+  v == null ? '—' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(v);
 
 const moneyRange = (values: Array<number | null | undefined>) => {
   const nums = values.filter((v): v is number => v != null);
@@ -46,6 +46,10 @@ const moneyRange = (values: Array<number | null | undefined>) => {
   const max = Math.max(...nums);
   return min === max ? money(min) : `${money(min)} – ${money(max)}`;
 };
+const discountPercent = (price?: number | null, comparePrice?: number | null) =>
+  price != null && comparePrice != null && comparePrice > price && comparePrice > 0
+    ? Math.round((1 - price / comparePrice) * 100)
+    : null;
 
 const dateText = (v?: string | null) => (v ? new Date(v).toLocaleString('vi-VN') : '—');
 
@@ -81,6 +85,7 @@ export default function SellerProductDetailPage() {
   const [variantMeta, setVariantMeta] = useState<Omit<ProductVariantPage, 'items'>>({
     page: 0, size: 10, totalElements: 0, totalPages: 0, last: true,
     minPrice: null, maxPrice: null, minComparePrice: null, maxComparePrice: null,
+    minCostPrice: null, maxCostPrice: null,
   });
   const [variantsLoading, setVariantsLoading] = useState(false);
   const pagingRef = useRef({ page: 0, size: 10 });
@@ -93,7 +98,7 @@ export default function SellerProductDetailPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [tab, setTab] = useState<Tab>('variants');
+  const [tab, setTab] = useState<Tab>('description');
   const [activeIdx, setActiveIdx] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -262,31 +267,25 @@ export default function SellerProductDetailPage() {
   const canToggle = product.status === 'ACTIVE' || product.status === 'INACTIVE';
   const optionSummary = options.length ? `${options.length} thuộc tính` : 'Không có';
   const optionNames = options.map(o => o.name).join(', ');
+  const summaryDiscount = discountPercent(variantMeta.minPrice ?? product.minPrice, variantMeta.minComparePrice);
 
-  return <main className="seller-container pb-12 pt-5" style={{ maxWidth: 1440 }}>
-    {/* Breadcrumb */}
-    <nav className="mb-2 flex flex-wrap items-center gap-1.5 text-[13px] text-[#3B4BA8]">
-      <Link to="/seller/products" className="hover:underline">Sản phẩm</Link><ChevronRight size={14} className="text-slate-400" />
-      <Link to="/seller/products" className="hover:underline">Danh sách sản phẩm</Link><ChevronRight size={14} className="text-slate-400" />
-      <span>Chi tiết sản phẩm</span>
-    </nav>
-
-    {/* Tiêu đề + hành động */}
+  return <main className="seller-container pb-12 pt-5" style={{ maxWidth: 1200 }}>
+{/* Tiêu đề + hành động */}
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <button type="button" onClick={() => navigate('/seller/products')} aria-label="Quay lại"
           className="grid h-10 w-10 place-items-center rounded-full bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"><ArrowLeft size={18} /></button>
-        <h1 className="text-[26px] font-extrabold tracking-tight text-[#1B2559]">Chi tiết sản phẩm</h1>
+        <h1 className="text-[26px] font-semibold tracking-tight text-[#1B2559]">Chi tiết sản phẩm</h1>
       </div>
       <div className="flex items-center gap-2.5">
         {editing ? <>
           <button type="button" onClick={() => { setEditing(false); fillForm(product); setError(''); }}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm"><X size={16} /> Hủy</button>
+            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm"><X size={16} /> Hủy</button>
           <button form="seller-product-edit" disabled={busy}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#5367C9] px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:opacity-50"><Save size={16} />{busy ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
+            className="inline-flex items-center gap-2 rounded-xl bg-[#5367C9] px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Save size={16} />{busy ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
         </> : <>
           <button type="button" onClick={() => navigate(`/seller/products/${product.id}/edit`, { state: { returnTo: `/seller/products/${product.id}` } })}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#1B2559] shadow-sm transition hover:bg-slate-50"><Pencil size={15} className="text-[#5367C9]" /> Sửa</button>
+            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#1B2559] shadow-sm transition hover:bg-slate-50"><Pencil size={15} className="text-[#5367C9]" /> Sửa</button>
         </>}
         <div className="relative" ref={menuRef}>
           <button type="button" aria-label="Thêm" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}
@@ -339,18 +338,17 @@ export default function SellerProductDetailPage() {
                 <textarea rows={5} value={form.description} onChange={e => setForm(v => ({ ...v, description: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 leading-6" /></label>
               <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">Giá, SKU, biến thể và tồn kho được quản lý riêng trong phần kho hàng.</p>
             </form> : <>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${statusStyle[product.status]}`}>
-                <Store size={14} className="text-[#5367C9]" />{product.status} ({statusText[product.status]})
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[product.status]}`}>
+                <Store size={14} className="text-[#5367C9]" />{statusText[product.status]}
               </span>
-              <h2 className="mt-3 break-words text-[28px] font-extrabold leading-tight tracking-tight text-[#1B2559]">{product.name}</h2>
+              <h2 className="mt-3 break-words text-[28px] font-semibold leading-tight tracking-tight text-[#1B2559]">{product.name}</h2>
 
-              <div className="mt-6 grid grid-cols-1 gap-y-4 sm:grid-cols-[1.3fr_1.3fr_1fr]">
-                <div><p className="text-sm font-bold text-[#1B2559]">Giá bán</p><p className="mt-1.5 text-xl font-extrabold text-[#5367C9]">{moneyRange(variantMeta.totalElements ? [variantMeta.minPrice, variantMeta.maxPrice] : [product.minPrice, product.maxPrice])}</p></div>
-                <div className="sm:border-l sm:border-slate-200 sm:pl-4"><p className="text-sm font-bold text-[#1B2559]">Giá so sánh</p><p className="mt-1.5 text-lg text-slate-700">{moneyRange([variantMeta.minComparePrice, variantMeta.maxComparePrice])}</p></div>
-                <div className="sm:border-l sm:border-slate-200 sm:pl-4"><p className="text-sm font-bold text-[#1B2559]">Tổng tồn kho</p><p className="mt-1.5 text-lg text-slate-700">{product.totalStock ?? 0} sản phẩm</p></div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="min-w-0 rounded-xl bg-slate-50 p-3 sm:p-4"><p className="text-xs font-medium text-slate-500">Giá bán</p><div className="mt-2 flex flex-wrap items-center gap-2"><p className="break-words text-base font-semibold text-[#5367C9] sm:text-lg">{moneyRange(variantMeta.totalElements ? [variantMeta.minPrice, variantMeta.maxPrice] : [product.minPrice, product.maxPrice])}</p>{summaryDiscount != null && <span className="rounded-full bg-rose-50 px-2 py-1 text-xs font-medium text-rose-600">-{summaryDiscount}%</span>}</div></div>
+                <div className="min-w-0 rounded-xl bg-slate-50 p-3 sm:p-4"><p className="text-xs font-medium text-slate-500">Giá so sánh</p><p className="mt-2 break-words text-base font-medium text-slate-700 sm:text-lg">{moneyRange([variantMeta.minComparePrice, variantMeta.maxComparePrice])}</p></div>
+                <div className="min-w-0 rounded-xl bg-slate-50 p-3 sm:p-4"><p className="text-xs font-medium text-slate-500">Giá gốc (giá nhập)</p><p className="mt-2 break-words text-base font-medium text-slate-700 sm:text-lg">{moneyRange([variantMeta.minCostPrice, variantMeta.maxCostPrice])}</p></div>
+                <div className="min-w-0 rounded-xl bg-slate-50 p-3 sm:p-4"><p className="text-xs font-medium text-slate-500">Tổng tồn kho</p><p className="mt-2 break-words text-base font-medium text-slate-700 sm:text-lg">{(product.totalStock ?? 0).toLocaleString('vi-VN')} sản phẩm</p></div>
               </div>
-
-              <p className="mt-6 line-clamp-3 whitespace-pre-line text-sm leading-6 text-[#3B4BA8]">{product.description || 'Chưa có mô tả cho sản phẩm này.'}</p>
 
               {tags.length > 0 && <div className="mt-4 flex flex-wrap gap-2">
                 {tags.map(t => <span key={t} className="rounded-full bg-[#E8ECFB] px-3.5 py-1.5 text-[13px] font-medium text-[#5367C9]">{t}</span>)}
@@ -364,7 +362,7 @@ export default function SellerProductDetailPage() {
       <aside className="rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(27,37,89,.06)]">
         <div className="mb-3 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-[#E8ECFB] text-[#5367C9]"><BarChart3 size={20} /></span>
-          <h3 className="text-xl font-extrabold text-[#1B2559]">Tổng quan</h3>
+          <h3 className="text-xl font-semibold text-[#1B2559]">Tổng quan</h3>
         </div>
         <dl className="divide-y divide-slate-100">
           <OverviewRow icon={<Package size={18} />} label="Phân loại" value={optionSummary} hint={optionNames} />
@@ -379,18 +377,18 @@ export default function SellerProductDetailPage() {
     {/* Tabs */}
     <section className="mt-5 rounded-2xl bg-white px-5 pb-5 pt-2 shadow-[0_4px_20px_rgba(27,37,89,.06)]">
       <div role="tablist" className="flex gap-8 overflow-x-auto border-b border-slate-200">
-        {([['variants', `Biến thể (${variantMeta.totalElements})`], ['reviews', `Đánh giá (${reviews.length})`], ['description', 'Thông tin mô tả'], ['other', 'Thông tin khác']] as Array<[Tab, string]>).map(([key, label]) =>
+        {([['description', 'Thông tin mô tả'], ['variants', `Biến thể (${variantMeta.totalElements})`], ['reviews', `Đánh giá (${reviews.length})`], ['other', 'Thông tin khác']] as Array<[Tab, string]>).map(([key, label]) =>
           <button key={key} role="tab" aria-selected={tab === key} type="button" onClick={() => setTab(key)}
-            className={`-mb-px whitespace-nowrap border-b-2 px-3 py-3.5 text-[15px] font-bold transition ${tab === key ? 'border-[#5367C9] text-[#5367C9]' : 'border-transparent font-medium text-[#3B4BA8] hover:text-[#5367C9]'}`}>{label}</button>)}
+            className={`-mb-px whitespace-nowrap border-b-2 px-3 py-3.5 text-[15px] font-semibold transition ${tab === key ? 'border-[#5367C9] text-[#5367C9]' : 'border-transparent font-medium text-[#3B4BA8] hover:text-[#5367C9]'}`}>{label}</button>)}
       </div>
 
       {tab === 'variants' && <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
         {variantMeta.totalElements === 0 ? <p className="p-6 text-center text-sm text-slate-500">Sản phẩm chưa có biến thể.</p> :
           <table className="w-full min-w-[760px] text-left text-[15px]">
             <thead><tr className="bg-slate-50 text-[#1B2559]">
-              <th className="px-5 py-3 font-bold">Biến thể</th><th className="px-3 py-3 font-bold">SKU</th>
-              <th className="px-3 py-3 font-bold">Giá bán</th><th className="px-3 py-3 font-bold">Giá so sánh</th>
-              <th className="px-3 py-3 text-center font-bold">Tồn kho</th>
+              <th className="px-5 py-3 font-semibold">Biến thể</th><th className="px-3 py-3 font-semibold">SKU</th>
+              <th className="px-3 py-3 font-semibold">Giá bán</th><th className="px-3 py-3 font-semibold">Giá so sánh</th>
+              <th className="px-3 py-3 text-center font-semibold">Tồn kho</th>
             </tr></thead>
             <tbody>{variantRows.map(v => <tr key={v.id} className={`border-t border-slate-100 text-slate-800 hover:bg-slate-50/60 ${v.status === 'INACTIVE' ? 'opacity-60' : ''}`}>
               <td className="px-5 py-2.5"><span className="flex items-center gap-3">
@@ -400,7 +398,7 @@ export default function SellerProductDetailPage() {
                 {v.label}{v.status === 'INACTIVE' && <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] text-slate-600">Ẩn</span>}
               </span></td>
               <td className="px-3 py-2.5 font-medium tracking-tight">{v.sku || '—'}</td>
-              <td className="px-3 py-2.5">{money(v.price)}</td>
+              <td className="px-3 py-2.5"><span className="inline-flex items-center gap-2">{money(v.price)}{discountPercent(v.price,v.comparePrice) != null && <span className="rounded-full bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-600">-{discountPercent(v.price,v.comparePrice)}%</span>}</span></td>
               <td className="px-3 py-2.5">{money(v.comparePrice)}</td>
               <td className="px-3 py-2.5 text-center">{v.stock}</td>
             </tr>)}</tbody>
@@ -419,7 +417,7 @@ export default function SellerProductDetailPage() {
         <OtherRow label="Đường dẫn sản phẩm" value={product.slug || '—'} />
         <OtherRow label="Nổi bật" value={product.featured ? 'Có' : 'Không'} />
         <OtherRow label="Đánh giá" value={`${product.ratingAverage ?? 0} / 5 · ${product.ratingCount ?? 0} lượt`} />
-        <OtherRow label="Trạng thái" value={`${product.status} (${statusText[product.status]})`} />
+        <OtherRow label="Trạng thái" value={statusText[product.status]} />
         <OtherRow label="Ngày tạo" value={dateText(product.createdAt)} />
         <OtherRow label="Cập nhật gần nhất" value={dateText(product.updatedAt)} />
       </dl>}
@@ -442,7 +440,7 @@ export default function SellerProductDetailPage() {
 function OverviewRow({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
   return <div className="flex items-center gap-3 py-3">
     <span className="text-slate-700">{icon}</span>
-    <dt className="w-[120px] shrink-0 whitespace-nowrap font-bold text-[#1B2559]">{label}</dt>
+    <dt className="w-[120px] shrink-0 whitespace-nowrap font-semibold text-[#1B2559]">{label}</dt>
     <dd title={hint || undefined} className="min-w-0 flex-1 break-words text-right text-sm text-[#3B4BA8]">{value}</dd>
   </div>;
 }
@@ -502,7 +500,7 @@ function ReviewsPanel({ reviews, error, onReply }: {
     {/* Tổng hợp */}
     <div className="grid gap-6 rounded-xl bg-[#F1F4FD] p-5 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center">
       <div className="text-center">
-        <p className="text-4xl font-extrabold text-[#5367C9]">{avg.toFixed(1)}<span className="text-lg font-semibold text-slate-500"> / 5</span></p>
+        <p className="text-4xl font-semibold text-[#5367C9]">{avg.toFixed(1)}<span className="text-lg font-semibold text-slate-500"> / 5</span></p>
         <div className="mt-1 flex justify-center"><Stars value={avg} size={20} /></div>
         <p className="mt-1 text-sm text-slate-600">{total} đánh giá</p>
       </div>
@@ -529,7 +527,7 @@ function ReviewsPanel({ reviews, error, onReply }: {
       {shown.map(r => <li key={r.id} className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="font-bold text-[#1B2559]">{r.customerName || 'Khách hàng'}</p>
+            <p className="font-semibold text-[#1B2559]">{r.customerName || 'Khách hàng'}</p>
             <p className="mt-0.5 text-xs text-slate-500">{reviewDate(r.createdAt)}</p>
           </div>
           <Stars value={r.rating} />
@@ -537,7 +535,7 @@ function ReviewsPanel({ reviews, error, onReply }: {
         {r.content ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{r.content}</p> : <p className="mt-3 text-sm italic text-slate-400">Khách không để lại nội dung.</p>}
 
         {r.replies.map(reply => <div key={reply.id} className="mt-3 rounded-lg bg-[#F1F4FD] p-3 text-sm">
-          <p className="font-bold text-[#5367C9]">Phản hồi của cửa hàng <span className="ml-1 text-xs font-normal text-slate-500">{reviewDate(reply.createdAt)}</span></p>
+          <p className="font-semibold text-[#5367C9]">Phản hồi của cửa hàng <span className="ml-1 text-xs font-normal text-slate-500">{reviewDate(reply.createdAt)}</span></p>
           <p className="mt-1 whitespace-pre-wrap text-slate-700">{reply.content}</p>
         </div>)}
 
