@@ -4,14 +4,14 @@ import { CalendarDays, ChevronLeft, ChevronRight, Package, Search, Store } from 
 import { useAuth } from '../../context/AuthContext';
 import { checkoutApi, formatDateTime, formatMoney, getApiError } from '../../services/checkout/checkoutApi';
 import type { OrderListItem, OrderStatus, PageResponse } from '../../services/checkout/checkoutTypes';
+import { orderStatusClasses, orderStatusLabels } from '../../services/checkout/orderStatusPresentation';
 
 const statuses: { value: OrderStatus | ''; label: string }[] = [
-  { value: '', label: 'Tất cả trạng thái' }, { value: 'PENDING', label: 'Chờ xác nhận' },
-  { value: 'CONFIRMED', label: 'Đã xác nhận' }, { value: 'SHIPPING', label: 'Đang vận chuyển' },
-  { value: 'DELIVERED', label: 'Hoàn thành' }, { value: 'CANCELLED', label: 'Đã hủy' },
+  { value: '', label: 'Tất cả trạng thái' }, { value: 'PENDING', label: orderStatusLabels.PENDING },
+  { value: 'CONFIRMED', label: orderStatusLabels.CONFIRMED }, { value: 'SHIPPING', label: orderStatusLabels.SHIPPING },
+  { value: 'DELIVERED', label: orderStatusLabels.DELIVERED }, { value: 'CANCELLED', label: orderStatusLabels.CANCELLED },
 ];
-const labels: Record<OrderStatus, string> = { PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', SHIPPING: 'Đang vận chuyển', DELIVERED: 'Hoàn thành', CANCELLED: 'Đã hủy' };
-const colors: Record<OrderStatus, string> = { PENDING: 'bg-amber-50 text-amber-700', CONFIRMED: 'bg-blue-50 text-blue-700', SHIPPING: 'bg-indigo-50 text-indigo-700', DELIVERED: 'bg-emerald-50 text-emerald-700', CANCELLED: 'bg-rose-50 text-rose-700' };
+const paymentLabels = { PAID: 'Đã thanh toán', PENDING: 'Chờ thanh toán', FAILED: 'Thanh toán thất bại', REFUNDED: 'Đã hoàn tiền' } as const;
 
 export default function OrderHistoryPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -42,7 +42,7 @@ export default function OrderHistoryPage() {
   const goPage = (n: number) => { const next = new URLSearchParams(params); next.set('page', String(n)); setParams(next); };
 
   return <main className="min-h-[70vh] bg-[#F7F9FD] px-3 py-8 sm:px-5"><div className="mx-auto w-full max-w-[1200px] rounded-2xl border border-[#E6EAF3] bg-white p-5 shadow-[0_6px_24px_rgba(40,55,90,.04)] sm:p-7">
-    <div className="mb-5"><h1 className="text-xl font-bold text-[#252B40]">Đơn mua</h1><p className="mt-1 text-sm text-[#7A8498]">Danh sách các đơn hàng đã đặt</p></div>
+    <div className="mb-5"><h1 className="text-xl font-semibold text-[#252B40]">Đơn mua</h1><p className="mt-1 text-sm text-[#7A8498]">Danh sách các đơn hàng đã đặt</p></div>
     <div role="tablist" aria-label="Lọc đơn hàng theo trạng thái" className="mb-4 flex gap-2 overflow-x-auto border-b border-[#E9EDF4] [scrollbar-width:none]">
       {statuses.map(item => <button key={item.value || 'ALL'} type="button" role="tab" aria-selected={status === item.value} onClick={() => { setStatus(item.value); applyFilters(item.value); }} className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-semibold transition ${status === item.value ? 'border-[#596BD0] text-[#596BD0]' : 'border-transparent text-[#737F94] hover:text-[#3F4B63]'}`}>{item.label}</button>)}
     </div>
@@ -54,8 +54,8 @@ export default function OrderHistoryPage() {
     </form>
     {error && <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
     {loading ? <div className="rounded-2xl bg-white p-12 text-center text-sm text-[#697386]">Đang tải đơn hàng...</div> : data?.items.length ? <div className="space-y-3">{data.items.map(order => <article key={order.id} className="rounded-2xl border border-[#E7EBF3] bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF1F6] pb-3"><div><div className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#2A344D]"><Package size={17} className="text-[#596BD0]"/>Đơn {order.orderCode}<span className="text-[#9AA3B4]">·</span><Store size={15} className="text-[#778197]"/>{order.shopName ?? 'Cửa hàng'}</div><p className="mt-1 flex items-center gap-1.5 text-xs text-[#818A9D]"><CalendarDays size={13}/>{formatDateTime(order.createdAt)}</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${colors[order.status]}`}>{labels[order.status]}</span></div>
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-3"><div className="space-y-1 text-xs text-[#778197]"><p>Thanh toán: <strong className="text-[#46516A]">{order.paymentMethod ?? '—'} · {order.paymentStatus === 'PAID' ? 'Đã thanh toán' : order.paymentStatus === 'PENDING' ? 'Chờ thanh toán' : order.paymentStatus}</strong></p><p>Tạm tính {formatMoney(order.subtotal)} · Giảm {formatMoney(order.discountAmount)}</p></div><div className="text-right"><p className="text-xs text-[#818A9D]">Thành tiền đơn này</p><p className="text-lg font-bold text-[#596BD0]">{formatMoney(order.totalAmount)}</p></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF1F6] pb-3"><div><div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#2A344D]"><Package size={17} className="text-[#596BD0]"/>Đơn {order.orderCode}<span className="text-[#9AA3B4]">·</span><Store size={15} className="text-[#778197]"/>{order.shopName ?? 'Cửa hàng'}</div><p className="mt-1 flex items-center gap-1.5 text-xs text-[#818A9D]"><CalendarDays size={13}/>{formatDateTime(order.createdAt)}</p></div><span className={`rounded-full px-3 py-1 text-xs font-medium ${orderStatusClasses[order.status]}`}>{orderStatusLabels[order.status]}</span></div>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-3"><div className="space-y-1 text-xs text-[#778197]"><p>Thanh toán: <strong className="font-medium text-[#46516A]">{order.paymentMethod ?? '—'} · {paymentLabels[order.paymentStatus]}</strong></p><p>Tạm tính {formatMoney(order.subtotal)} · Giảm {formatMoney(order.discountAmount)}</p></div><div className="text-right"><p className="text-xs text-[#818A9D]">Thành tiền đơn này</p><p className="text-lg font-semibold text-[#596BD0]">{formatMoney(order.totalAmount)}</p></div></div>
       <div className="mt-4 flex justify-end"><Link to={`/orders/sub-orders/${order.id}`} className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#DCE3F4] px-4 text-xs font-semibold text-[#596BD0] hover:bg-[#F4F6FF]">Xem chi tiết <ChevronRight size={15}/></Link></div>
     </article>)}</div> : <div className="rounded-2xl border border-[#E7EBF3] bg-white px-6 py-16 text-center"><Package size={30} className="mx-auto text-[#A7B0C1]"/><p className="mt-3 font-semibold text-[#35405A]">Chưa tìm thấy đơn hàng</p><p className="mt-1 text-sm text-[#7A8498]">Thử thay đổi bộ lọc hoặc tiếp tục mua sắm.</p><Link to="/products" className="mt-4 inline-flex rounded-xl bg-[#596BD0] px-5 py-2.5 text-sm font-semibold text-white">Khám phá sản phẩm</Link></div>}
     {data && data.totalPages > 1 && <div className="mt-5 flex items-center justify-between rounded-xl border border-[#E7EBF3] bg-white px-4 py-3"><span className="text-xs text-[#778197]">Trang {data.page + 1}/{data.totalPages} · {data.totalElements} đơn shop</span><div className="flex gap-2"><button disabled={data.page === 0} onClick={() => goPage(data.page - 1)} className="rounded-lg border p-2 text-[#596BD0] disabled:opacity-30"><ChevronLeft size={17}/></button><button disabled={data.last} onClick={() => goPage(data.page + 1)} className="rounded-lg border p-2 text-[#596BD0] disabled:opacity-30"><ChevronRight size={17}/></button></div></div>}

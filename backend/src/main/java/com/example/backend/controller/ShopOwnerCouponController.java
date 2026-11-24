@@ -13,6 +13,7 @@ import com.example.backend.service.NotificationService;
 import com.example.backend.entity.NotificationType;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,9 +41,12 @@ public class ShopOwnerCouponController {
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ApiResponse<ShopCouponResponse> update(Authentication auth, @PathVariable UUID id, @RequestBody ShopCouponRequest request) {
         var shop = shops.getMyShop(auth.getName());
-        Coupon coupon = coupons.findById(id).filter(c -> c.getShop() != null && c.getShop().getId().equals(shop.getId())).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khuyến mãi."));
+        Coupon coupon = coupons.findByIdForUpdate(id).filter(c -> c.getShop() != null && c.getShop().getId().equals(shop.getId())).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khuyến mãi."));
+        if (coupon.getUsedCount() != null && coupon.getUsedCount() > 0)
+            throw new IllegalArgumentException("Không thể chỉnh sửa khuyến mãi đã có khách hàng sử dụng.");
         boolean wasInactive=coupon.getStatus()!=CouponStatus.ACTIVE;
         apply(coupon, request);
         coupon=coupons.save(coupon);

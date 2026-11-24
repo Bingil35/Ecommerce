@@ -3,6 +3,7 @@ import axiosClient from '../api/axiosClient';
 export interface ProductReview {
   id: string; productId: string; productName: string; customerName: string | null;
   rating: number; content: string | null; createdAt: string; likeCount: number; likedByMe: boolean;
+  subOrderId: string | null; orderCode: string | null; imageUrl: string | null; variantOptions: string[];
   replies: { id: string; content: string; createdAt: string }[];
 }
 type Envelope<T> = { data: T; message?: string } | T;

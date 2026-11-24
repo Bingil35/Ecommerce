@@ -7,6 +7,7 @@ import com.example.backend.repository.OrderRepository;
 import com.example.backend.repository.SubOrderRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.repository.OrderDetailRepository;
+import com.example.backend.repository.VariantOptionValueRepository;
 import com.example.backend.dto.response.PageResponse;
 import com.example.backend.dto.response.ShopOwnerOrderResponse;
 import com.example.backend.dto.response.OrderDetailResponse;
@@ -23,10 +24,10 @@ import org.springframework.data.jpa.domain.Specification;
 public class ShopOwnerOrderService {
     private static final Set<OrderStatus> FORWARD = Set.of(OrderStatus.CONFIRMED);
     private final UserRepository users; private final SubOrderRepository subOrders; private final OrderStatusHistoryRepository histories; private final OrderRepository orders; private final OrderDetailRepository orderDetails;
-    private final NotificationService notificationService;
-    public ShopOwnerOrderService(UserRepository users, SubOrderRepository subOrders, OrderStatusHistoryRepository histories, OrderRepository orders, OrderDetailRepository orderDetails, NotificationService notificationService) {
+    private final NotificationService notificationService; private final VariantOptionValueRepository variantOptionValues;
+    public ShopOwnerOrderService(UserRepository users, SubOrderRepository subOrders, OrderStatusHistoryRepository histories, OrderRepository orders, OrderDetailRepository orderDetails, NotificationService notificationService, VariantOptionValueRepository variantOptionValues) {
         this.users=users; this.subOrders=subOrders; this.histories=histories; this.orders=orders; this.orderDetails=orderDetails;
-        this.notificationService=notificationService;
+        this.notificationService=notificationService; this.variantOptionValues=variantOptionValues;
     }
     @Transactional(readOnly = true)
     public PageResponse<ShopOwnerOrderResponse> list(String email, OrderStatus status, String keyword, int page, int size) {
@@ -51,7 +52,7 @@ public class ShopOwnerOrderService {
             OrderAddress a=sub.getOrderAddress();
             var address=a==null?null:new OrderDetailResponse.AddressSnapshot(a.getRecipientName(),a.getRecipientPhone(),a.getRecipientCity(),a.getWard(),a.getAddressDetail());
             var history=histories.findBySubOrder_IdOrderByCreatedAtAsc(sub.getId()).stream().map(h->new OrderDetailResponse.StatusHistoryView(h.getOldStatus(),h.getNewStatus(),h.getNote(),h.getCreatedAt())).toList();
-            var lines=orderDetails.findBySubOrder_Id(sub.getId()).stream().map(d->new OrderDetailResponse.OrderLineView(d.getId(),d.getVariant()==null?null:d.getVariant().getProduct().getId(),d.getVariant()==null?null:d.getVariant().getId(),d.getProductName(),d.getPrice(),d.getQuantity(),d.getDiscountAmount(),d.getTotalAmount())).toList();
+            var lines=orderDetails.findBySubOrder_Id(sub.getId()).stream().map(this::orderLine).toList();
             return new ShopOwnerOrderResponse(sub.getId(),sub.getOrder().getOrderCode(),sub.getOrder().getUser().getFullName(),sub.getStatus(),sub.getOrder().getPayment()==null?null:sub.getOrder().getPayment().getPaymentMethod(),sub.getOrder().getPaymentStatus(),sub.getSubtotal(),sub.getDiscountAmount(),sub.getTotalAmount(),sub.getCreatedAt(),address,history,lines);
         });
     }
@@ -62,8 +63,17 @@ public class ShopOwnerOrderService {
         OrderAddress a=sub.getOrderAddress();
         var address=a==null?null:new OrderDetailResponse.AddressSnapshot(a.getRecipientName(),a.getRecipientPhone(),a.getRecipientCity(),a.getWard(),a.getAddressDetail());
         var history=histories.findBySubOrder_IdOrderByCreatedAtAsc(sub.getId()).stream().map(h->new OrderDetailResponse.StatusHistoryView(h.getOldStatus(),h.getNewStatus(),h.getNote(),h.getCreatedAt())).toList();
-        var lines=orderDetails.findBySubOrder_Id(sub.getId()).stream().map(d->new OrderDetailResponse.OrderLineView(d.getId(),d.getVariant()==null?null:d.getVariant().getProduct().getId(),d.getVariant()==null?null:d.getVariant().getId(),d.getProductName(),d.getPrice(),d.getQuantity(),d.getDiscountAmount(),d.getTotalAmount())).toList();
+        var lines=orderDetails.findBySubOrder_Id(sub.getId()).stream().map(this::orderLine).toList();
         return new ShopOwnerOrderResponse(sub.getId(),sub.getOrder().getOrderCode(),sub.getOrder().getUser().getFullName(),sub.getStatus(),sub.getOrder().getPayment()==null?null:sub.getOrder().getPayment().getPaymentMethod(),sub.getOrder().getPaymentStatus(),sub.getSubtotal(),sub.getDiscountAmount(),sub.getTotalAmount(),sub.getCreatedAt(),address,history,lines);
+    }
+    private OrderDetailResponse.OrderLineView orderLine(OrderDetail detail) {
+        ProductVariant variant=detail.getVariant();
+        var variantId=variant==null?null:variant.getId();
+        var product=variant==null?null:variant.getProduct();
+        var options=variantId==null?java.util.List.<String>of():variantOptionValues.findWithOptionsByVariantIdIn(java.util.List.of(variantId)).stream()
+                .map(link->link.getOptionValue().getProductOption().getName()+": "+link.getOptionValue().getValue()).toList();
+        String image=variant!=null&&variant.getPrimaryMedia()!=null?variant.getPrimaryMedia().getUrl():product==null?null:product.getThumbnailUrl();
+        return new OrderDetailResponse.OrderLineView(detail.getId(),product==null?null:product.getId(),variantId,detail.getProductName(),image,options,detail.getPrice(),detail.getQuantity(),detail.getDiscountAmount(),detail.getTotalAmount());
     }
     @Transactional
     public void updateStatus(String email, UUID subOrderId, OrderStatus next, String note) {
