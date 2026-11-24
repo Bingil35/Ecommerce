@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ShopRepository extends JpaRepository<Shop, UUID> {
+    long countByCreatedAtBefore(java.time.OffsetDateTime before);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Shop s where s.id=:id")
     Optional<Shop> findByIdForUpdate(@Param("id") UUID id);

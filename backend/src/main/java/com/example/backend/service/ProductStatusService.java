@@ -55,6 +55,47 @@ public class ProductStatusService {
         return productRepository.save(product);
     }
 
+    /** Admin duyệt/từ chối sản phẩm đang chờ; các trạng thái khác không thể bị ghi đè ở đây. */
+    @Transactional
+    public Product reviewPendingProduct(UUID productId, ProductStatus target) {
+        if (target != ProductStatus.ACTIVE && target != ProductStatus.REJECTED) {
+            throw new BusinessException("Admin chỉ có thể duyệt hoặc từ chối sản phẩm.");
+        }
+        Product product = productRepository.findForOptionWrite(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."));
+        if (product.getStatus() != ProductStatus.PENDING) {
+            throw new BusinessException("Sản phẩm này không còn ở trạng thái chờ duyệt.");
+        }
+        if (target == ProductStatus.ACTIVE) {
+            assertActivatable(product, "Sản phẩm \"" + product.getName() + "\"");
+        }
+        product.setStatus(target);
+        return productRepository.save(product);
+    }
+
+    @Transactional
+    public int reviewPendingProducts(List<UUID> productIds, ProductStatus target) {
+        if (target != ProductStatus.ACTIVE && target != ProductStatus.REJECTED) {
+            throw new BusinessException("Admin chỉ có thể duyệt hoặc từ chối sản phẩm.");
+        }
+        if (productIds == null || productIds.isEmpty() || productIds.size() != productIds.stream().distinct().count()) {
+            throw new BusinessException("Danh sách sản phẩm cần xử lý không hợp lệ.");
+        }
+        List<Product> pending = productIds.stream().map(id -> productRepository.findForOptionWrite(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm."))).toList();
+        for (Product product : pending) {
+            if (product.getStatus() != ProductStatus.PENDING) {
+                throw new BusinessException("Một hoặc nhiều sản phẩm không còn ở trạng thái chờ duyệt.");
+            }
+            if (target == ProductStatus.ACTIVE) {
+                assertActivatable(product, "Sản phẩm \"" + product.getName() + "\"");
+            }
+        }
+        pending.forEach(product -> product.setStatus(target));
+        productRepository.saveAll(pending);
+        return pending.size();
+    }
+
     /**
      * Tất cả hoặc không gì cả: kiểm tra từng sản phẩm TRƯỚC khi sửa bất kỳ sản phẩm nào;
      * nếu có sản phẩm không hợp lệ thì ném lỗi và transaction rollback toàn bộ.

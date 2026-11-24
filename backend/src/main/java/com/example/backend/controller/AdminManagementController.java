@@ -16,6 +16,7 @@ import com.example.backend.repository.*;
 import com.example.backend.service.LocalStorageService;
 import com.example.backend.service.MediaFileInspector;
 import com.example.backend.service.NotificationService;
+import com.example.backend.service.ProductStatusService;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -25,16 +26,19 @@ public class AdminManagementController {
     private final CategoryRepository categories;
     private final ProductRepository products;
     private final NotificationService notificationService; private final LocalStorageService storage; private final MediaFileInspector inspector;
+    private final ProductStatusService productStatusService;
     public AdminManagementController(UserRepository users, UserRoleRepository userRoles, ShopRepository shops,
             CouponRepository coupons, SystemBannerRepository banners, OrderRepository orders, CategoryRepository categories, ProductRepository products,
-            NotificationService notificationService, LocalStorageService storage, MediaFileInspector inspector) {
+            NotificationService notificationService, LocalStorageService storage, MediaFileInspector inspector, ProductStatusService productStatusService) {
         this.users=users; this.userRoles=userRoles; this.shops=shops; this.coupons=coupons; this.banners=banners; this.orders=orders; this.categories=categories; this.products=products;
         this.notificationService=notificationService;this.storage=storage;this.inspector=inspector;
+        this.productStatusService=productStatusService;
     }
     @GetMapping("/dashboard") @Transactional(readOnly=true)
     public ApiResponse<Map<String,Object>> dashboard() {
         Map<String,Object> d=new LinkedHashMap<>(); d.put("users",users.count()); d.put("shops",shops.count());
         d.put("pendingShops",shops.findByStatusOrderByShopNameAsc(ShopStatus.PENDING).size()); d.put("products",products.count());
+        d.put("pendingProducts",products.countByStatus(ProductStatus.PENDING));
         d.put("categories",categories.count()); d.put("orders",orders.count());
         d.put("revenue",orders.sumTotalAmount());
         d.put("activeCoupons",coupons.findAll().stream().filter(c->c.getScope()==CouponScope.PLATFORM && c.getStatus()==CouponStatus.ACTIVE).count());
@@ -51,6 +55,33 @@ public class AdminManagementController {
     }
     private Map<String,Object> userView(User u) { Map<String,Object> m=new LinkedHashMap<>(); m.put("id",u.getId());m.put("fullName",u.getFullName());m.put("email",u.getEmail());m.put("phone",u.getPhone());m.put("avatarUrl",u.getAvatarUrl());m.put("status",u.getStatus());m.put("roles",userRoles.findRoleNamesByUserId(u.getId()));m.put("createdAt",u.getCreatedAt());m.put("lastLoginAt",u.getLastLoginAt());return m; }
     private String safe(String s){return s==null?"":s;}
+    @GetMapping("/products/pending") @Transactional(readOnly=true)
+    public ApiResponse<List<Map<String,Object>>> pendingProducts() {
+        List<Map<String,Object>> result = products.findByStatusOrderByCreatedAtDesc(ProductStatus.PENDING).stream().map(p -> {
+            Map<String,Object> m=new LinkedHashMap<>(); m.put("id",p.getId()); m.put("name",p.getName()); m.put("description",p.getDescription());
+            m.put("thumbnailUrl",p.getThumbnailUrl()); m.put("createdAt",p.getCreatedAt()); m.put("status",p.getStatus());
+            m.put("categoryName",p.getCategory()==null?null:p.getCategory().getName());
+            if (p.getShopId()!=null) shops.findById(p.getShopId()).ifPresent(s->{m.put("shopName",s.getShopName());m.put("shopStatus",s.getStatus());});
+            return m;
+        }).toList();
+        return ApiResponse.success("Sản phẩm chờ duyệt", result);
+    }
+    @PatchMapping("/products/{id}/review") @Transactional
+    public ApiResponse<Map<String,Object>> reviewProduct(@PathVariable UUID id,@RequestBody ProductReviewRequest request) {
+        ProductStatus target;
+        try { target=ProductStatus.valueOf(request.status()); }
+        catch (Exception ex) { throw new IllegalArgumentException("Trạng thái duyệt không hợp lệ."); }
+        Product p=productStatusService.reviewPendingProduct(id,target);
+        return ApiResponse.success(target==ProductStatus.ACTIVE?"Đã duyệt sản phẩm.":"Đã từ chối sản phẩm.",Map.of("id",p.getId(),"status",p.getStatus()));
+    }
+    @PatchMapping("/products/review-bulk") @Transactional
+    public ApiResponse<Map<String,Object>> reviewProducts(@RequestBody BulkProductReviewRequest request) {
+        ProductStatus target;
+        try { target=ProductStatus.valueOf(request.status()); }
+        catch (Exception ex) { throw new IllegalArgumentException("Trạng thái duyệt không hợp lệ."); }
+        int count=productStatusService.reviewPendingProducts(request.ids(),target);
+        return ApiResponse.success(target==ProductStatus.ACTIVE?"Đã duyệt các sản phẩm đã chọn.":"Đã từ chối các sản phẩm đã chọn.",Map.of("count",count));
+    }
     @PatchMapping("/users/{id}/status") @Transactional
     public ApiResponse<Map<String,Object>> userStatus(@PathVariable UUID id,@RequestBody StatusRequest r,Authentication auth) {
         User u=users.findById(id).orElseThrow(()->new IllegalArgumentException("Không tìm thấy tài khoản."));
@@ -93,5 +124,5 @@ public class AdminManagementController {
     @PutMapping("/banners/{id}") public ApiResponse<SystemBanner> updateBanner(@PathVariable UUID id,@RequestBody BannerRequest r){SystemBanner b=banners.findById(id).orElseThrow(()->new IllegalArgumentException("Không tìm thấy banner."));return ApiResponse.success("Đã cập nhật banner.",saveBanner(b,r));}
     @DeleteMapping("/banners/{id}") public ApiResponse<Void> deleteBanner(@PathVariable UUID id){banners.delete(banners.findById(id).orElseThrow(()->new IllegalArgumentException("Không tìm thấy banner.")));return ApiResponse.success("Đã xóa banner.",null);}
     private SystemBanner saveBanner(SystemBanner b,BannerRequest r){if(r.title()==null||r.title().isBlank()||r.imageUrl()==null||r.imageUrl().isBlank())throw new IllegalArgumentException("Vui lòng nhập tiêu đề và đường dẫn ảnh.");b.setTitle(r.title().trim());b.setImageUrl(r.imageUrl().trim());b.setPriority(r.priority()==null?0:r.priority());b.setStatus(r.status()==null?BannerStatus.ACTIVE:r.status());return banners.save(b);}
-    public record StatusRequest(String status){} public record CouponRequest(String code,DiscountType discountType,Integer discountValue,BigDecimal minimumOrder,BigDecimal maximumDiscount,Integer usageLimit,OffsetDateTime startAt,OffsetDateTime endAt,CouponStatus status){} public record BannerRequest(String title,String imageUrl,Short priority,BannerStatus status){} public record BannerOrderRequest(List<UUID> ids){}
+    public record StatusRequest(String status){} public record ProductReviewRequest(String status){} public record BulkProductReviewRequest(List<UUID> ids,String status){} public record CouponRequest(String code,DiscountType discountType,Integer discountValue,BigDecimal minimumOrder,BigDecimal maximumDiscount,Integer usageLimit,OffsetDateTime startAt,OffsetDateTime endAt,CouponStatus status){} public record BannerRequest(String title,String imageUrl,Short priority,BannerStatus status){} public record BannerOrderRequest(List<UUID> ids){}
 }

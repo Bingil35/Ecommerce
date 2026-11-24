@@ -12,6 +12,8 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import com.example.backend.entity.OrderStatus;
 public interface SubOrderRepository extends JpaRepository<SubOrder, UUID>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<SubOrder> {
+    @Query("select s.status, count(s) from SubOrder s where s.order.createdAt >= :from and s.order.createdAt < :to group by s.status")
+    List<Object[]> countByOrderStatusForOrdersCreatedBetween(@Param("from") OffsetDateTime from, @Param("to") OffsetDateTime to);
     long countByShop_Id(UUID shopId);
     long countByShop_IdAndStatus(UUID shopId, OrderStatus status);
     @Query("select sum(s.totalAmount) from SubOrder s where s.shop.id = :shopId and s.status = :status")

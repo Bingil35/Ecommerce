@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
+    @Query("select count(distinct ur.user.id) from UserRole ur join ur.role r where r.name = 'CUSTOMER' and ur.user.createdAt < :before")
+    long countCustomersCreatedBefore(@Param("before") java.time.OffsetDateTime before);
     @Query("select ur.user.id from UserRole ur join ur.role r where r.name=:roleName")
     List<UUID> findUserIdsByRoleName(@Param("roleName") String roleName);
     List<UserRole> findAllByUser_IdOrderByRole_NameAsc(UUID userId);

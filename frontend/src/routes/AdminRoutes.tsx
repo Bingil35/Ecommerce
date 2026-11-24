@@ -5,12 +5,14 @@ import AdminPage from '../pages/admin/AdminPage';
 import AdminBrandsPage from '../pages/admin/AdminBrandsPage';
 import AdminCouponAbusePage from '../pages/admin/AdminCouponAbusePage';
 import AdminLoginPage from '../pages/admin/AdminLoginPage';
+import AdminProductReviewPage from '../pages/admin/AdminProductReviewPage';
 
 export default function AdminRoutes() {
   return <Routes><Route path="/admin/login" element={<AdminLoginPage />} /><Route element={<RequireAdmin />}><Route element={<AdminLayout />}>
     <Route path="/admin" element={<AdminPage section="dashboard" />} />
     <Route path="/admin/users" element={<AdminPage section="users" />} />
     <Route path="/admin/shops" element={<AdminPage section="shops" />} />
+    <Route path="/admin/products/pending" element={<AdminProductReviewPage />} />
     <Route path="/admin/categories" element={<AdminPage section="categories" />} />
     <Route path="/admin/coupons" element={<AdminPage section="coupons" />} />
     <Route path="/admin/banners" element={<AdminPage section="banners" />} />

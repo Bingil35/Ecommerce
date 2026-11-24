@@ -13,6 +13,9 @@ public interface ProductRepository
         extends JpaRepository<Product, UUID>,
                 JpaSpecificationExecutor<Product> {
 
+    long countByCreatedAtBefore(java.time.OffsetDateTime before);
+    long countByStatus(ProductStatus status);
+
     @org.springframework.data.jpa.repository.Query("select distinct p.category.id from Product p where p.shopId = :shopId and p.category is not null")
     List<UUID> findDistinctCategoryIdsByShopId(@org.springframework.data.repository.query.Param("shopId") UUID shopId);
 

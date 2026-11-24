@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Store, Tags, Image, Menu, LogOut, ShieldCheck, TicketPercent } from 'lucide-react';
+import { LayoutDashboard, Users, Store, Tags, Image, Menu, LogOut, ShieldCheck, TicketPercent, PackageCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/notifications/NotificationBell';
 
@@ -8,6 +8,7 @@ const links = [
   { to:'/admin', label:'Tổng quan', icon:LayoutDashboard, end:true },
   { to:'/admin/users', label:'Người dùng', icon:Users },
   { to:'/admin/shops', label:'Cửa hàng', icon:Store },
+  { to:'/admin/products/pending', label:'Duyệt sản phẩm', icon:PackageCheck },
   { to:'/admin/categories', label:'Danh mục', icon:Tags },
   { to:'/admin/coupons', label:'Mã giảm giá', icon:TicketPercent },
   { to:'/admin/banners', label:'Banner hệ thống', icon:Image },
