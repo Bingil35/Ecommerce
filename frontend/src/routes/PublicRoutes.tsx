@@ -79,7 +79,7 @@ const PublicRoutes = () => {
 function DomainLoginPage() {
   const host = window.location.hostname.toLowerCase();
   if (host.startsWith('admin.')) return <Navigate to="/admin/login" replace />;
-  if (host.startsWith('shop.')) return <Navigate to="/seller/login" replace />;
+  if (host.startsWith('shop.')) return <Navigate to="/shop-owner/login" replace />;
   return <LoginPage />;
 }
 

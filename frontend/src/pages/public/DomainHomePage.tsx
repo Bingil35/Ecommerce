@@ -8,6 +8,6 @@ export default function DomainHomePage() {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
   if (host.startsWith('admin.')) return <Navigate to={hasRole(user, ROLES.ADMIN) ? '/admin' : '/admin/login'} replace />;
-  if (host.startsWith('shop.')) return <Navigate to={isShopOwner(user) ? '/seller' : '/seller/login'} replace />;
+  if (host.startsWith('shop.')) return <Navigate to={isShopOwner(user) ? '/shop-owner' : '/shop-owner/login'} replace />;
   return <HomePage />;
 }

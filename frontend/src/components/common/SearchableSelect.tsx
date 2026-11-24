@@ -59,7 +59,7 @@ export default function SearchableSelect({
         placeholder={open ? searchPlaceholder : placeholder}
         onFocus={openMenu}
         onClick={() => { if (!open) openMenu(); }}
-        onChange={event => { setQuery(event.target.value); setOpen(true); onChange(''); }}
+        onChange={event => { setQuery(event.target.value); setOpen(true); }}
         onKeyDown={event => {
           if (event.key === 'Escape') { setOpen(false); setQuery(selected?.label || ''); }
           if (event.key === 'Enter' && open) {

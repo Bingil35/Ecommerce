@@ -41,7 +41,7 @@ export default function SellerLoginPage() {
 
   // Đã là chủ shop và đang đăng nhập thì vào thẳng kênh người bán.
   if (!isAuthLoading && isShopOwner(user)) {
-    return <Navigate to="/seller" replace />;
+    return <Navigate to="/shop-owner" replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -63,7 +63,7 @@ export default function SellerLoginPage() {
 
     try {
       const response = await axiosClient.post<ApiResponse<LoginResponse>>(
-        '/auth/seller/login',
+        '/auth/shop-owner/login',
         { identifier: identifier.trim(), password }
       );
 
@@ -73,7 +73,7 @@ export default function SellerLoginPage() {
       if (isShopOwner(loggedInUser)) {
         login(accessToken, loggedInUser, rememberMe);
         toast.success('Đăng nhập thành công.');
-        navigate(from?.startsWith('/seller') ? from : '/seller', {
+        navigate(from?.startsWith('/shop-owner') ? from : '/shop-owner', {
           replace: true,
         });
         return;

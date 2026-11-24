@@ -313,9 +313,9 @@ const CustomerHeader = () => {
                         onClick={() => {
                           setIsAccountOpen(false);
                           if (isShopOwner(user)) {
-                            navigate('/seller');
+                            navigate('/shop-owner');
                           } else {
-                            navigate('/seller/register', { state: { entry: BECOME_SELLER_ENTRY } });
+                            navigate('/shop-owner/register', { state: { entry: BECOME_SELLER_ENTRY } });
                           }
                         }}
                         className="flex w-full items-center gap-3 rounded-xl border border-[#CFE0FB] bg-[#F1F6FF] px-3 py-2.5 text-left text-sm font-medium text-[#2F6BEA] transition-colors hover:bg-[#E6EFFF]"

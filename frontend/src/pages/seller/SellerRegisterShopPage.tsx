@@ -45,7 +45,7 @@ export default function SellerRegisterShopPage() {
 
   // Đã có gian hàng thì không đăng ký lại (trừ lúc đang hiện màn hình thành công).
   if (!createdShop && isShopOwner(user)) {
-    return <Navigate to="/seller" replace />;
+    return <Navigate to="/shop-owner" replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -113,7 +113,7 @@ export default function SellerRegisterShopPage() {
 
         <button
           type="button"
-          onClick={() => navigate('/seller', { replace: true })}
+          onClick={() => navigate('/shop-owner', { replace: true })}
           className="mt-8 flex h-[58px] w-full items-center justify-center gap-2 rounded-full bg-[#3B7BF6] text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(59,123,246,0.28)] transition hover:bg-[#2F6BEA]"
         >
           Vào kênh người bán

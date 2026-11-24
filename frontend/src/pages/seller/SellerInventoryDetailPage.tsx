@@ -49,7 +49,7 @@ export default function SellerInventoryDetailPage() {
   if (loading) return <main className="seller-container py-16 text-center text-slate-500">Đang tải chi tiết tồn kho...</main>;
 
   return <main className="seller-container shop-management !max-w-[1380px]">
-    <Link to="/seller/inventory" className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600"><ArrowLeft size={17}/> Danh sách sản phẩm</Link>
+    <Link to="/shop-owner/inventory" className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600"><ArrowLeft size={17}/> Danh sách sản phẩm</Link>
     {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700">{error}</div>}
     <section className="overflow-hidden rounded-2xl border border-[#e4e8f1] bg-white shadow-sm">
       <header className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
@@ -61,13 +61,13 @@ export default function SellerInventoryDetailPage() {
             <p className="mt-1 text-sm text-slate-500">{rows.length} biến thể · {rows.reduce((sum, row) => sum + row.quantity, 0)} sản phẩm tồn</p>
           </div>
         </div>
-        <Link to={`/seller/products/${productId}`} className="inline-flex w-full justify-center rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 sm:w-auto">Chi tiết sản phẩm</Link>
+        <Link to={`/shop-owner/products/${productId}`} className="inline-flex w-full justify-center rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 sm:w-auto">Chi tiết sản phẩm</Link>
       </header>
       <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
         <h2 className="font-semibold text-slate-800">Tồn kho theo biến thể</h2>
         <p className="mt-1 text-sm text-slate-500">Theo dõi số lượng, hàng đang giữ và hàng có thể bán của từng SKU.</p>
       </div>
-      {rows.length === 0 ? <div className="px-5 py-14 text-center"><Boxes size={28} className="mx-auto text-slate-300"/><p className="mt-3 text-sm font-medium text-slate-700">Sản phẩm chưa có biến thể</p><p className="mt-1 text-sm text-slate-500">Tạo biến thể trong phần sản phẩm để quản lý tồn kho.</p><Link to={`/seller/products/${productId}`} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"><Package size={15}/> Mở sản phẩm</Link></div> : <>
+      {rows.length === 0 ? <div className="px-5 py-14 text-center"><Boxes size={28} className="mx-auto text-slate-300"/><p className="mt-3 text-sm font-medium text-slate-700">Sản phẩm chưa có biến thể</p><p className="mt-1 text-sm text-slate-500">Tạo biến thể trong phần sản phẩm để quản lý tồn kho.</p><Link to={`/shop-owner/products/${productId}`} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"><Package size={15}/> Mở sản phẩm</Link></div> : <>
         <div className="space-y-3 p-4 md:hidden">{pagedRows.map(row => <article key={row.variantId} className="rounded-xl border border-slate-200 p-4">
           <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all text-sm font-medium text-slate-800">{row.sku || 'Chưa có SKU'}</p><p className="mt-1 text-xs text-slate-500">Ngưỡng cảnh báo: {row.effectiveLowStockThreshold}</p></div><span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${row.availableQuantity <= 0 ? 'bg-rose-50 text-rose-700' : row.lowStock ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{row.lowStock && <TriangleAlert size={13}/>} {row.availableQuantity} khả dụng</span></div>
           <dl className="mt-4 grid grid-cols-3 gap-2 text-xs"><div><dt className="text-slate-500">Tồn kho</dt><dd className="mt-1 font-medium text-slate-800">{row.quantity}</dd></div><div><dt className="text-slate-500">Đang giữ</dt><dd className="mt-1 font-medium text-slate-800">{row.reservedQuantity}</dd></div><div><dt className="text-slate-500">Đã bán</dt><dd className="mt-1 font-medium text-slate-800">{row.soldQuantity}</dd></div></dl>

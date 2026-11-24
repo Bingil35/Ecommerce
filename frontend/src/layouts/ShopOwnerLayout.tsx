@@ -10,14 +10,14 @@ import NotificationBell from '../components/notifications/NotificationBell';
 import ChatWidget from '../components/customer/chat/ChatWidget';
 
 const items = [
-  { to: '/seller', text: 'Trang chủ', icon: Home },
-  { to: '/seller/products', text: 'Sản phẩm', icon: Package },
+  { to: '/shop-owner', text: 'Trang chủ', icon: Home },
+  { to: '/shop-owner/products', text: 'Sản phẩm', icon: Package },
   { to: '/shop-owner/product-stats', text: 'Thống kê sản phẩm', icon: ChartNoAxesColumn },
   { to: '/shop-owner/orders', text: 'Đơn hàng', icon: ClipboardList },
   { to: '/shop-owner/reviews', text: 'Đánh giá', icon: Star },
-  { to: '/seller/inventory', text: 'Kho hàng', icon: Warehouse },
-  { to: '/seller/promotions', text: 'Khuyến mãi', icon: Tag },
-  { to: '/seller/shop', text: 'Thông tin cửa hàng', icon: Store },
+  { to: '/shop-owner/inventory', text: 'Kho hàng', icon: Warehouse },
+  { to: '/shop-owner/promotions', text: 'Khuyến mãi', icon: Tag },
+  { to: '/shop-owner/shop', text: 'Thông tin cửa hàng', icon: Store },
 ];
 const future = [
   { text: 'Vận chuyển', icon: Truck },
@@ -50,7 +50,7 @@ export default function ShopOwnerLayout() {
       <div className="seller-container kso-header-in">
         <span className="kso-logo">Kala°</span>
         <div className="kso-right">
-          <button type="button" className="kso-icon-btn relative" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/seller/chat')}><MessageCircle size={20}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>
+          <button type="button" className="kso-icon-btn relative" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => navigate('/shop-owner/chat')}><MessageCircle size={20}/>{hasUnreadChat && <span aria-hidden="true" className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>
           <NotificationBell audience="shop-owner"/>
           <div className="kso-account" ref={accountRef}>
             <button type="button" className="kso-account-btn" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
@@ -60,8 +60,8 @@ export default function ShopOwnerLayout() {
             </button>
             {menuOpen && <div className="kso-menu" role="menu">
               <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/'); }}><Home size={16}/> Trang khách hàng</button>
-              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/seller/settings'); }}><Settings size={16}/> Cài đặt</button>
-              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); logout(); navigate('/seller/login', { replace: true }); }}><LogOut size={16}/> Đăng xuất</button>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/shop-owner/settings'); }}><Settings size={16}/> Cài đặt</button>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); logout(); navigate('/shop-owner/login', { replace: true }); }}><LogOut size={16}/> Đăng xuất</button>
             </div>}
           </div>
         </div>
@@ -69,11 +69,11 @@ export default function ShopOwnerLayout() {
     </header>
     <nav className="kso-nav">
       <div className="seller-container kso-nav-in">
-        {items.map(({ to, text, icon: Icon }) => <NavLink key={to} to={to} end={to === '/seller'} className={({ isActive }) => 'kso-nav-item' + (isActive ? ' active' : '')}><Icon size={17}/>{text}</NavLink>)}
+        {items.map(({ to, text, icon: Icon }) => <NavLink key={to} to={to} end={to === '/shop-owner'} className={({ isActive }) => 'kso-nav-item' + (isActive ? ' active' : '')}><Icon size={17}/>{text}</NavLink>)}
         {future.map(({ text, icon: Icon }) => <span key={text} title="Chưa triển khai trang này" className="kso-nav-item disabled"><Icon size={17}/>{text}</span>)}
       </div>
     </nav>
     <main><Outlet/></main>
-    {location.pathname !== '/seller/chat' && <ChatWidget role="shop-owner"/>}
+    {location.pathname !== '/shop-owner/chat' && <ChatWidget role="shop-owner"/>}
   </div>;
 }
