@@ -419,11 +419,11 @@ const { addToCart } = useCart();
 
             <div className="overflow-hidden rounded-2xl bg-[#F3F6FC]">
 
-              <img key={selectedImage || product.thumbnailUrl || product.id} src={productImage(imageProduct)} alt={product.name} className="product-detail-image aspect-square w-full object-contain" />
+              <img key={selectedImage || product.thumbnailUrl || product.id} src={mediaUrl(productImage(imageProduct))} alt={product.name} className="product-detail-image aspect-square w-full object-contain" />
 
             </div>
 
-            {media.length > 1 && <div className="mt-3 grid grid-cols-5 gap-2 sm:gap-3">{media.map((url) => <button key={url} type="button" onClick={() => setSelectedImage(url)} className={`overflow-hidden rounded-xl border-2 bg-[#F3F6FC] ${selectedImage === url ? 'border-[#5367C9]' : 'border-transparent hover:border-[#C8D2F0]'}`} aria-label="Xem ảnh sản phẩm"><img src={url} alt="" className="aspect-square w-full object-cover"/></button>)}</div>}
+            {media.length > 1 && <div className="mt-3 grid grid-cols-5 gap-2 sm:gap-3">{media.map((url) => <button key={url} type="button" onClick={() => setSelectedImage(url)} className={`overflow-hidden rounded-xl border-2 bg-[#F3F6FC] ${selectedImage === url ? 'border-[#5367C9]' : 'border-transparent hover:border-[#C8D2F0]'}`} aria-label="Xem ảnh sản phẩm"><img src={mediaUrl(url)} alt="" className="aspect-square w-full object-cover"/></button>)}</div>}
 
           </div>
 

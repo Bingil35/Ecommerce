@@ -214,8 +214,7 @@ public class ProductCatalogService {
         Map<UUID, String> fallbackThumbnail = new HashMap<>();
         if (!needFallback.isEmpty()) {
             for (ProductMedia m : media.findByProductIdInOrderBySortOrderAsc(needFallback)) {
-                if (m.getSortOrder() != null && m.getSortOrder() == 1
-                        && m.getMediaType() == ProductMediaType.IMAGE
+                if (m.getMediaType() == ProductMediaType.IMAGE
                         && m.getUrl() != null && !m.getUrl().isBlank()) {
                     fallbackThumbnail.putIfAbsent(m.getProduct().getId(), m.getUrl());
                 }
@@ -252,7 +251,6 @@ public class ProductCatalogService {
         String thumbnail = product.getThumbnailUrl();
         if (thumbnail == null || thumbnail.isBlank()) {
             thumbnail = media.findByProductIdOrderBySortOrderAsc(product.getId()).stream()
-                    .filter(m -> m.getSortOrder() != null && m.getSortOrder() == 1)
                     .filter(m -> m.getMediaType() == ProductMediaType.IMAGE)
                     .map(ProductMedia::getUrl)
                     .filter(url -> url != null && !url.isBlank())

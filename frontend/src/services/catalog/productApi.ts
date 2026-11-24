@@ -1,4 +1,5 @@
 import axiosClient from '../api/axiosClient';
+import { mediaUrl } from '../api/mediaUrl';
 
 export interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 export interface ProductCardDto {
@@ -129,4 +130,4 @@ export const categoryApi = {
 };
 
 export const formatVnd = (value?: number | string | null) => value == null ? 'Liên hệ' : `${new Intl.NumberFormat('vi-VN').format(Number(value))}₫`;
-export const productImage = (p: Pick<ProductCardDto, 'thumbnailUrl'>) => p.thumbnailUrl || 'https://placehold.co/600x600/F2F5FC/6575B8?text=Kala';
+export const productImage = (p: Pick<ProductCardDto, 'thumbnailUrl'>) => p.thumbnailUrl ? mediaUrl(p.thumbnailUrl) : 'https://placehold.co/600x600/F2F5FC/6575B8?text=Kala';
