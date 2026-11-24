@@ -27,14 +27,15 @@ public class ProductReviewService {
     private final SubOrderRepository subOrders;
     private final OrderDetailRepository orderDetails;
     private final ProductVariantRepository variants;
+    private final VariantOptionValueRepository variantOptions;
     private final ProductReviewLikeRepository likes;
     private final UserRoleRepository userRoles;
 
     public ProductReviewService(ProductRepository products, ProductReviewRepository reviews, ReviewReplyRepository replies,
             UserRepository users, ShopRepository shops, SubOrderRepository subOrders, OrderDetailRepository orderDetails,
-            ProductVariantRepository variants, ProductReviewLikeRepository likes, UserRoleRepository userRoles) {
+            ProductVariantRepository variants, VariantOptionValueRepository variantOptions, ProductReviewLikeRepository likes, UserRoleRepository userRoles) {
         this.products = products; this.reviews = reviews; this.replies = replies; this.users = users; this.shops = shops;
-        this.subOrders = subOrders; this.orderDetails = orderDetails; this.variants = variants;
+        this.subOrders = subOrders; this.orderDetails = orderDetails; this.variants = variants; this.variantOptions = variantOptions;
         this.likes = likes; this.userRoles = userRoles;
     }
 
@@ -137,7 +138,16 @@ public class ProductReviewService {
     private ProductReviewResponse toResponse(ProductReview review, long likeCount, boolean likedByMe) {
         List<ProductReviewResponse.Reply> replyViews = replies.findByReview_IdOrderByCreatedAtAsc(review.getId()).stream()
                 .map(reply -> new ProductReviewResponse.Reply(reply.getId(), reply.getContent(), reply.getCreatedAt())).toList();
+        ProductVariant variant = review.getVariant();
+        List<String> optionViews = variant == null ? List.of() : variantOptions.findWithOptionsByVariantIdIn(List.of(variant.getId())).stream()
+                .map(link -> link.getOptionValue().getProductOption().getName() + ": " + link.getOptionValue().getValue()).toList();
+        String imageUrl = variant != null && variant.getPrimaryMedia() != null
+                ? variant.getPrimaryMedia().getUrl() : review.getProduct().getThumbnailUrl();
+        UUID subOrderId = review.getSubOrder() == null ? null : review.getSubOrder().getId();
+        String orderCode = review.getSubOrder() == null || review.getSubOrder().getOrder() == null
+                ? null : review.getSubOrder().getOrder().getOrderCode();
         return new ProductReviewResponse(review.getId(), review.getProduct().getId(), review.getProduct().getName(),
-                review.getUser().getFullName(), review.getRating(), review.getContent(), review.getCreatedAt(), likeCount, likedByMe, replyViews);
+                review.getUser().getFullName(), review.getRating(), review.getContent(), review.getCreatedAt(), likeCount, likedByMe,
+                subOrderId, orderCode, imageUrl, optionViews, replyViews);
     }
 }
