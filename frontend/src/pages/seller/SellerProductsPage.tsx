@@ -62,9 +62,9 @@ export default function SellerProductsPage() {
     return () => document.removeEventListener('click', close);
   }, [menu]);
   const run = async (action: () => Promise<unknown>, success: string) => { setBusy(true); setError(''); try { await action(); toast.success(success); await load(); return true; } catch (e) {toast.error(getFeedbackError(e)); setError(getError(e)); return false; } finally { setBusy(false); } };
-  const openCreate = () => navigate('/seller/products/new');
-  const openDetail = (product: SellerProduct) => navigate(`/seller/products/${product.id}`);
-  const openEdit = (p: SellerProduct) => navigate(`/seller/products/${p.id}/edit`);
+  const openCreate = () => navigate('/shop-owner/products/new');
+  const openDetail = (product: SellerProduct) => navigate(`/shop-owner/products/${product.id}`);
+  const openEdit = (p: SellerProduct) => navigate(`/shop-owner/products/${p.id}/edit`);
   useEffect(() => {
     const targetId = (location.state as { editProductId?: string } | null)?.editProductId;
     const target = targetId ? products.find(item => item.id === targetId) : null;

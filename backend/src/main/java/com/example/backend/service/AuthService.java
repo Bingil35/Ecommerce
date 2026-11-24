@@ -49,11 +49,11 @@ public class AuthService {
      * tài khoản bắt buộc có vai trò SHOP_OWNER. Nếu không, trả 403 và
      * KHÔNG cấp token, không cập nhật lastLoginAt.
      */
-    public LoginResponse loginAsSeller(LoginRequest request) {
+    public LoginResponse loginAsShopOwner(LoginRequest request) {
         return doLogin(request, true);
     }
 
-    private LoginResponse doLogin(LoginRequest request, boolean sellerOnly) {
+    private LoginResponse doLogin(LoginRequest request, boolean shopOwnerOnly) {
 
         if (request == null || request.getIdentifier() == null
                 || request.getIdentifier().isBlank()
@@ -96,7 +96,7 @@ public class AuthService {
             );
         }
 
-        if (sellerOnly && !roles.contains(RoleConstants.SHOP_OWNER)) {
+        if (shopOwnerOnly && !roles.contains(RoleConstants.SHOP_OWNER)) {
             throw new ShopOwnerRequiredException(
                     "Tài khoản này chưa có gian hàng."
             );

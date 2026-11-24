@@ -106,11 +106,11 @@ public class AuthController {
     /**
      * Đăng nhập kênh người bán: chỉ tài khoản có vai trò SHOP_OWNER mới nhận được token.
      */
-    @PostMapping("/seller/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> sellerLogin(
+    @PostMapping("/shop-owner/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> shopOwnerLogin(
             @RequestBody LoginRequest request
     ) {
-        LoginResponse response = authService.loginAsSeller(request);
+        LoginResponse response = authService.loginAsShopOwner(request);
 
         return ResponseEntity.ok(
                 ApiResponse.success(

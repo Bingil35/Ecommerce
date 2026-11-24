@@ -245,7 +245,7 @@ export default function SellerProductDetailPage() {
 
   const remove = async () => {
     setMenuOpen(false);
-    await confirm({title:'Xóa sản phẩm?',message:'Bạn chắc chắn muốn xóa sản phẩm này? Hành động này không thể hoàn tác.',confirmText:'Xóa sản phẩm',variant:'danger',loadingText:'Đang xóa sản phẩm...',successMessage:'Đã xóa sản phẩm.',onConfirm:async()=>{await sellerProductApi.remove(productId);navigate('/seller/products',{replace:true});}});
+    await confirm({title:'Xóa sản phẩm?',message:'Bạn chắc chắn muốn xóa sản phẩm này? Hành động này không thể hoàn tác.',confirmText:'Xóa sản phẩm',variant:'danger',loadingText:'Đang xóa sản phẩm...',successMessage:'Đã xóa sản phẩm.',onConfirm:async()=>{await sellerProductApi.remove(productId);navigate('/shop-owner/products',{replace:true});}});
   };
 
   const replyReview = async (review: ProductReview, content: string) => {
@@ -258,7 +258,7 @@ export default function SellerProductDetailPage() {
   if (loading) return <main className="seller-container py-16 text-center text-sm text-slate-500">Đang tải chi tiết sản phẩm...</main>;
   if (error && !product) {
     return <main className="seller-container py-12">
-      <Link to="/seller/products" className="inline-flex items-center gap-2 text-sm font-semibold text-[#5367C9]"><ArrowLeft size={17} /> Quay lại sản phẩm</Link>
+      <Link to="/shop-owner/products" className="inline-flex items-center gap-2 text-sm font-semibold text-[#5367C9]"><ArrowLeft size={17} /> Quay lại sản phẩm</Link>
       <p className="mt-6 rounded-2xl bg-rose-50 p-5 text-sm text-rose-700">{error}</p>
     </main>;
   }
@@ -273,7 +273,7 @@ export default function SellerProductDetailPage() {
 {/* Tiêu đề + hành động */}
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => navigate('/seller/products')} aria-label="Quay lại"
+        <button type="button" onClick={() => navigate('/shop-owner/products')} aria-label="Quay lại"
           className="grid h-10 w-10 place-items-center rounded-full bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"><ArrowLeft size={18} /></button>
         <h1 className="text-[26px] font-semibold tracking-tight text-[#1B2559]">Chi tiết sản phẩm</h1>
       </div>
@@ -284,14 +284,14 @@ export default function SellerProductDetailPage() {
           <button form="seller-product-edit" disabled={busy}
             className="inline-flex items-center gap-2 rounded-xl bg-[#5367C9] px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Save size={16} />{busy ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
         </> : <>
-          <button type="button" onClick={() => navigate(`/seller/products/${product.id}/edit`, { state: { returnTo: `/seller/products/${product.id}` } })}
+          <button type="button" onClick={() => navigate(`/shop-owner/products/${product.id}/edit`, { state: { returnTo: `/shop-owner/products/${product.id}` } })}
             className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#1B2559] shadow-sm transition hover:bg-slate-50"><Pencil size={15} className="text-[#5367C9]" /> Sửa</button>
         </>}
         <div className="relative" ref={menuRef}>
           <button type="button" aria-label="Thêm" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}
             className="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"><MoreVertical size={18} /></button>
           {menuOpen && <div role="menu" className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[210px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
-            <Link role="menuitem" to={`/seller/inventory/${product.id}`} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"><Warehouse size={16} /> Chi tiết tồn kho</Link>
+            <Link role="menuitem" to={`/shop-owner/inventory/${product.id}`} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"><Warehouse size={16} /> Chi tiết tồn kho</Link>
             {canToggle && <button role="menuitem" type="button" onClick={toggleVisibility} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
               {product.status === 'ACTIVE' ? <><EyeOff size={16} /> Ẩn sản phẩm</> : <><Eye size={16} /> Hiển thị sản phẩm</>}</button>}
             <button role="menuitem" type="button" onClick={remove} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50"><Trash2 size={16} /> Xóa sản phẩm</button>

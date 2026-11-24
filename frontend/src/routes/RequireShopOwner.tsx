@@ -13,7 +13,7 @@ export default function RequireShopOwner() {
   if (!isShopOwner(user)) {
     return (
       <Navigate
-        to="/seller/login"
+        to="/shop-owner/login"
         replace
         state={{ from: location.pathname }}
       />

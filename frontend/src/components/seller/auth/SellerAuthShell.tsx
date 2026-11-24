@@ -48,7 +48,7 @@ function SellerBrand({
   pillClassName: string;
 }) {
   return (
-    <Link to="/seller/login" className="flex w-fit items-center">
+    <Link to="/shop-owner/login" className="flex w-fit items-center">
       <img
         src={logo}
         alt="Kala"

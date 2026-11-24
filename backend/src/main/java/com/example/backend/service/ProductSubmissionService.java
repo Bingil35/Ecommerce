@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.backend.repository.ProductTagRepository;
 import com.example.backend.repository.ProductTagMappingRepository;
 import java.util.*;
+import java.text.Normalizer;
 
 /** Final-submit orchestrator; all database changes share one transaction. */
 @Service
@@ -45,10 +46,20 @@ public class ProductSubmissionService {
         productRequest.setFeatured(false);
         Product product=products.createProduct(productRequest);
         List<UUID> tagIds=form.getTagIds()==null?List.of():form.getTagIds().stream().filter(Objects::nonNull).distinct().toList();
-        if(tagIds.size()>10)throw new IllegalArgumentException("Maximum 10 product tags");
-        List<ProductTag> selectedTags=tags.findAllById(tagIds);
+        List<String> tagNames=form.getTagNames()==null?List.of():form.getTagNames().stream().filter(Objects::nonNull).map(String::trim).filter(name->!name.isBlank()).distinct().toList();
+        if(tagIds.size()+tagNames.size()>10)throw new IllegalArgumentException("Maximum 10 product tags");
+        List<ProductTag> selectedTags=new ArrayList<>(tags.findAllById(tagIds));
         if(selectedTags.size()!=tagIds.size())throw new IllegalArgumentException("One or more product tags do not exist");
-        selectedTags.forEach(tag->tagMappings.save(new ProductTagMapping(product.getId(),tag.getId())));
+        Set<String> selectedNames=new HashSet<>();
+        selectedTags.forEach(tag->selectedNames.add(tag.getName().toLowerCase(Locale.ROOT)));
+        for(String name:tagNames){
+            if(name.length()>80)throw new IllegalArgumentException("Product tag names cannot exceed 80 characters");
+            if(!selectedNames.add(name.toLowerCase(Locale.ROOT)))continue;
+            ProductTag tag=tags.findByNameIgnoreCase(name).orElseGet(()->createTag(name));
+            selectedTags.add(tag);
+        }
+        selectedTags.stream().collect(java.util.stream.Collectors.toMap(ProductTag::getId,tag->tag,(first,second)->first,LinkedHashMap::new)).values()
+                .forEach(tag->tagMappings.save(new ProductTagMapping(product.getId(),tag.getId())));
         List<Map<String,UUID>> optionIds=new ArrayList<>();
         if (form.getOptions()!=null) {
             if (form.getOptions().size()>10) throw new IllegalArgumentException("Too many options");
@@ -96,5 +107,15 @@ public class ProductSubmissionService {
             media.createMedia(product.getId(),videos.get(i),images.size()+i);
         // ProductService already sets PENDING. No draft state or interim product API is used.
         return product;
+    }
+
+    private ProductTag createTag(String name){
+        String slug=Normalizer.normalize(name,Normalizer.Form.NFD).replaceAll("\\p{M}+","").replace('đ','d').replace('Đ','d')
+                .toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-|-$","");
+        if(slug.isBlank())slug="tag";
+        String candidate=slug;int suffix=2;
+        while(tags.existsBySlug(candidate))candidate=slug+"-"+suffix++;
+        ProductTag tag=new ProductTag();tag.setName(name);tag.setSlug(candidate);
+        return tags.saveAndFlush(tag);
     }
 }
