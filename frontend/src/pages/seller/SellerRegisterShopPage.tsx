@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
-import { authStorage } from '../../services/auth/authStorage';
 import { isShopOwner } from '../../services/auth/roles';
 import { shopApi } from '../../services/shop/shopApi';
 import type { ShopResponse } from '../../services/shop/shopTypes';
@@ -27,7 +26,7 @@ interface LocationState {
 
 export default function SellerRegisterShopPage() {
   const toast=useToast();
-  const { user, isLoading: isAuthLoading, login } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const notice = (location.state as LocationState | null)?.notice;
@@ -70,17 +69,12 @@ export default function SellerRegisterShopPage() {
     setIsSubmitting(true);
 
     try {
-      // Phải đọc trước khi login() ghi đè phiên: giữ nguyên lựa chọn "ghi nhớ đăng nhập".
-      const remembered = authStorage.isRemembered();
-
       const result = await shopApi.register({
         shopName: name,
         phone: shopPhone || undefined,
         address: address.trim() || undefined,
       });
 
-      // Token và thông tin user mới đã có thêm role SHOP_OWNER.
-      login(result.accessToken, result.user, remembered);
       setCreatedShop(result.shop);
       toast.success('Đăng ký cửa hàng thành công.');
     } catch (error: any) { toast.error(getFeedbackError(error));
@@ -101,30 +95,23 @@ export default function SellerRegisterShopPage() {
         </div>
 
         <h2 className="mt-6 text-[30px] font-bold tracking-tight text-[#1F1B6B]">
-          Đã gửi đăng ký gian hàng
+          Đăng ký mở gian hàng thành công
         </h2>
 
         <p className="mt-3 text-[15px] leading-6 text-[#667398]">
           <strong className="text-[#1F1B6B]">{createdShop.shopName}</strong>{' '}
-          đang chờ Kala xác nhận. Khách hàng sẽ nhìn thấy gian hàng sau khi
-          được duyệt. Trong lúc chờ, bạn có thể vào kênh người bán để chuẩn bị
-          sản phẩm.
+          đang chờ quản trị viên xác nhận.
         </p>
 
         <button
           type="button"
-          onClick={() => navigate('/shop-owner', { replace: true })}
+          onClick={() => navigate('/', { replace: true })}
           className="mt-8 flex h-[58px] w-full items-center justify-center gap-2 rounded-full bg-[#3B7BF6] text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(59,123,246,0.28)] transition hover:bg-[#2F6BEA]"
         >
-          Vào kênh người bán
+          Quay về trang khách hàng
           <ArrowRight className="h-5 w-5" strokeWidth={2} />
         </button>
 
-        <p className="mt-6 text-center text-sm text-[#667398]">
-          <Link to="/" className="hover:underline">
-            Quay lại trang mua sắm
-          </Link>
-        </p>
       </SellerAuthShell>
     );
   }

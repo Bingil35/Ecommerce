@@ -11,7 +11,7 @@ export const chatApi = {
   async history(conversationId: string) { return (await axiosClient.get<Envelope<ChatMessage[]>>(`/chat/conversations/${conversationId}/messages`, { params: { size: 200 } })).data.data; },
   async uploadMedia(conversationId: string, file: File) {
     const form = new FormData(); form.append('file', file);
-    return (await axiosClient.post<Envelope<{ url: string; messageType: 'IMAGE' | 'VIDEO' }>>(`/chat/conversations/${conversationId}/attachments`, form, { headers: { 'Content-Type': undefined } })).data.data;
+    return (await axiosClient.post<Envelope<{ url: string; messageType: 'IMAGE' | 'VIDEO' }>>(`/chat/conversations/${conversationId}/attachments`, form, { headers: { 'Content-Type': undefined }, timeout: 60000 })).data.data;
   },
 };
 

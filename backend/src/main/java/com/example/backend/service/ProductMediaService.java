@@ -20,6 +20,20 @@ import java.util.UUID;
 @Service
 public class ProductMediaService {
 
+    @Transactional
+    ProductMedia createMediaReference(UUID productId, ProductMediaType type, String url, short order) {
+        Product product = getProduct(productId);
+        validateDisplayOrder((int) order);
+        ProductMedia media = new ProductMedia();
+        media.setProduct(product);
+        media.setMediaType(type);
+        media.setMediaUrl(url);
+        media.setDisplayOrder((int) order);
+        ProductMedia saved = productMediaRepository.save(media);
+        approvalPolicy.markContentChanged(product);
+        return saved;
+    }
+
     private final ProductRepository productRepository;
     private final ProductMediaRepository productMediaRepository;
     private final LocalStorageService localStorageService;
@@ -209,7 +223,9 @@ public class ProductMediaService {
 
         // Chỉ xóa file vật lý SAU KHI DB commit; rollback thì file được giữ nguyên.
         String urlToDelete = media.getMediaUrl();
-        TransactionCallbacks.afterCommit(() -> deleteFileQuietly(urlToDelete));
+        if (urlToDelete != null && urlToDelete.startsWith("/uploads/products/" + media.getProduct().getId() + "/")) {
+            TransactionCallbacks.afterCommit(() -> deleteFileQuietly(urlToDelete));
+        }
 
         // Nếu xóa đúng ảnh đang là ảnh đại diện thì chuyển sang ảnh khác (hoặc để trống).
         Product product = media.getProduct();

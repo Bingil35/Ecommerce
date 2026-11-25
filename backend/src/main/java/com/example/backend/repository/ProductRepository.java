@@ -30,6 +30,9 @@ public interface ProductRepository
             UUID shopId
     );
 
+    @org.springframework.data.jpa.repository.Query("select p from Product p left join fetch p.category where p.shopId = :shopId order by p.createdAt desc")
+    List<Product> findAllForExcelByShopId(@org.springframework.data.repository.query.Param("shopId") UUID shopId);
+
     List<Product> findByShopIdAndStatusOrderByCreatedAtDesc(
             UUID shopId,
             ProductStatus status

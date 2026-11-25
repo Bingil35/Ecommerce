@@ -9,6 +9,10 @@ import java.util.UUID;
 
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
+    interface ExcelName { UUID getId(); String getName(); CategoryStatus getStatus(); }
+    @org.springframework.data.jpa.repository.Query("select c.id as id, c.name as name, c.status as status from Category c")
+    List<ExcelName> findExcelNames();
+
     boolean existsBySlug(String slug);
 
     boolean existsBySlugAndIdNot(String slug, UUID id);

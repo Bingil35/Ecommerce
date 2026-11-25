@@ -1,6 +1,5 @@
 import {
   Search,
-  ShoppingCart,
   Heart,
   User,
   ChevronDown,
@@ -24,8 +23,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { isShopOwner } from '../../../services/auth/roles';
+import { shopApi } from '../../../services/shop/shopApi';
 import { BECOME_SELLER_ENTRY } from '../../../routes/BecomeSellerGuard';
-import { useCart } from '../../../context/CartContext';
+import MiniCart from '../cart/MiniCart';
 import { useWishlist } from '../../../context/WishlistContext';
 import { useChatUnread } from '../../../hooks/useChatUnread';
 import NotificationBell from '../../notifications/NotificationBell';
@@ -36,7 +36,6 @@ const CustomerHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
-  const { distinctItemCount } = useCart();
   const { count: wishlistCount } = useWishlist();
   const hasUnreadChat = useChatUnread('customer');
   const { scrollY } = useScroll();
@@ -44,6 +43,23 @@ const CustomerHeader = () => {
   const [isHidden, setIsHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [shopStatus, setShopStatus] = useState<{ userId: string; status: 'PENDING' | 'ACTIVE' | 'CLOSED' | null | 'ERROR' } | null>(null);
+  const currentShopStatus = user && shopStatus?.userId === user.id ? shopStatus.status : undefined;
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    const userId = user.id;
+    let active = true;
+    let requestId = 0;
+    const refresh = () => {
+      const currentRequest = ++requestId;
+      setShopStatus(null);
+      void shopApi.registrationStatus().then(status => { if (active && currentRequest === requestId) setShopStatus({ userId, status }); })
+        .catch(() => { if (active && currentRequest === requestId) setShopStatus({ userId, status: 'ERROR' }); });
+    };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
+  }, [isAuthenticated, user?.id, isAccountOpen]);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     try { const value = JSON.parse(localStorage.getItem('customer-search-history') || '[]'); return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, 8) : []; }
     catch { return []; }
@@ -193,41 +209,7 @@ const CustomerHeader = () => {
 
             <button type="button" aria-label={hasUnreadChat ? 'Tin nhắn mới chưa đọc' : 'Tin nhắn'} title={hasUnreadChat ? 'Bạn có tin nhắn mới' : 'Tin nhắn'} onClick={() => isAuthenticated ? navigate('/chat') : navigate('/login', { state: { from: '/chat', notice: 'Đăng nhập để sử dụng tin nhắn.' } })} className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-white hover:text-[#171B7A] sm:h-10 sm:w-10"><MessageCircle size={20} strokeWidth={1.8}/>{isAuthenticated && hasUnreadChat && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500"/>}</button>
 
-            {/* Cart */}
-            <div className="relative">
-            <button
-                type="button"
-                aria-label="Giỏ hàng"
-                onClick={() => isAuthenticated ? navigate('/cart') : navigate('/login', { state: { from: location.pathname, notice: 'Đăng nhập để sử dụng giỏ hàng.' } })}
-                className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full
-                text-[#4B5563]
-                transition-colors
-                duration-200
-                hover:bg-white
-                hover:text-[#171B7A]
-                "
-            >
-                <ShoppingCart
-                size={20}
-                strokeWidth={1.8}
-                />
-            </button>
-
-            {distinctItemCount > 0 && (
-            <span
-                className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#5B6FF5] px-1
-                text-[10px]
-                font-semibold
-                leading-none
-                text-white
-                ring-2
-                ring-white/70
-                "
-            >
-                {distinctItemCount > 99 ? '99+' : distinctItemCount}
-            </span>
-            )}
-            </div>
+            <MiniCart />
 
             {/* Wishlist */}
             <div className="relative">
@@ -310,17 +292,19 @@ const CustomerHeader = () => {
                     <div className="border-t border-[#EEF1F6] p-1.5">
                       <button
                         type="button"
+                        disabled={currentShopStatus === undefined || currentShopStatus === 'PENDING' || currentShopStatus === 'CLOSED' || currentShopStatus === 'ERROR'}
+                        title={currentShopStatus === 'PENDING' ? 'Cửa hàng đang chờ duyệt' : currentShopStatus === 'CLOSED' ? 'Cửa hàng hiện đã đóng' : currentShopStatus === 'ERROR' ? 'Không thể kiểm tra trạng thái cửa hàng' : undefined}
                         onClick={() => {
                           setIsAccountOpen(false);
-                          if (isShopOwner(user)) {
-                            navigate('/shop-owner');
+                          if (currentShopStatus === 'ACTIVE') {
+                            navigate(isShopOwner(user) ? '/shop-owner' : '/shop-owner/login');
                           } else {
                             navigate('/shop-owner/register', { state: { entry: BECOME_SELLER_ENTRY } });
                           }
                         }}
-                        className="flex w-full items-center gap-3 rounded-xl border border-[#CFE0FB] bg-[#F1F6FF] px-3 py-2.5 text-left text-sm font-medium text-[#2F6BEA] transition-colors hover:bg-[#E6EFFF]"
+                        className="flex w-full items-center gap-3 rounded-xl border border-[#CFE0FB] bg-[#F1F6FF] px-3 py-2.5 text-left text-sm font-medium text-[#2F6BEA] transition-colors hover:bg-[#E6EFFF] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <Store size={17} strokeWidth={1.8} /><span>{isShopOwner(user) ? 'Kênh người bán' : 'Mở gian hàng'}</span>
+                        <Store size={17} strokeWidth={1.8} /><span>{currentShopStatus === 'PENDING' ? 'Gian hàng đang chờ duyệt' : currentShopStatus === 'CLOSED' ? 'Gian hàng đã đóng' : currentShopStatus === null ? 'Mở gian hàng' : currentShopStatus === 'ERROR' ? 'Không thể kiểm tra gian hàng' : currentShopStatus === undefined ? 'Đang kiểm tra gian hàng...' : 'Kênh người bán'}</span>
                       </button>
                     </div>
                     <div className="border-t border-[#EEF1F6] p-1.5">

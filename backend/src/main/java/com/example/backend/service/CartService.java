@@ -326,6 +326,7 @@ public class CartService {
                     available
             );
 
+            item.setCreatedAt(line.getCreatedAt());
             ShopGroup group = groups.computeIfAbsent(subCart.getId(), id -> new ShopGroup(id, shop));
             group.items.add(item);
 

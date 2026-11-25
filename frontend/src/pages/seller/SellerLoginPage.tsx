@@ -87,9 +87,10 @@ export default function SellerLoginPage() {
 
       setErrorMessage('Tài khoản này không dùng được kênh người bán.');
     } catch (error: any) { toast.error(getFeedbackError(error));
-      // 403: đúng thông tin đăng nhập nhưng không có role SHOP_OWNER (chưa có gian hàng).
       if (error.response?.status === 403) {
-        setNoShop(true);
+        const message = error.response?.data?.message;
+        if (message === 'Tài khoản chưa có cửa hàng.' || message === 'Tài khoản này chưa có gian hàng.') setNoShop(true);
+        else setErrorMessage(message || 'Không thể đăng nhập kênh người bán.');
         return;
       }
 

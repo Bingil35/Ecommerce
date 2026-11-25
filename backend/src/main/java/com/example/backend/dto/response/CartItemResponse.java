@@ -1,6 +1,7 @@
 package com.example.backend.dto.response;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +38,7 @@ public class CartItemResponse {
     private Integer availableStock;
     /** False when the product, variant or shop is not purchasable, or stock is below quantity. */
     private Boolean available;
+    private OffsetDateTime createdAt;
 
     public CartItemResponse(
             UUID id,
@@ -87,4 +89,6 @@ public class CartItemResponse {
     public BigDecimal getLineSubtotal() { return lineSubtotal; }
     public Integer getAvailableStock() { return availableStock; }
     public Boolean getAvailable() { return available; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

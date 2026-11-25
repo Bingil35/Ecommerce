@@ -75,6 +75,32 @@ public class LocalStorageService {
         }
     }
 
+    /** Copies local product media into the new product's directory; external URLs remain references. */
+    public String copyProductMedia(UUID productId, String mediaUrl) {
+        if (mediaUrl == null || mediaUrl.isBlank()) return null;
+        if (!mediaUrl.startsWith("/uploads/")) {
+            java.net.URI uri = java.net.URI.create(mediaUrl);
+            if (uri.getHost() == null || !("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())))
+                throw new IllegalArgumentException("Invalid media URL");
+            return mediaUrl;
+        }
+        String relative = mediaUrl.substring("/uploads/".length());
+        if (!relative.matches("products/[0-9a-fA-F-]{36}/[a-zA-Z0-9-]+\\.[a-z0-9]{2,5}"))
+            throw new IllegalArgumentException("Invalid product media path");
+        try {
+            Path source = uploadRoot.resolve(relative).normalize();
+            if (!source.toRealPath().startsWith(uploadRoot.toRealPath())) throw new IllegalArgumentException("Invalid media path");
+            String extension = relative.substring(relative.lastIndexOf('.'));
+            String filename = UUID.randomUUID() + extension;
+            Path directory = uploadRoot.resolve("products").resolve(productId.toString());
+            Files.createDirectories(directory);
+            Files.copy(source, directory.resolve(filename));
+            return "/uploads/products/" + productId + "/" + filename;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to copy product media", exception);
+        }
+    }
+
     public String storeShopImage(UUID shopId, MultipartFile file, String extension, String imageKind) {
         validateFile(file);
         if (extension == null || !extension.matches("[a-z0-9]{2,5}")
@@ -171,15 +197,8 @@ public class LocalStorageService {
         }
 
         try {
-            String relativePath = mediaUrl;
-
-            if (relativePath.startsWith("/")) {
-                relativePath = relativePath.substring(1);
-            }
-
-            Path filePath = Paths.get(relativePath)
-                    .toAbsolutePath()
-                    .normalize();
+            if (!mediaUrl.startsWith("/uploads/")) throw new IllegalArgumentException("Invalid file path");
+            Path filePath = uploadRoot.resolve(mediaUrl.substring("/uploads/".length())).normalize();
 
             if (!filePath.startsWith(uploadRoot)) {
                 throw new IllegalArgumentException(

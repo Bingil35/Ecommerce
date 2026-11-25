@@ -42,6 +42,7 @@ export const toCartShops = (cart: CartDto): CartShop[] =>
     subtotal: Number(shop.subtotal ?? 0),
     items: (shop.items ?? []).map((item) => ({
       id: item.id,
+      createdAt: item.createdAt,
       productId: item.productId,
       productName: item.productName,
       productSlug: item.productSlug,

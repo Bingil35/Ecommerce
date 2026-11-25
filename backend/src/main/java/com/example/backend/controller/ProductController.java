@@ -8,7 +8,6 @@ import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.BulkResultResponse;
 import com.example.backend.dto.response.CategoryResponse;
 import com.example.backend.dto.response.PageResponse;
-import com.example.backend.dto.response.ProductImportResponse;
 import com.example.backend.dto.response.ProductResponse;
 import com.example.backend.dto.response.ProductStatsResponse;
 import com.example.backend.entity.Product;
@@ -56,6 +55,7 @@ public class ProductController {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final ProductService productService;
+    private final com.example.backend.service.ProductExcelService excel;
     private final com.example.backend.service.ProductSubmissionService submissionService;
     private final ProductManagementService managementService;
     private final ProductStatusService statusService;
@@ -72,7 +72,8 @@ public class ProductController {
             ProductResponseMapper mapper,
             ProductOwnershipService ownership,
             ShopService shopService,
-            com.example.backend.service.ProductEditService editService
+            com.example.backend.service.ProductEditService editService,
+            com.example.backend.service.ProductExcelService excel
     ) {
         this.productService = productService;
         this.submissionService = submissionService;
@@ -82,6 +83,7 @@ public class ProductController {
         this.ownership = ownership;
         this.shopService = shopService;
         this.editService = editService;
+        this.excel = excel;
     }
 
     /** One final request after the user has reviewed all steps. Multipart part
@@ -206,7 +208,7 @@ public class ProductController {
     }
 
     // =========================
-    // EXPORT CSV (CÙNG BỘ LỌC VỚI DANH SÁCH, TỐI ĐA 10.000 DÒNG)
+    // EXPORT ALL PRODUCTS OF THE AUTHENTICATED SHOP
     // =========================
 
     @GetMapping("/export")
@@ -239,32 +241,36 @@ public class ProductController {
     }
 
     // =========================
-    // IMPORT CSV
+    // IMPORT EXCEL: PREVIEW -> CONFIRM
     // =========================
 
-    @GetMapping("/import-template")
-    public ResponseEntity<byte[]> downloadImportTemplate() {
-        return csvResponse(
-                managementService.importTemplateCsv(),
-                "product-import-template.csv"
+    @GetMapping({"/import/template", "/import-template"})
+    public ResponseEntity<byte[]> downloadImportTemplate(Authentication authentication) {
+        shopService.getMyShop(authentication.getName());
+        return excelResponse(
+                excel.template(),
+                "Kala_Products_Template.xlsx"
         );
     }
 
-    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<ProductImportResponse> importProducts(
+    @PostMapping(value = "/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<com.example.backend.service.ProductExcelSchema.Preview> previewImport(
             @RequestPart("file") MultipartFile file,
             Authentication authentication
     ) {
         Shop myShop = shopService.getMyShop(authentication.getName());
 
-        ProductImportResponse result =
-                managementService.importProducts(myShop.getId(), file);
+        return ApiResponse.success("Đã kiểm tra file.", excel.preview(authentication.getName(), myShop.getId(), file));
+    }
 
-        return ApiResponse.success(
-                "Nhập sản phẩm hoàn tất: " + result.created() + "/" + result.total()
-                        + " sản phẩm được tạo.",
-                result
-        );
+    public record ConfirmImportRequest(String previewToken) {}
+
+    @PostMapping("/import/confirm")
+    public ApiResponse<com.example.backend.service.ProductExcelSchema.Result> confirmImport(
+            @RequestBody ConfirmImportRequest request, Authentication authentication) {
+        Shop shop = shopService.getMyShop(authentication.getName());
+        return ApiResponse.success("Đã nhập sản phẩm chờ duyệt.",
+                excel.confirm(authentication.getName(), shop.getId(), request == null ? null : request.previewToken()));
     }
 
     // =========================
@@ -405,6 +411,13 @@ public class ProductController {
     // =========================
 
     private ResponseEntity<byte[]> csvResponse(byte[] body, String filename) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(body);
+    }
+
+    private ResponseEntity<byte[]> excelResponse(byte[] body, String filename) {
 
         return ResponseEntity.ok()
                 .header(
@@ -414,7 +427,7 @@ public class ProductController {
                                 .build()
                                 .toString()
                 )
-                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(body);
     }
 }

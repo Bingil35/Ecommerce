@@ -2,6 +2,8 @@ package com.example.backend.config;
 
 import com.example.backend.service.CustomUserDetailsService;
 import com.example.backend.service.JwtService;
+import com.example.backend.service.ShopService;
+import com.example.backend.exception.ShopOwnerRequiredException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,13 +22,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final ShopService shopService;
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
-            CustomUserDetailsService userDetailsService
+            CustomUserDetailsService userDetailsService, ShopService shopService
     ) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.shopService = shopService;
     }
 
     /**
@@ -87,6 +91,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .setAuthentication(authentication);
         }
 
+        String path = request.getServletPath();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && path != null && (path.startsWith("/api/shop-owner/") || path.startsWith("/api/chat/shop-owner/"))) {
+            try {
+                shopService.requireActiveShop(authentication.getName());
+            } catch (ShopOwnerRequiredException error) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"success\":false,\"message\":\"" + error.getMessage() + "\",\"data\":null}");
+                return;
+            }
+        }
         filterChain.doFilter(request, response);
     }
 }

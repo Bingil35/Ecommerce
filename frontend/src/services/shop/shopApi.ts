@@ -7,7 +7,11 @@ import type {
 } from './shopTypes';
 
 export const shopApi = {
-  /** Khách hàng đăng ký mở gian hàng. Backend cấp thêm role SHOP_OWNER và trả token mới. */
+  async registrationStatus(): Promise<'PENDING' | 'ACTIVE' | 'CLOSED' | null> {
+    const response = await axiosClient.get<ApiResponse<'PENDING' | 'ACTIVE' | 'CLOSED' | null>>('/customer/shop-registration/status');
+    return response.data.data;
+  },
+  /** Khách hàng đăng ký mở gian hàng và chờ quản trị viên duyệt. */
   async register(
     payload: CreateShopRequest
   ): Promise<ShopRegistrationResponse> {

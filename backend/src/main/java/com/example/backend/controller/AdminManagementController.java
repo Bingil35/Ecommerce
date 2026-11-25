@@ -16,6 +16,8 @@ import com.example.backend.repository.*;
 import com.example.backend.service.LocalStorageService;
 import com.example.backend.service.MediaFileInspector;
 import com.example.backend.service.NotificationService;
+import com.example.backend.service.UserService;
+import com.example.backend.config.RoleConstants;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -25,11 +27,12 @@ public class AdminManagementController {
     private final CategoryRepository categories;
     private final ProductRepository products;
     private final NotificationService notificationService; private final LocalStorageService storage; private final MediaFileInspector inspector;
+    private final UserService userService;
     public AdminManagementController(UserRepository users, UserRoleRepository userRoles, ShopRepository shops,
             CouponRepository coupons, SystemBannerRepository banners, OrderRepository orders, CategoryRepository categories, ProductRepository products,
-            NotificationService notificationService, LocalStorageService storage, MediaFileInspector inspector) {
+            NotificationService notificationService, LocalStorageService storage, MediaFileInspector inspector, UserService userService) {
         this.users=users; this.userRoles=userRoles; this.shops=shops; this.coupons=coupons; this.banners=banners; this.orders=orders; this.categories=categories; this.products=products;
-        this.notificationService=notificationService;this.storage=storage;this.inspector=inspector;
+        this.notificationService=notificationService;this.storage=storage;this.inspector=inspector;this.userService=userService;
     }
     @GetMapping("/dashboard") @Transactional(readOnly=true)
     public ApiResponse<Map<String,Object>> dashboard() {
@@ -67,7 +70,13 @@ public class AdminManagementController {
     }
     @PatchMapping("/shops/{id}/status") @Transactional
     public ApiResponse<Map<String,Object>> shopStatus(@PathVariable UUID id,@RequestBody StatusRequest r) {
-        Shop s=shops.findById(id).orElseThrow(()->new IllegalArgumentException("Không tìm thấy cửa hàng."));s.setStatus(ShopStatus.valueOf(r.status()));shops.save(s);
+        Shop s=shops.findById(id).orElseThrow(()->new IllegalArgumentException("Không tìm thấy cửa hàng."));
+        ShopStatus status=ShopStatus.valueOf(r.status());
+        if (status == ShopStatus.ACTIVE) {
+            User owner=users.findById(s.getOwnerUserId()).orElseThrow(()->new IllegalArgumentException("Không tìm thấy chủ cửa hàng."));
+            userService.grantRoleIfAbsent(owner, RoleConstants.SHOP_OWNER);
+        }
+        s.setStatus(status); shops.save(s);
         Map<String,Object> m=new LinkedHashMap<>();m.put("id",s.getId());m.put("shopName",s.getShopName());m.put("status",s.getStatus());return ApiResponse.success("Đã cập nhật cửa hàng.",m);
     }
     @GetMapping("/coupons") @Transactional(readOnly=true)

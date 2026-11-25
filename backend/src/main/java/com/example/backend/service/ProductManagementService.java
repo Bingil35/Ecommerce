@@ -1,14 +1,20 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.request.CreateProductRequest;
+import com.example.backend.dto.request.CreateProductOptionRequest;
+import com.example.backend.dto.request.CreateProductOptionValueRequest;
 import com.example.backend.dto.request.CreateProductVariantRequest;
 import com.example.backend.dto.response.CategoryResponse;
 import com.example.backend.dto.response.ProductImportResponse;
 import com.example.backend.dto.response.ProductStatsResponse;
-import com.example.backend.dto.response.ProductSummary;
+import com.example.backend.entity.Product;
 import com.example.backend.entity.Category;
 import com.example.backend.entity.CategoryStatus;
-import com.example.backend.entity.Product;
+import com.example.backend.dto.response.ProductSummary;
+import com.example.backend.exception.ResourceNotFoundException;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import com.example.backend.entity.ProductMedia;
 import com.example.backend.entity.ProductOption;
 import com.example.backend.entity.ProductOptionValue;
@@ -16,9 +22,8 @@ import com.example.backend.entity.ProductStatus;
 import com.example.backend.entity.ProductVariant;
 import com.example.backend.entity.StockStatus;
 import com.example.backend.exception.BusinessException;
-import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.repository.CategoryRepository;
 import com.example.backend.repository.OwnerProductSpecifications;
+import com.example.backend.repository.CategoryRepository;
 import com.example.backend.repository.ProductMediaRepository;
 import com.example.backend.repository.ProductOptionRepository;
 import com.example.backend.repository.ProductOptionValueRepository;
@@ -33,22 +38,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -63,8 +59,8 @@ import java.util.UUID;
 
 /**
  * Nghiệp vụ quản lý sản phẩm dành cho shop owner:
- * tìm kiếm/lọc/sắp xếp, thống kê tab, xóa dây chuyền,
- * thao tác hàng loạt, xuất và nhập CSV.
+ * tìm kiếm/lọc/sắp xếp, thống kê tab, xóa dây chuyền, nhân bản,
+ * Excel import/export is handled by ProductExcelService.
  *
  * Service này KHÔNG tự kiểm tra quyền; controller phải xác định shopId
  * từ tài khoản đăng nhập và dùng assertProduct cho thao tác theo id.
@@ -78,10 +74,10 @@ public class ProductManagementService {
     private static final long MAX_IMPORT_BYTES = 2L * 1024 * 1024;
     private static final int MAX_IMPORT_ERRORS = 100;
     private static final int MAX_NAME_LENGTH = 255;
+    private static final String COPY_NAME_SUFFIX = " (bản sao)";
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final DateTimeFormatter EXPORT_DATE =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final java.time.format.DateTimeFormatter EXPORT_DATE = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private static final Set<String> SORT_KEYS = Set.of(
             "newest", "oldest", "name_asc", "name_desc",
@@ -100,9 +96,9 @@ public class ProductManagementService {
     private final ProductVariantService productVariantService;
     private final ProductHistoryGuard historyGuard;
     private final ProductOwnershipService ownership;
-    private final ProductResponseMapper mapper;
     private final LocalStorageService localStorageService;
-    private final TransactionTemplate transactionTemplate;
+    private final ProductResponseMapper mapper;
+    private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final int lowStockThreshold;
 
     public ProductManagementService(
@@ -118,9 +114,9 @@ public class ProductManagementService {
             ProductVariantService productVariantService,
             ProductHistoryGuard historyGuard,
             ProductOwnershipService ownership,
-            ProductResponseMapper mapper,
             LocalStorageService localStorageService,
-            PlatformTransactionManager transactionManager,
+            ProductResponseMapper mapper,
+            org.springframework.transaction.PlatformTransactionManager transactionManager,
             @Value("${app.inventory.low-stock-threshold:10}") int lowStockThreshold
     ) {
         this.productRepository = productRepository;
@@ -135,9 +131,9 @@ public class ProductManagementService {
         this.productVariantService = productVariantService;
         this.historyGuard = historyGuard;
         this.ownership = ownership;
-        this.mapper = mapper;
         this.localStorageService = localStorageService;
-        this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.mapper = mapper;
+        this.transactionTemplate = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
         this.lowStockThreshold = lowStockThreshold;
     }
 
@@ -440,9 +436,170 @@ public class ProductManagementService {
     }
 
     // =========================================================
-    // EXPORT CSV
+    // DUPLICATE
     // =========================================================
 
+    /**
+     * Nhân bản sản phẩm: sao chép thông tin, option, giá trị option, media (file được
+     * sao chép thật) và variant. Bản sao là sản phẩm mới nên ở trạng thái PENDING
+     * (chờ Admin duyệt), tồn kho = 0, SKU thêm hậu tố "-COPY" (và số thứ tự nếu trùng).
+     */
+    @Transactional
+    public Product duplicate(UUID sourceId) {
+
+        Product source = productService.getProductById(sourceId);
+
+        CreateProductRequest request = new CreateProductRequest();
+        request.setShopId(source.getShopId());
+        request.setCategoryId(
+                source.getCategory() == null ? null : source.getCategory().getId()
+        );
+        request.setBrandId(source.getBrandId());
+        request.setFeatured(source.getFeatured());
+        request.setName(copyName(source.getName()));
+        request.setDescription(source.getDescription());
+
+        Product copy = productService.createProduct(request);
+
+        // ---- option + giá trị option ----
+        Map<UUID, UUID> valueMap = new HashMap<>();
+
+        for (ProductOption option :
+                optionRepository.findByProductIdOrderBySortOrderAsc(sourceId)) {
+
+            CreateProductOptionRequest optionRequest = new CreateProductOptionRequest();
+            optionRequest.setName(option.getName());
+
+            ProductOption newOption =
+                    productVariantService.createOption(copy.getId(), optionRequest);
+            newOption.setSortOrder(option.getSortOrder());
+
+            for (ProductOptionValue value :
+                    optionValueRepository.findByProductOptionIdOrderBySortOrderAsc(option.getId())) {
+
+                CreateProductOptionValueRequest valueRequest =
+                        new CreateProductOptionValueRequest();
+                valueRequest.setValue(value.getValue());
+
+                ProductOptionValue newValue =
+                        productVariantService.createOptionValue(newOption.getId(), valueRequest);
+                newValue.setSortOrder(value.getSortOrder());
+
+                valueMap.put(value.getId(), newValue.getId());
+            }
+        }
+
+        // ---- media (sao chép file thật) ----
+        Map<UUID, UUID> mediaMap = new HashMap<>();
+        Map<String, String> urlMap = new HashMap<>();
+        List<String> copiedUrls = new ArrayList<>();
+        TransactionCallbacks.afterRollback(() -> deleteFilesQuietly(copiedUrls));
+
+        for (ProductMedia media :
+                mediaRepository.findByProductIdOrderBySortOrderAsc(sourceId)) {
+
+            String newUrl =
+                    localStorageService.copyProductMedia(copy.getId(), media.getMediaUrl());
+
+            if (newUrl == null) {
+                continue;
+            }
+
+            if (newUrl.startsWith("/uploads/")) copiedUrls.add(newUrl);
+
+            ProductMedia newMedia = new ProductMedia();
+            newMedia.setProduct(copy);
+            newMedia.setMediaType(media.getMediaType());
+            newMedia.setMediaUrl(newUrl);
+            newMedia.setSortOrder(media.getSortOrder());
+            newMedia = mediaRepository.save(newMedia);
+
+            mediaMap.put(media.getId(), newMedia.getId());
+            urlMap.put(media.getMediaUrl(), newUrl);
+        }
+
+        String thumbnail = source.getThumbnailUrl();
+
+        if (thumbnail != null && !thumbnail.isBlank()) {
+            if (urlMap.containsKey(thumbnail)) {
+                copy.setThumbnailUrl(urlMap.get(thumbnail));
+            } else if (!thumbnail.startsWith("/uploads/")) {
+                copy.setThumbnailUrl(thumbnail);
+            }
+        }
+
+        // ---- variant (tồn kho = 0) ----
+        Set<String> usedSkus = new java.util.HashSet<>();
+
+        for (ProductVariant variant :
+                variantRepository.findByProductIdOrderByCreatedAtAsc(sourceId)) {
+
+            CreateProductVariantRequest variantRequest = new CreateProductVariantRequest();
+            variantRequest.setProductId(copy.getId());
+            variantRequest.setSku(SkuGenerator.copyOf(
+                    variant.getSku(),
+                    candidate -> usedSkus.contains(candidate)
+                            || variantRepository.existsByProductIdAndSku(copy.getId(), candidate)
+            ));
+            variantRequest.setPrice(variant.getPrice());
+            variantRequest.setComparePrice(variant.getComparePrice());
+            variantRequest.setCostPrice(variant.getCostPrice());
+            variantRequest.setStockQuantity(0);
+
+            if (variant.getPrimaryMedia() != null) {
+                variantRequest.setPrimaryMediaId(
+                        mediaMap.get(variant.getPrimaryMedia().getId())
+                );
+            }
+
+            variantRequest.setOptionValueIds(
+                    variantOptionValueRepository.findByVariantId(variant.getId())
+                            .stream()
+                            .map(link -> valueMap.get(link.getOptionValue().getId()))
+                            .filter(Objects::nonNull)
+                            .toList()
+            );
+
+            ProductVariant newVariant =
+                    productVariantService.createVariant(variantRequest);
+
+            usedSkus.add(newVariant.getSku());
+
+            if (variant.getStatus() != null) {
+                newVariant.setStatus(variant.getStatus());
+            }
+        }
+
+        return productRepository.save(copy);
+    }
+
+    private String copyName(String name) {
+
+        String base = name == null ? "" : name;
+
+        int max = MAX_NAME_LENGTH - COPY_NAME_SUFFIX.length();
+
+        if (base.length() > max) {
+            base = base.substring(0, max);
+        }
+
+        return base + COPY_NAME_SUFFIX;
+    }
+
+    // =========================================================
+    // FILES
+    // =========================================================
+
+    private void deleteFilesQuietly(List<String> urls) {
+
+        for (String url : urls) {
+            try {
+                localStorageService.deleteProductMedia(url);
+            } catch (RuntimeException ignored) {
+                // Best effort: file mồ côi không làm hỏng nghiệp vụ.
+            }
+        }
+    }
     private static final String[] EXPORT_HEADER = {
             "sku", "name", "category", "status",
             "min_price", "max_price", "total_stock",

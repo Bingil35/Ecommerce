@@ -17,6 +17,9 @@ export interface ProductPage { items: SellerProduct[]; page: number; size: numbe
 export interface ProductStats { all: number; pending: number; rejected: number; selling: number; outOfStock: number; hidden: number; lowStock: number }
 export interface ProductFilters { keyword?: string; categoryId?: string; categoryIds?: string[]; status?: ProductStatus; stockStatus?: StockStatus; minPrice?: number; maxPrice?: number; createdFrom?: string; createdTo?: string; sort?: string; page?: number; size?: number }
 export interface ProductPayload { name: string; description?: string; categoryId: string; thumbnailUrl?: string; featured?: boolean }
+export interface ExcelIssue { productCode: string; sheet: string; row: number; column: string; message: string }
+export interface ExcelPreview { total: number; valid: number; invalid: number; errors: ExcelIssue[]; previewToken: string | null; expiresAt: string | null; variantCount: number; stockQuantity: number; products: { productCode: string; name: string; categoryName: string; variantCount: number }[] }
+export interface ExcelResult { created: number; variantCount: number; stockQuantity: number; status: string }
 const root = '/shop-owner/products';
 const serializeFilters = (filters: ProductFilters) => {
   const params = new URLSearchParams();
@@ -27,6 +30,9 @@ const serializeFilters = (filters: ProductFilters) => {
   return params.toString();
 };
 export const sellerProductApi = {
+  async excelTemplate() { const r = await axiosClient.get(`${root}/excel/template`, { responseType: 'blob' }); return r.data as Blob; },
+  async excelPreview(file: File) { const body = new FormData(); body.append('file', file); const r = await axiosClient.post<Envelope<ExcelPreview>>(`${root}/excel/preview`, body, { headers: { 'Content-Type': undefined }, timeout: 60000 }); return r.data.data; },
+  async excelConfirm(token: string) { const r = await axiosClient.post<Envelope<ExcelResult>>(`${root}/excel/confirm`, { token }, { timeout: 60000 }); return r.data.data; },
   async list(filters: ProductFilters) { const r = await axiosClient.get<Envelope<ProductPage>>(root, { params: filters, paramsSerializer: { serialize: serializeFilters } }); return r.data.data; },
   async stats() { const r = await axiosClient.get<Envelope<ProductStats>>(`${root}/stats`); return r.data.data; },
   async categories() { const r = await axiosClient.get<Envelope<CategoryDto[]>>(`${root}/categories`); return r.data.data; },

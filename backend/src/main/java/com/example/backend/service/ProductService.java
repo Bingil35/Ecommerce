@@ -355,7 +355,7 @@ public class ProductService {
     // VALIDATION
     // =========================
 
-    private void validateCreateRequest(
+    void validateCreateRequest(
             CreateProductRequest request
     ) {
 

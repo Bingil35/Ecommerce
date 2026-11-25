@@ -36,6 +36,21 @@ public class ShopService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tài khoản chưa có cửa hàng."));
     }
 
+    public java.util.Optional<Shop> findMyShop(String email) {
+        return shops.findByOwnerUserId(getUser(email).getId());
+    }
+
+    public Shop requireActiveShop(String email) {
+        User user = getUser(email);
+        Shop shop = shops.findByOwnerUserId(user.getId())
+                .orElseThrow(() -> new com.example.backend.exception.ShopOwnerRequiredException("Tài khoản chưa có cửa hàng."));
+        if (shop.getStatus() == ShopStatus.PENDING)
+            throw new com.example.backend.exception.ShopOwnerRequiredException("Cửa hàng này chưa được duyệt. Vui lòng chờ quản trị viên xác nhận.");
+        if (shop.getStatus() != ShopStatus.ACTIVE)
+            throw new com.example.backend.exception.ShopOwnerRequiredException("Cửa hàng hiện đã đóng.");
+        return shop;
+    }
+
     /**
      * Luồng cũ: tài khoản ĐÃ có vai trò SHOP_OWNER tự tạo cửa hàng (POST /api/shop-owner/shop).
      */
@@ -72,15 +87,13 @@ public class ShopService {
 
     /**
      * Khách hàng đăng ký mở shop (POST /api/customer/shop-registration):
-     * tạo cửa hàng ở trạng thái PENDING và cấp thêm vai trò SHOP_OWNER trong cùng một transaction.
+     * tạo cửa hàng ở trạng thái PENDING; vai trò SHOP_OWNER được cấp khi admin duyệt.
      * Vai trò CUSTOMER được giữ nguyên.
      */
     @Transactional
     public Shop registerShopAsCustomer(String email, CreateShopRequest r) {
         User u = getUserForUpdate(email);
-        Shop shop = createShopFor(u, r);
-        userService.grantRoleIfAbsent(u, RoleConstants.SHOP_OWNER);
-        return shop;
+        return createShopFor(u, r);
     }
 
     public Shop getShopOwnedBy(UUID shopId, String email) {

@@ -4,6 +4,7 @@ import type { ShopVoucher } from '../voucher/voucherTypes';
 
 export interface CartItemDto {
   id: string;
+  createdAt?: string | null;
   productId: string;
   productSlug: string;
   productName: string;
@@ -50,6 +51,7 @@ export interface AddToCartPayload {
 
 export interface CartItem {
   id: string;
+  createdAt?: string | null;
   productId: string;
   productName: string;
   productSlug: string;

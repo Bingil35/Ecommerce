@@ -750,7 +750,7 @@ public class ProductVariantService {
     // VALIDATION
     // =====================================================
 
-    private void validateCreateVariantRequest(
+    void validateCreateVariantRequest(
             CreateProductVariantRequest request
     ) {
 

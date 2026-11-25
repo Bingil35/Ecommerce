@@ -1,6 +1,7 @@
 import { useDialog, useToast, getFeedbackError } from '../../context/FeedbackContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import ProductExcelImportDialog from '../../components/seller/ProductExcelImportDialog';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Eye, Filter, Grid2X2, List, MoreVertical, PackagePlus, Pencil, Search, ToggleLeft, ToggleRight, Trash2, Upload, X } from 'lucide-react';
 import { mediaUrl } from '../../services/api/mediaUrl';
 import { sellerProductApi, type ProductFilters, type ProductStats, type SellerProduct, type ProductPayload, type ProductStatus, type StockStatus } from '../../services/seller/productApi';
@@ -40,7 +41,7 @@ export default function SellerProductsPage() {
   const [menu, setMenu] = useState<string | null>(null);
   const [modal, setModal] = useState<'edit' | null>(null); const [current] = useState<SellerProduct | null>(null);
   const [form, setForm] = useState(initialForm); const [busy, setBusy] = useState(false);
-  const importRef = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const effective: ProductFilters = { ...filters, sort, page, size,
     ...(tab === 'selling' ? { status: 'ACTIVE', stockStatus: 'IN_STOCK' } :
       tab === 'outOfStock' ? { status: 'ACTIVE', stockStatus: 'OUT_OF_STOCK' } :
@@ -76,7 +77,6 @@ export default function SellerProductsPage() {
     const ok = await run(() => sellerProductApi.update(current.id, payload), 'Đã cập nhật sản phẩm.'); if (ok) setModal(null); };
   const deleteOne = (p: SellerProduct) => void confirm({title:'Xóa sản phẩm?',message:`Xóa sản phẩm “${p.name}”? Thao tác này có thể bị từ chối nếu sản phẩm có lịch sử giao dịch.`,confirmText:'Xóa sản phẩm',variant:'danger',loadingText:'Đang xóa sản phẩm...',onConfirm:()=>run(()=>sellerProductApi.remove(p.id),'Đã xóa sản phẩm.')});
   const toggle = (p: SellerProduct) => void run(() => sellerProductApi.status(p.id, p.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'), 'Đã thay đổi trạng thái sản phẩm.');
-  const importFile = async (file?: File) => { if (!file) return; await run(() => sellerProductApi.importCsv(file), 'Đã xử lý file nhập sản phẩm.'); if (importRef.current) importRef.current.value = ''; };
   const exportFile = async () => { try { saveBlob(await sellerProductApi.exportCsv(effective), 'kala-products.csv'); } catch (e) {toast.error(getFeedbackError(e)); setError(getError(e)); } };
   const visibleCategories = showAllCategories ? categories : categories.slice(0, 6);
   const applyFilters = () => { setFilters(draft); setPage(0); setMobileFiltersOpen(false); };
@@ -97,7 +97,7 @@ export default function SellerProductsPage() {
   </>;
   return <div className="kp-page seller-container">
     <style>{pageStyles + themeStyles + filterStyles}</style>
-    <div className="kp-heading"><div><h1>Sản phẩm</h1><p>Quản lý toàn bộ sản phẩm trong cửa hàng của bạn.</p></div><div className="kp-heading-actions"><input ref={importRef} type="file" accept=".csv,text/csv" hidden onChange={e => void importFile(e.target.files?.[0])}/><button className="kp-btn" onClick={() => importRef.current?.click()}><Upload size={17}/> Nhập sản phẩm</button><button className="kp-btn" onClick={() => void exportFile()}><Download size={17}/> Xuất danh sách</button><button className="kp-btn kp-primary" onClick={openCreate}><PackagePlus size={18}/> Thêm sản phẩm</button></div></div>
+    <div className="kp-heading"><div><h1>Sản phẩm</h1><p>Quản lý toàn bộ sản phẩm trong cửa hàng của bạn.</p></div><div className="kp-heading-actions"><button className="kp-btn" onClick={() => setImportOpen(true)}><Upload size={17}/> Nhập sản phẩm</button><button className="kp-btn" onClick={() => void exportFile()}><Download size={17}/> Xuất danh sách</button><button className="kp-btn kp-primary" onClick={openCreate}><PackagePlus size={18}/> Thêm sản phẩm</button></div></div>
     {error && <div className="kp-alert kp-error">{error}<button onClick={() => setError('')}><X size={16}/></button></div>}
     <div className="kp-workspace"><aside className="kp-filters kp-desktop-filters">{filterFields}</aside>
 
@@ -107,6 +107,7 @@ export default function SellerProductsPage() {
         <button type="button" className="kp-image" onClick={() => openDetail(p)}>{p.thumbnailUrl ? <img src={mediaUrl(p.thumbnailUrl)} alt={p.name} loading="lazy"/> : <PackagePlus size={48} strokeWidth={1} color="#c5cbd7"/>}</button><div className="kp-card-body"><button type="button" className="kp-title-btn" onClick={() => openDetail(p)}><h3 title={p.name}>{p.name}</h3></button><p className="kp-sku">SKU: {p.sku || 'Chưa có SKU'}</p><strong className="kp-money">{money(p.minPrice)}{p.maxPrice != null && p.minPrice !== p.maxPrice ? ` – ${money(p.maxPrice)}` : ''}</strong><div className="kp-stock"><span>Tồn kho: {p.totalStock ?? 0}</span><span className={(p.totalStock ?? 0) === 0 ? 'kp-out' : 'kp-in'}>{(p.totalStock ?? 0) === 0 ? 'Hết hàng' : 'Còn hàng'}</span></div><div className="kp-card-actions"><button title="Chỉnh sửa" onClick={() => openEdit(p)}><Pencil size={17}/></button><button title="Xem chi tiết" onClick={() => openDetail(p)}><Eye size={18}/></button>{(p.status === 'ACTIVE' || p.status === 'INACTIVE') && <button title={p.status === 'ACTIVE' ? 'Tạm ẩn sản phẩm' : 'Bật bán sản phẩm'} onClick={() => toggle(p)}>{p.status === 'ACTIVE' ? <ToggleRight size={19}/> : <ToggleLeft size={19}/>}</button>}<button title="Xóa" onClick={() => deleteOne(p)}><Trash2 size={17}/></button></div></div></article>)}</div>}
       <div className="kp-footer"><div>Hiển thị <select value={size} onChange={e => { setSize(Number(e.target.value)); setPage(0); }}><option value="12">12</option><option value="20">20</option><option value="40">40</option></select> sản phẩm / trang</div><div className="kp-pages"><button disabled={page === 0} onClick={() => setPage(0)}><ChevronsLeft size={17}/></button><button disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft size={17}/></button><span>Trang {pages === 0 ? 0 : page + 1} / {pages}</span><button disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}><ChevronRight size={17}/></button><button disabled={page + 1 >= pages} onClick={() => setPage(pages - 1)}><ChevronsRight size={17}/></button></div></div>
       </section></div>
+    {importOpen && <ProductExcelImportDialog onClose={() => setImportOpen(false)} onImported={count => { setImportOpen(false); toast.success(`?? nh?p ${count} s?n ph?m.`); void load(); }}/>}
     {mobileFiltersOpen && <div className="kp-overlay kp-mobile-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setMobileFiltersOpen(false); }}><div className="kp-dialog kp-filter-dialog"><div className="kp-dialog-head"><h2>Bộ lọc sản phẩm</h2><button type="button" className="kp-filter-close" onClick={() => setMobileFiltersOpen(false)} aria-label="Đóng bộ lọc"><X size={18}/></button></div><div className="kp-filters">{filterFields}</div></div></div>}
     {modal === 'edit' && <div className="kp-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setModal(null); }}><div className="kp-dialog"><div className="kp-dialog-head"><h2>Chỉnh sửa sản phẩm</h2><button onClick={() => setModal(null)}><X size={20}/></button></div><form className="kp-form" onSubmit={e => void submit(e)}><label>Tên sản phẩm *<input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label><label>Mã danh mục (UUID) *<input required value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })}/></label><label>URL ảnh sản phẩm<input type="url" value={form.thumbnailUrl} onChange={e => setForm({ ...form, thumbnailUrl: e.target.value })}/></label><label>Mô tả<textarea rows={4} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}/></label><p className="kp-hint">Giá, SKU và tồn kho được quản lý qua API biến thể/kho hàng.</p><div className="kp-dialog-actions"><button type="button" className="kp-btn" onClick={() => setModal(null)}>Hủy</button><button type="submit" className="kp-btn kp-primary" disabled={busy}>{busy ? 'Đang lưu...' : 'Lưu sản phẩm'}</button></div></form></div></div>}
   </div>;

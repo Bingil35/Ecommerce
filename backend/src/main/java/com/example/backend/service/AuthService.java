@@ -26,17 +26,19 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final UserService userService;
+    private final ShopService shopService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            UserService userService
+            UserService userService, ShopService shopService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.userService = userService;
+        this.shopService = shopService;
     }
 
     /** Đăng nhập thường (khách hàng, mọi vai trò hợp lệ). */
@@ -96,6 +98,7 @@ public class AuthService {
             );
         }
 
+        if (shopOwnerOnly) shopService.requireActiveShop(user.getEmail());
         if (shopOwnerOnly && !roles.contains(RoleConstants.SHOP_OWNER)) {
             throw new ShopOwnerRequiredException(
                     "Tài khoản này chưa có gian hàng."
